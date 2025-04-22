@@ -1,20 +1,20 @@
 # config.py
-import yaml # Requires PyYAML installation
+import yaml
 import os
 import logging
 from pathlib import Path
-from typing import Any # Import Any for type hinting
+from typing import Any
 
 log = logging.getLogger(__name__)
 
 # --- Constants defining paths ---
 PROJECT_ROOT = Path(__file__).parent.resolve()
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.yaml"
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "output" # Default relative path
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "output" # Default if not in YAML
 
 # --- Default Settings (Fallback if YAML is missing fields) ---
 DEFAULT_SETTINGS = {
-    "output_dir": "output", # Keep as relative path here
+    "output_dir": str(DEFAULT_OUTPUT_DIR),
     "scraped_jobs_filename": "scraped_jobs.json",
     "analysis_filename": "analyzed_jobs.json",
     "ollama": {
@@ -25,7 +25,7 @@ DEFAULT_SETTINGS = {
         "retry_delay": 5,
     },
     "analysis": {
-        "prompts_dir": "analysis/prompts",
+        "prompts_dir": "analysis/prompts", # Relative to project root
         "resume_prompt_file": "resume_extraction.prompt",
         "suitability_prompt_file": "suitability_analysis.prompt",
         "max_prompt_chars": 24000,
@@ -35,87 +35,89 @@ DEFAULT_SETTINGS = {
         "default_results_limit": 25,
         "default_hours_old": 72,
         "default_country_indeed": "usa",
+        "linkedin_fetch_description": True,
+        "linkedin_company_ids": []
     },
     "geocoding": {
-        "geopy_user_agent": "MyJobSpyAnalysisBot/1.2 (PLEASE_UPDATE_EMAIL@example.com)"
+        "geopy_user_agent": "MyJobSpyAI/1.0 (PLEASE_UPDATE_EMAIL@example.com)" # <-- User should update this in config.yaml
     },
     "logging": {
         "level": "INFO",
+        # --- Use minimal format - RichHandler adds timestamp, level etc. ---
         "format": "%(message)s",
-        "date_format": "[%X]",
+        "date_format": "[%X]", # RichHandler uses this
     }
 }
 
-def _deep_update(source, overrides):
-    """Recursively update a dict with values from another dict."""
-    for key, value in overrides.items():
-        if isinstance(value, dict) and key in source and isinstance(source[key], dict):
-            source[key] = _deep_update(source[key], value)
+def _deep_merge_dicts(base, update):
+    """Recursively merges update dict into base dict."""
+    for key, value in update.items():
+        if isinstance(value, dict) and key in base and isinstance(base[key], dict):
+            _deep_merge_dicts(base[key], value)
         else:
-            source[key] = value
-    return source
+            base[key] = value
+    return base
 
 def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
-    """Loads configuration from YAML file, merging deeply with defaults."""
+    """Loads configuration from YAML file, merging with defaults."""
     settings = DEFAULT_SETTINGS.copy() # Start with defaults
 
     if config_path.exists():
-        log.info(f"Loading configuration from {config_path}")
+        # Use basic logging until config is loaded if logging config itself is in YAML
+        temp_logger = logging.getLogger(__name__ + ".config_loader")
+        temp_logger.info(f"Loading configuration from {config_path}")
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 user_config = yaml.safe_load(f)
 
             if user_config and isinstance(user_config, dict):
-                # Use deep merge
-                settings = _deep_update(settings, user_config)
-                log.info("Successfully loaded and merged configuration.")
+                settings = _deep_merge_dicts(settings, user_config)
+                temp_logger.info("Successfully loaded and merged configuration.")
             elif user_config is None:
-                 log.warning(f"Configuration file {config_path} is empty or invalid. Using default settings.")
+                 temp_logger.warning(f"Config file {config_path} empty. Using defaults.")
             else:
-                 log.warning(f"Configuration file {config_path} has invalid format (not a dictionary). Using default settings.")
+                 temp_logger.error(f"Config file {config_path} invalid format. Using defaults.")
         except yaml.YAMLError as e:
-            log.error(f"Error parsing YAML configuration file {config_path}: {e}. Using default settings.")
+            temp_logger.error(f"Error parsing YAML {config_path}: {e}. Using defaults.")
         except Exception as e:
-            log.error(f"Error loading configuration file {config_path}: {e}. Using default settings.", exc_info=True)
+            temp_logger.error(f"Error loading config {config_path}: {e}. Using defaults.", exc_info=True)
     else:
-        log.warning(f"Configuration file not found at {config_path}. Using default settings.")
+        logging.warning(f"Config file not found at {config_path}. Using defaults.") # Use standard logging here
 
-    # --- Make paths absolute based on PROJECT_ROOT ---
+    # --- Make paths absolute relative to PROJECT_ROOT ---
     settings["output_dir"] = str(PROJECT_ROOT / settings.get("output_dir", "output"))
     if "analysis" in settings and "prompts_dir" in settings["analysis"]:
-        settings["analysis"]["prompts_dir"] = str(PROJECT_ROOT / settings["analysis"]["prompts_dir"])
+        # Ensure prompts_dir is treated as relative to project root if not absolute
+        prompts_dir_path = Path(settings["analysis"]["prompts_dir"])
+        if not prompts_dir_path.is_absolute():
+             settings["analysis"]["prompts_dir"] = str(PROJECT_ROOT / prompts_dir_path)
+        else:
+             settings["analysis"]["prompts_dir"] = str(prompts_dir_path) # Keep absolute path
 
     # --- Ensure output dir exists ---
     try:
         os.makedirs(settings["output_dir"], exist_ok=True)
     except OSError as e:
-        log.error(f"Could not create output directory '{settings['output_dir']}': {e}")
+        logging.error(f"Could not create output directory '{settings['output_dir']}': {e}") # Use standard logging
 
-    # --- Add derived absolute paths for convenience ---
+    # --- Add derived absolute paths ---
     settings["scraped_jobs_path"] = os.path.join(settings["output_dir"], settings.get("scraped_jobs_filename", "scraped_jobs.json"))
     settings["analysis_output_path"] = os.path.join(settings["output_dir"], settings.get("analysis_filename", "analyzed_jobs.json"))
     if "analysis" in settings:
-        settings["analysis"]["resume_prompt_path"] = os.path.join(settings["analysis"]["prompts_dir"], settings["analysis"]["resume_prompt_file"])
-        settings["analysis"]["suitability_prompt_path"] = os.path.join(settings["analysis"]["prompts_dir"], settings["analysis"]["suitability_prompt_file"])
+        prompts_dir = settings["analysis"].get("prompts_dir", str(PROJECT_ROOT / "analysis/prompts"))
+        settings["analysis"]["resume_prompt_path"] = os.path.join(prompts_dir, settings["analysis"].get("resume_prompt_file", "resume_extraction.prompt"))
+        settings["analysis"]["suitability_prompt_path"] = os.path.join(prompts_dir, settings["analysis"].get("suitability_prompt_file", "suitability_analysis.prompt"))
 
+    logging.debug(f"Final configuration settings: {settings}") # Use standard logging
     return settings
 
-# --- Load settings ONCE when module is imported ---
+# --- Load settings ONCE ---
 settings = load_config()
 
-# --- Optional: Functions to access settings easily ---
+# --- Optional: Helper function ---
 def get_setting(key_path: str, default: Any = None) -> Any:
-    """Access nested settings using dot notation, e.g., 'ollama.model'."""
-    keys = key_path.split('.')
-    value = settings
+    keys = key_path.split('.'); value = settings
     try:
-        for key in keys:
-            if isinstance(value, dict):
-                 value = value[key]
-            else: # Prevent TypeError if trying to index a non-dict
-                 log.warning(f"Cannot access key '{key}' in non-dictionary element while looking for '{key_path}'.")
-                 return default
+        for key in keys: value = value[key]
         return value
-    except KeyError:
-        log.debug(f"Setting '{key_path}' not found, returning default '{default}'.")
-        return default
+    except (KeyError, TypeError): return default
