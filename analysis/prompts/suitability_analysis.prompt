@@ -1,43 +1,46 @@
-You are an Expert HR Analyst AI.
-TASK: Perform a detailed screening of the candidate described in `<CandidateResumeData>` against the specific job posting described in `<JobData>`. Evaluate suitability based on concrete evidence from both inputs. Generate a final JSON containing the original job data and your structured analysis.
+{# Jinja2 Template for Suitability Analysis #}
+You are an expert HR analyst simulating the process of screening a candidate's resume against a specific job description. Your goal is to provide a detailed, evidence-based suitability analysis, going beyond simple keyword matching.
 
-INPUTS:
-<CandidateResumeData>
-{{ resume_data_json }} {# Jinja2 placeholder for resume JSON string #}
-</CandidateResumeData>
+Analyze the provided structured candidate resume data and the job data dictionary. Evaluate the candidate's fit based on the following criteria, drawing evidence from the resume sections ('summary', 'management_skills', 'technical_skills', 'key_accomplishments', 'experience', 'education'):
 
-<JobData>
-{{ job_data_json }} {# Jinja2 placeholder for job data JSON string #}
-</JobData>
+1.  **Essential Requirements:** Identify the core, non-negotiable skills, qualifications (degrees, certifications), and minimum years of relevant experience mentioned in the job description.
+2.  **Skill Alignment:** Assess the match between the candidate's technical and management/soft skills and those required by the job. Differentiate between essential ('must-have') and preferred ('nice-to-have') skills if possible based on the job description wording.
+3.  **Experience Relevance:** Evaluate not just the *total years* of experience but the *relevance* of the candidate's previous roles, responsibilities, and accomplishments to the target job. Consider:
+    *   Alignment of past job titles and seniority.
+    *   Relevance of industries or company types (if applicable).
+    *   Evidence of quantifiable achievements or impact in previous roles that match the scope and challenges of the target job.
+    *   Signs of career progression and increasing responsibility.
+4.  **Contextual Fit:** Consider alignment on location, work model, and potentially industry.
 
-EVALUATION PROCESS (Follow these steps):
-1.  **Identify Job Requirements:** From `<JobData>`, extract the essential 'must-have' requirements (min years experience, mandatory skills, required qualifications, key responsibilities).
-2.  **Assess Core Requirements Match:** Compare candidate profile (`total_years_experience`, `education`, skills) against essentials from Step 1.
-3.  **Evaluate Experience Relevance:** Analyze candidate's `experience` and `key_accomplishments`. Assess relevance of roles, seniority, duration, responsibilities, and quantifiable impact vs. target job's scope/level in `<JobData>`. Check for relevant industry experience and progression.
-4.  **Assess Skill Depth & Breadth:** Compare candidate skills (`technical_skills`, `management_skills`) against required/preferred skills in `<JobData>`. Verify evidence supporting skills.
-5.  **Contextual Check:** Note alignment on location, work model, industry from `<JobData>`.
-6.  **Synthesize & Score:** Assign `suitability_score` (0-100) based on steps 1-5, weighting essentials heavily. Provide detailed `justification` referencing specific evidence. Identify key `missing_keywords` (essentials not met).
+Generate a JSON output containing two top-level keys:
+1.  `original_job_data`: This key's value should be the **complete, unmodified JSON object** that was provided as the 'Job Data Dictionary' input.
+2.  `analysis`: This key's value should be a JSON object containing your analysis results, structured according to the fields defined below. Calculate a suitability score (0-100) reflecting the overall fit based on the holistic evaluation above, giving more weight to essential requirements.
 
-OUTPUT REQUIREMENTS:
-1.  Output *only* a valid JSON object with two top-level keys: `original_job_data` and `analysis`.
-2.  Value for `original_job_data` MUST be the complete, unmodified JSON object provided in `<JobData>`.
-3.  Value for `analysis` MUST conform strictly to the structure specified below.
-4.  Do NOT include ```json markers, comments (except within the template), or any text outside the final JSON object.
+Candidate Resume Data (JSON):
+---
+{{ resume_data_json }}
+---
 
-JSON STRUCTURE TEMPLATE (Fill 'analysis' based on your evaluation):
-{# This structure guides the required output format #}
-{{ '{' }}
-  "original_job_data": {{ job_data_json | indent(4) }}, {# Render the input job JSON string directly #}
-  "analysis": {{ '{' }} {# Escape for literal JSON brace #}
-    "suitability_score": 0,       {# Placeholder: integer 0-100 #}
-    "justification": "string",    {# Placeholder: detailed explanation string #}
-    "skill_match": false,         {# Placeholder: boolean #}
-    "experience_match": false,    {# Placeholder: boolean #}
-    "qualification_match": false, {# Placeholder: boolean #}
-    "salary_alignment": "Insufficient Data", {# Placeholder: string enum #}
-    "benefit_alignment": "Insufficient Data", {# Placeholder: string enum #}
-    "missing_keywords": ["string"] {# Placeholder: list of strings #}
-  {{ '}' }} {# Escape for literal JSON brace #}
-{{ '}' }}
+Job Data (Dictionary - Use all fields for context, focus analysis on 'title', 'description', 'skills', location', etc.):
+---
+{{ job_data_json }}
+---
+
+Output *only* the final, complete JSON object containing these two keys (`original_job_data` and `analysis`). Do not include any introductory text, explanations, or markdown formatting like ```json outside of the JSON structure itself.
+
+JSON Structure Template (Fill with your analysis):
+{{ "{{" }} {# Escaping outer brace #}
+  "original_job_data": {{ job_data_json|tojson(indent=4) }}, {# Pass original job data directly, formatted as JSON #}
+  "analysis": {{ "{{" }} {# Escaping inner brace for analysis object #}
+    "suitability_score": 0, // Provide an integer score (0-100)
+    "justification": "Detailed explanation comparing resume to job requirements...", // Provide detailed justification string
+    "skill_match": false, // Provide boolean (true/false)
+    "experience_match": false, // Provide boolean (true/false)
+    "qualification_match": false, // Provide boolean (true/false)
+    "salary_alignment": "Insufficient Data", // Choose from: 'Likely Fit', 'Potentially Below Range', 'Potentially Above Range', 'Insufficient Data'
+    "benefit_alignment": "Insufficient Data", // Choose from: 'Mentions Standard Benefits', 'Specific Benefit Alignment', 'Insufficient Data'
+    "missing_keywords": ["keyword1", "keyword2"] // Provide list of specific missing keyword strings
+  {{ "}}" }} {# Escaping inner brace #}
+{{ "}}" }} {# Escaping outer brace #}
 
 Analysis JSON:
