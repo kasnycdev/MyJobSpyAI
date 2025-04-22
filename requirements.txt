@@ -6,6 +6,7 @@
 python-docx >= 1.1.0
 PyPDF2 >= 3.0.0
 PyYML
+colorama>=0.4.6
 # GenAI Integration (Local LLM via Ollama)
 ollama >= 0.2.0
 pydantic >= 2.5.0
