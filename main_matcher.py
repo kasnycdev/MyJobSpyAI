@@ -20,18 +20,14 @@ log = logging.getLogger(__name__)
 async def load_and_extract_resume_async(resume_path: str, analyzer: ResumeAnalyzer) -> Optional[ResumeData]:
     """ASYNC: Loads resume, parses text, and extracts structured data."""
     log.info(f"Processing resume file: {resume_path}")
-    # Parsing is CPU bound, keep it synchronous for now
     try:
         resume_text = parse_resume(resume_path)
     except Exception as e:
         log.error(f"Failed to parse resume text from {resume_path}: {e}", exc_info=True)
         return None
-
     if not resume_text:
         log.error("Parsed resume text is empty.")
         return None
-
-    # Extraction uses LLM, make it async
     structured_resume_data = await analyzer.extract_resume_data_async(resume_text)
     if not structured_resume_data:
         log.error("Failed to extract structured data from resume.")
@@ -50,73 +46,73 @@ async def analyze_jobs_async(
     total_jobs = len(job_list)
     log.info(f"Starting ASYNC analysis of {total_jobs} jobs...")
 
-    # Create tasks for all analysis calls
     tasks = []
     for job_dict in job_list:
-        # Create a coroutine object for each job analysis
         coro = analyzer.analyze_suitability_async(structured_resume_data, job_dict)
-        # Create a task from the coroutine
         task = asyncio.create_task(coro)
         tasks.append(task)
 
-    # Run tasks concurrently and gather results
-    # Use rich progress bar here
+    # --- CORRECTED RICH IMPORT ---
     try:
-        from rich.progress import Progress
+        from rich.progress import (
+            Progress,
+            SpinnerColumn,
+            BarColumn,
+            TextColumn,
+            TimeElapsedColumn
+        )
         progress_context = Progress(
+                SpinnerColumn(), # Now defined
                 "[progress.description]{task.description}",
-                SpinnerColumn(),
-                BarColumn(),
+                BarColumn(),     # Now defined
                 "[progress.percentage]{task.percentage:>3.0f}%",
-                TextColumn("[progress.completed]{task.completed} of {task.total} analyzed"),
-                TimeElapsedColumn() )
+                TextColumn("[progress.completed]{task.completed} of {task.total} jobs"), # Now defined - added 'jobs'
+                TimeElapsedColumn() ) # Now defined
     except ImportError:
          log.warning("Rich library not found, progress bar disabled.")
          progress_context = None # Fallback
-
+    # --- END CORRECTION ---
 
     results_or_exceptions = []
     if progress_context:
          with progress_context as progress:
               analysis_task_tracker = progress.add_task("[cyan]Analyzing Jobs...", total=len(tasks))
               results_or_exceptions = await asyncio.gather(*tasks, return_exceptions=True)
-              progress.update(analysis_task_tracker, completed=len(tasks)) # Mark as complete after gather
-    else: # Run without progress bar
-         log.info(f"Running {len(tasks)} analysis tasks concurrently...")
+              progress.update(analysis_task_tracker, completed=len(tasks), description="[green]Analysis Complete") # Update description on completion
+    else:
+         log.info(f"Running {len(tasks)} analysis tasks concurrently (rich not found)...")
          results_or_exceptions = await asyncio.gather(*tasks, return_exceptions=True)
 
     log.info("Processing analysis results...")
-    # Process results, pairing back with original job data
     for i, result_or_exc in enumerate(results_or_exceptions):
-        job_dict = job_list[i] # Get corresponding original job
+        job_dict = job_list[i]
         job_title = job_dict.get('title', 'N/A')
         analysis_result = None
 
         if isinstance(result_or_exc, Exception):
-            log.warning(f"Analysis task for job '{job_title}' failed with exception: {result_or_exc}", exc_info=result_or_exc)
+            log.warning(f"Analysis task for job '{job_title}' failed with exception: {result_or_exc}", exc_info=False) # exc_info=False to reduce noise maybe
+            log.debug(f"Exception details for '{job_title}':", exc_info=result_or_exc) # Add debug log with full traceback if needed
         elif result_or_exc is None:
             log.warning(f"Analysis task for job '{job_title}' returned None (likely LLM failure or missing description).")
         else:
-            # Successfully received JobAnalysisResult object
-            analysis_result = result_or_exc
+            analysis_result = result_or_exc # Should be JobAnalysisResult object
 
-        # Create placeholder if analysis failed or returned None
         if analysis_result is None:
             try:
                 analysis_result_placeholder = JobAnalysisResult(
-                    suitability_score=0, # Use 0
+                    suitability_score=0,
                     justification="Analysis task failed, returned None, or job description was missing.",
                     skill_match=None, experience_match=None, qualification_match=None,
                     salary_alignment="N/A", benefit_alignment="N/A", missing_keywords=[] )
                 analysis_result = analysis_result_placeholder
             except Exception as placeholder_err:
                 log.error(f"CRITICAL: Failed to create placeholder for failed analysis of '{job_title}': {placeholder_err}", exc_info=True)
-                continue # Skip this job entirely
+                continue
 
         analyzed_job = AnalyzedJob(original_job_data=job_dict, analysis=analysis_result)
         analyzed_results.append(analyzed_job)
 
-    log.info(f"ASYNC analysis complete. Processed {len(analyzed_results)} jobs.")
+    log.info(f"ASYNC analysis complete. Processed results for {len(analyzed_results)} jobs.")
     return analyzed_results
 
 
@@ -127,7 +123,7 @@ def apply_filters_sort_and_save(
     filter_args: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
     """Applies filters, sorts, and saves the final results."""
-    # (Function content remains the same as previous version)
+    # (Function content remains the same)
     jobs_to_filter = [res.original_job_data for res in analyzed_results]
     if filter_args:
         log.info("Applying post-analysis filters...")
@@ -153,30 +149,27 @@ def apply_filters_sort_and_save(
         log.info(f"Successfully saved {len(final_results_json)} analyzed jobs to {output_path}")
     except Exception as e:
         log.error(f"Error writing output file {output_path}: {e}", exc_info=True)
-        log.debug(f"Problematic data structure (first item): {final_results_json[0] if final_results_json else 'N/A'}")
+        log.debug(f"Problematic data (first item): {final_results_json[0] if final_results_json else 'N/A'}")
     return final_results_json
 
 
 # --- Main execution block updated for async ---
-async def main_async(): # Changed to async def
+async def main_async():
     """Async main function for standalone execution."""
-    # (Argument parsing remains the same)
+    # (Argument parsing remains unchanged)
     parser = argparse.ArgumentParser(description="Analyze pre-existing job JSON against a resume.")
     # ... add all arguments ...
     args = parser.parse_args()
 
-    # (Logging setup remains the same)
-    log_level = logging.DEBUG if args.verbose else config.LOG_LEVEL
+    # (Logging setup remains unchanged)
+    log_level = logging.DEBUG if args.verbose else config.settings.get('logging', {}).get('level', 'INFO').upper()
     logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     log.info("Starting standalone ASYNC analysis process...")
-
-    try:
-        analyzer = ResumeAnalyzer() # Instantiates class with sync/async clients
+    try: analyzer = ResumeAnalyzer()
     except Exception as e: log.error(f"Failed to initialize analyzer: {e}", exc_info=True); return
 
-    # Call async version of resume extraction
     structured_resume = await load_and_extract_resume_async(args.resume, analyzer)
     if not structured_resume: log.error("Exiting due to resume processing failure."); return
 
@@ -184,20 +177,16 @@ async def main_async(): # Changed to async def
     job_list = load_job_mandates(args.jobs)
     if not job_list: log.error("No jobs loaded from JSON file. Exiting."); return
 
-    # Call async version of job analysis
     analyzed_results = await analyze_jobs_async(analyzer, structured_resume, job_list)
 
-    # (Filter args population remains the same)
+    # (Filter args population remains unchanged)
     filter_args_dict = {}
     # ... populate filter_args_dict ...
 
-    # Filtering/saving remains synchronous
     apply_filters_sort_and_save(analyzed_results, args.output, filter_args_dict)
-
     log.info("Standalone ASYNC analysis finished.")
 
 if __name__ == "__main__":
-    # Use asyncio.run() to execute the async main function
     try:
         asyncio.run(main_async())
     except KeyboardInterrupt:
