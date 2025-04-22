@@ -23,8 +23,8 @@ analysis:
 # --- JobSpy Scraping Defaults ---
 scraping:
   default_sites: ["linkedin", "glassdoor", "google", "indeed"] # Sensible defaults
-  default_results_limit: 100
-  default_hours_old: 72
+  default_results_limit: 25
+  default_hours_old: 48
   default_country_indeed: "usa"
 
 # --- Geocoding (IMPORTANT: SET YOUR USER AGENT) ---
