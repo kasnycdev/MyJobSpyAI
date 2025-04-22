@@ -8,8 +8,8 @@ analysis_filename: analyzed_jobs.json
 # --- Ollama LLM Configuration ---
 ollama:
   base_url: http://localhost:11434
-  model: llama3:instruct           # Choose your preferred model
-  request_timeout: 450           # Timeout in seconds (increase if needed)
+  model: deepseek-r1:14b           # Choose your preferred model
+  request_timeout: 600           # Timeout in seconds (increase if needed)
   max_retries: 2
   retry_delay: 5
 
@@ -22,8 +22,8 @@ analysis:
 
 # --- JobSpy Scraping Defaults ---
 scraping:
-  default_sites: ["linkedin", "indeed"] # Sensible defaults
-  default_results_limit: 25
+  default_sites: ["linkedin", "glassdoor", "google", "monster", "dice", "indeed"] # Sensible defaults
+  default_results_limit: 100
   default_hours_old: 72
   default_country_indeed: "usa"
 
