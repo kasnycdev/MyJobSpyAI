@@ -15,7 +15,7 @@ from rich.logging import RichHandler
 from rich.table import Table
 
 # === Initialize Colorama FIRST ===
-colorama.init(autoreset=True,convert=True,strip=False)
+colorama.init(autoreset=True,convert=True)
 # === Initialize Rich Console ===
 console = Console() # Global console object for direct prints
 
