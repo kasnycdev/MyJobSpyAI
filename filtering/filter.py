@@ -35,31 +35,34 @@ _geocode_fail_cache = set()
 
 # --- get_lat_lon_country function (remains the same) ---
 def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]:
+    """Geocodes a location string using Nominatim with caching and rate limiting."""
     if not GEOPY_AVAILABLE or not GEOCODER or not location_str: return None
     normalized_loc = location_str.lower().strip();
     if not normalized_loc: return None
     if normalized_loc in _geocode_cache: return _geocode_cache[normalized_loc]
-    if normalized_loc in _geocode_fail_cache: log.debug(f"Skipping geocode for failed: '{location_str}'"); return None
+    if normalized_loc in _geocode_fail_cache: log.debug(f"Skipping geocode for previously failed: '{location_str}'"); return None
     log.debug(f"Geocoding location: '{location_str}'")
     try:
-        time.sleep(1.0); location_data = GEOCODER.geocode(normalized_loc, addressdetails=True, language='en')
+        time.sleep(1.0); # Rate limit
+        location_data = GEOCODER.geocode(normalized_loc, addressdetails=True, language='en')
         if location_data and location_data.latitude and location_data.longitude:
             lat, lon = location_data.latitude, location_data.longitude; address = location_data.raw.get('address', {})
             country_code = address.get('country_code'); country_name = address.get('country')
+            # Basic country name inference from code if full name missing
             if country_code and not country_name:
-                 cc_map = {'us': 'United States', 'usa': 'United States', 'ca': 'Canada', 'gb': 'United Kingdom', 'uk': 'United Kingdom', 'de': 'Germany', 'fr': 'France', 'au': 'Australia'}
+                 cc_map = {'us': 'United States', 'usa': 'United States', 'ca': 'Canada', 'gb': 'United Kingdom', 'uk': 'United Kingdom', 'de': 'Germany', 'fr': 'France', 'au': 'Australia'} # Expand map
                  country_name = cc_map.get(country_code.lower());
-                 if country_name: log.debug(f"Inferred country '{country_name}' from code '{country_code}'")
+                 if country_name: log.debug(f"Inferred country name '{country_name}' from code '{country_code}'")
             if country_name:
                  log.debug(f"Geocoded '{location_str}' -> ({lat:.4f}, {lon:.4f}), Country: {country_name}")
                  result = (lat, lon, country_name); _geocode_cache[normalized_loc] = result; return result
-            else: log.warning(f"Geocoded '{location_str}' but no country. Address: {address}"); _geocode_fail_cache.add(normalized_loc); return None
-        else: log.warning(f"Failed geocode '{location_str}' - No results."); _geocode_fail_cache.add(normalized_loc); return None
+            else: log.warning(f"Geocoded '{location_str}' but couldn't extract country name. Address: {address}"); _geocode_fail_cache.add(normalized_loc); return None
+        else: log.warning(f"Failed to geocode '{location_str}' - No results."); _geocode_fail_cache.add(normalized_loc); return None
     except (GeocoderTimedOut, GeocoderServiceError) as geo_err: log.error(f"Geocoding error for '{location_str}': {geo_err}"); _geocode_fail_cache.add(normalized_loc); return None
     except Exception as e: log.error(f"Unexpected geocoding error for '{location_str}': {e}", exc_info=True); _geocode_fail_cache.add(normalized_loc); return None
 
 
-# --- Main Filter Function (remains the same logic, including corrected if/elifs) ---
+# --- Main Filter Function ---
 def apply_filters(
     jobs: List[Dict[str, Any]],
     salary_min: Optional[int] = None, salary_max: Optional[int] = None,
@@ -78,11 +81,17 @@ def apply_filters(
     normalized_proximity_models = [normalize_string(pm) for pm in filter_proximity_models] if filter_proximity_models else []
 
     target_lat_lon = None
+    # Pre-geocode target location only if proximity filtering is active
     if filter_proximity_location and filter_proximity_range is not None:
         log.info(f"Attempting to geocode target proximity location: '{filter_proximity_location}'")
         target_geo_result = get_lat_lon_country(filter_proximity_location)
-        if target_geo_result: target_lat_lon = (target_geo_result[0], target_geo_result[1]); log.info(f"Target proximity location geocoded to: {target_lat_lon}")
-        else: log.error(f"Could not geocode target proximity location '{filter_proximity_location}'. Proximity filter disabled."); filter_proximity_location = None; filter_proximity_range = None
+        if target_geo_result:
+            target_lat_lon = (target_geo_result[0], target_geo_result[1])
+            log.info(f"Target proximity location geocoded to: {target_lat_lon}")
+        else:
+            log.error(f"Could not geocode target proximity location '{filter_proximity_location}'. Proximity filter disabled.")
+            filter_proximity_location = None # Disable proximity filter if target fails
+            filter_proximity_range = None
 
     log.info("Applying filters to job list...")
     initial_count = len(jobs)
@@ -110,15 +119,21 @@ def apply_filters(
             elif salary_passes_check and log.isEnabledFor(logging.DEBUG): log.debug(f"PASSED (Salary Max): No job salary data for '{job_title}'")
         if not salary_passes_check: passes_all_filters = False; continue
 
-        # Work Model (Standard)
+        # Work Model (Standard) - CORRECTED BLOCK
         if normalized_work_models:
              job_model = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
-             if not job_model:
+             if not job_model: # Infer if possible
                   job_loc_wm = normalize_string(job.get('location'))
-                  if 'remote' in job_loc_wm: job_model = 'remote'
-                  elif 'hybrid' in job_loc_wm: job_model = 'hybrid'
-                  elif 'on-site' in job_loc_wm or 'office' in job_loc_wm: job_model = 'on-site'
-                  else: job_model = None
+                  # --- Corrected Block 1 ---
+                  if 'remote' in job_loc_wm:
+                      job_model = 'remote'
+                  elif 'hybrid' in job_loc_wm:
+                      job_model = 'hybrid'
+                  elif 'on-site' in job_loc_wm or 'office' in job_loc_wm:
+                      job_model = 'on-site'
+                  else:
+                      job_model = None # Explicitly None if no match
+                  # --- End Correction ---
              if not job_model or job_model not in normalized_work_models:
                   passes_all_filters = False; log.debug(f"FILTERED (Work Model): '{job_title}' ({job_url}). Job model '{job_model}' not in {normalized_work_models}"); continue
 
@@ -128,7 +143,7 @@ def apply_filters(
             job_type_passes = False
             if job_type_text:
                  for jt_filter in normalized_job_types:
-                      if jt_filter in job_type_text: job_type_passes = True; break
+                      if jt_filter in job_type_text: job_type_passes = True; break # Allow partial match
             if not job_type_passes: passes_all_filters = False; log.debug(f"FILTERED (Job Type): '{job_title}' ({job_url}). Type '{job_type_text}' not in {normalized_job_types}"); continue
 
         # --- Advanced Location Filters ---
@@ -146,11 +161,23 @@ def apply_filters(
         # Filter 2: Proximity
         if passes_all_filters and filter_proximity_location and target_lat_lon:
             job_model_prox = normalize_string(job.get('work_model')) or normalize_string(job.get('remote')); loc_text_prox = normalize_string(job_location_str)
-            if not job_model_prox:
-                 if 'remote' in loc_text_prox: job_model_prox = 'remote'; elif 'hybrid' in loc_text_prox: job_model_prox = 'hybrid'; elif 'on-site' in loc_text_prox or 'office' in loc_text_prox: job_model_prox = 'on-site'; else: job_model_prox = None
+            # --- CORRECTED INFERENCE BLOCK 2 ---
+            if not job_model_prox: # Infer if possible
+                 if 'remote' in loc_text_prox:
+                     job_model_prox = 'remote'
+                 elif 'hybrid' in loc_text_prox:
+                     job_model_prox = 'hybrid'
+                 elif 'on-site' in loc_text_prox or 'office' in loc_text_prox:
+                     job_model_prox = 'on-site'
+                 else:
+                     job_model_prox = None # Explicitly None if no match
+            # --- END CORRECTION 2 ---
             if not job_model_prox or job_model_prox not in normalized_proximity_models:
-                 passes_all_filters = False; log.debug(f"FILTERED (Proximity Model): '{job_title}' ({job_url}). Model '{job_model_prox}' not in {normalized_proximity_models}."); continue
+                 passes_all_filters = False
+                 log.debug(f"FILTERED (Proximity Model): '{job_title}' ({job_url}). Model '{job_model_prox}' not allowed ({normalized_proximity_models}) for proximity filter.")
+                 continue # Skip this job
             else:
+                 # Proceed with geocoding and distance check only if model matches
                  if not job_geo_result: job_geo_result = get_lat_lon_country(job_location_str)
                  if not job_geo_result: passes_all_filters = False; log.debug(f"FILTERED (Proximity Geocode Fail): Could not geocode '{job_location_str}' for '{job_title}' ({job_url}).")
                  else:
@@ -159,7 +186,9 @@ def apply_filters(
                           distance_miles = geodesic(target_lat_lon, job_lat_lon).miles
                           log.debug(f"Proximity check for '{job_title}' ({job_url}): Dist={distance_miles:.1f}mi from '{filter_proximity_location}'.")
                           if distance_miles > filter_proximity_range: passes_all_filters = False; log.debug(f"FILTERED (Proximity Range): Dist {distance_miles:.1f} > range {filter_proximity_range}mi for '{job_title}' ({job_url})")
-                      except Exception as dist_err: log.warning(f"Could not calculate distance for '{job_title}': {dist_err}"); passes_all_filters = False
+                      except Exception as dist_err: # Catch potential errors in geodesic calculation
+                           log.warning(f"Could not calculate distance between {target_lat_lon} and {job_lat_lon} for '{job_title}': {dist_err}")
+                           passes_all_filters = False # Filter out if distance calculation fails
             if not passes_all_filters: continue
 
         # --- Final Decision ---
