@@ -16,7 +16,7 @@ from .filter_utils import parse_salary, normalize_string
 # Import settings from config.py (assuming it loads YAML)
 from config import settings
 
-# Use root logger configured by run_pipeline or main_matcher
+# Use root logger
 log = logging.getLogger(__name__)
 
 # --- Geocoding Setup ---
@@ -63,16 +63,13 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
 # --- Main Filter Function ---
 def apply_filters(
     jobs: List[Dict[str, Any]],
-    # Standard Filters
     salary_min: Optional[int] = None, salary_max: Optional[int] = None,
     work_models: Optional[List[str]] = None, job_types: Optional[List[str]] = None,
-    # Advanced Location Filters
     filter_remote_country: Optional[str] = None,
     filter_proximity_location: Optional[str] = None,
     filter_proximity_range: Optional[float] = None,
     filter_proximity_models: Optional[List[str]] = None,
-    # locations argument ignored now
-    locations: Optional[List[str]] = None
+    locations: Optional[List[str]] = None # Ignored
 ) -> List[Dict[str, Any]]:
     """ Filters jobs based on standard criteria PLUS advanced location filters. """
     filtered_jobs = []
@@ -90,7 +87,7 @@ def apply_filters(
 
     log.info("Applying filters to job list...")
     initial_count = len(jobs)
-    jobs_processed_count = 0 # Counter for debugging rate limits etc.
+    jobs_processed_count = 0
 
     for job in jobs:
         jobs_processed_count += 1
@@ -149,29 +146,35 @@ def apply_filters(
         job_location_str = job.get('location', ''); job_geo_result = None
         # Filter 1: Remote Job in Specific Country
         if passes_all_filters and normalized_remote_country:
-             job_model_rc = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'));
-             loc_text_rc = normalize_string(job_location_str);
-             is_remote = job_model_rc == 'remote' or 'remote' in loc_text_rc
+             job_model_rc = normalize_string(job.get('work_model')) or normalize_string(job.get('remote')); loc_text_rc = normalize_string(job_location_str); is_remote = job_model_rc == 'remote' or 'remote' in loc_text_rc
              log.debug(f"Remote Country Check: IsRemote={is_remote}, JobLoc='{job_location_str}', Filter='{normalized_remote_country}'")
              if is_remote:
                   if not job_geo_result: job_geo_result = get_lat_lon_country(job_location_str)
                   job_country = job_geo_result[2] if job_geo_result else None
                   log.debug(f"Remote Country Check: Geocoded JobCountry='{job_country}'")
-                  if not job_country or normalize_string(job_country) != normalized_remote_country:
-                       passes_all_filters = False; log.debug(f"FILTERED (Remote Country): Country mismatch.")
-             else:
-                  passes_all_filters = False; log.debug(f"FILTERED (Remote Country): Job not identified as remote.")
-             if not passes_all_filters: continue
+                  if not job_country or normalize_string(job_country) != normalized_remote_country: passes_all_filters = False; log.debug(f"FILTERED (Remote Country): Country mismatch.")
+             else: passes_all_filters = False; log.debug(f"FILTERED (Remote Country): Job not identified as remote.")
+             if not passes_all_filters: log.debug(f"-> Job FILTERED on Remote Country."); continue
 
         # Filter 2: Proximity
         if passes_all_filters and filter_proximity_location and target_lat_lon:
             job_model_prox = normalize_string(job.get('work_model')) or normalize_string(job.get('remote')); loc_text_prox = normalize_string(job_location_str)
-            if not job_model_prox:
-                 if 'remote' in loc_text_prox: job_model_prox = 'remote'; elif 'hybrid' in loc_text_prox: job_model_prox = 'hybrid'; elif 'on-site' in loc_text_prox or 'office' in loc_text_prox: job_model_prox = 'on-site'; else: job_model_prox = None
+            # --- CORRECTED MULTI-LINE BLOCK ---
+            if not job_model_prox: # Infer if possible
+                 if 'remote' in loc_text_prox:
+                     job_model_prox = 'remote'
+                 elif 'hybrid' in loc_text_prox:
+                     job_model_prox = 'hybrid'
+                 elif 'on-site' in loc_text_prox or 'office' in loc_text_prox:
+                     job_model_prox = 'on-site'
+                 else:
+                     job_model_prox = None # Explicitly None if no match
+            # --- END CORRECTION ---
             log.debug(f"Proximity Check: JobModel='{job_model_prox}', AllowedModels='{normalized_proximity_models}', JobLoc='{job_location_str}'")
             if not job_model_prox or job_model_prox not in normalized_proximity_models:
                  passes_all_filters = False; log.debug(f"FILTERED (Proximity Model): Model not allowed.")
             else:
+                 # Proceed with geocoding and distance check only if model matches
                  if not job_geo_result: job_geo_result = get_lat_lon_country(job_location_str)
                  if not job_geo_result: passes_all_filters = False; log.debug(f"FILTERED (Proximity Geocode Fail): Could not geocode job location.")
                  else:
@@ -181,13 +184,12 @@ def apply_filters(
                           log.debug(f"Proximity Check: Distance={distance_miles:.1f}mi vs Range={filter_proximity_range}mi.")
                           if distance_miles > filter_proximity_range: passes_all_filters = False; log.debug(f"FILTERED (Proximity Range): Distance exceeds range.")
                       except Exception as dist_err: log.warning(f"[yellow]Could not calculate distance for '{job_title}': {dist_err}[/yellow]"); passes_all_filters = False
-            if not passes_all_filters: continue
+            if not passes_all_filters: log.debug(f"-> Job FILTERED on Proximity."); continue
 
         # --- Final Decision ---
         if passes_all_filters:
             log.debug(f"-> Job PASSED all filters.")
             filtered_jobs.append(job)
-        # No else needed, continue was called if filtered
 
     final_count = len(filtered_jobs)
     log.info(f"Filtering complete. {final_count} out of {initial_count} jobs passed active filters.")
