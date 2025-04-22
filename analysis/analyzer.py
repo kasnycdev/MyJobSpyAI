@@ -1,3 +1,4 @@
+# analysis/analyzer.py
 import ollama
 import json
 import logging
@@ -13,6 +14,157 @@ from config import settings
 log = logging.getLogger(__name__)
 
 # --- Load prompts using paths from settings ---
+def load_prompt(prompt_key: str) -> str:
+    """Loads a prompt template based on keys in settings."""
+    # Assumes settings dict structure like settings['analysis']['resume_prompt_path']
+    path = settings.get('analysis', {}).get(prompt_key)
+    if not path:
+        import config as cfg_module # Import the module itself to get its path
+        prompts_dir_fallback = os.path.join(os.path.dirname(cfg_module.__file__), 'analysis', 'prompts')
+        filename = settings.get('analysis', {}).get(prompt_key.replace('_path','_file'), None) # Try getting filename
+        if filename:
+            path = os.path.join(prompts_dir_fallback, filename)
+            log.warning(f"Prompt path key '{prompt_key}' not fully resolved in settings, trying constructed path: {path}")
+        else:
+            log.error(f"Prompt path key '{prompt_key}' and filename not found in configuration.")
+            raise ValueError(f"Missing prompt configuration for {prompt_key}")
+
+    try:
+        # Ensure path is absolute before opening
+        if not os.path.isabs(path):
+             import config as cfg_module
+             base_dir = os.path.dirname(cfg_module.__file__)
+             # Construct path relative to config.py's directory if prompt path is relative
+             # This assumes prompts_dir in config.yaml is relative like 'analysis/prompts'
+             # Adjust this logic if paths in config.yaml are absolute or structured differently
+             relative_prompts_dir = settings.get('analysis', {}).get('prompts_dir', 'analysis/prompts')
+             path = os.path.join(base_dir, relative_prompts_dir, os.path.basename(path))
+             log.debug(f"Resolved relative prompt path to: {path}")
+
+
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        log.error(f"Prompt file not found at resolved path: {path}")
+        raise
+    except Exception as e:
+        log.error(f"Error reading prompt file {path}: {e}")
+        raise
+
+class ResumeAnalyzer:
+    """Handles interaction with Ollama for resume and job analysis (Sync & Async)."""
+
+    def __init__(self):
+        log.info("Initializing Ollama clients...")
+        try:
+            ollama_cfg = settings.get('ollama', {})
+            base_url = ollama_cfg.get('base_url', 'http://localhost:11434')
+            timeout = int(ollama_cfg.get('request_timeout', 180)) # Ensure timeout is int
+
+            self.sync_client = ollama.Client(host=base_url, timeout=timeout)
+            self.async_client = ollama.AsyncClient(host=base_url, timeout=timeout)
+            log.info("Ollama clients initialized.")
+        except Exception as e:
+             log.critical(f"Failed to initialize Ollama clients: {e}", exc_info=True)
+             raise RuntimeError(f"Ollama client initialization failed: {e}") from e
+
+        # Load prompts using keys derived from settings structure
+        self.resume_prompt_template = load_prompt("resume_prompt_path")
+        self.suitability_prompt_template = load_prompt("suitability_prompt_path")
+        # Run initial checks synchronously
+        self._check_connection_and_model() # Keep initial check sync
+
+    # --- _check_connection_and_model with Robust Parsing ---
+    def _check_connection_and_model(self):
+        """Checks Ollama connection and ensures the configured model is available."""
+        try:
+            ollama_cfg = settings.get('ollama', {})
+            ollama_model = ollama_cfg.get('model', 'llama3:instruct')
+            base_url = ollama_cfg.get('base_url', 'http://localhost:11434')
+
+            log.info(f"Checking Ollama connection at {base_url}...")
+            self.sync_client.ps(); log.info("Ollama connection successful.")
+
+            log.info("Fetching local Ollama models..."); ollama_list_response = self.sync_client.list()
+            log.debug(f"Raw list response type: {type(ollama_list_response)}")
+            log.debug(f"Raw list response content: {ollama_list_response}")
+
+            models_data = ollama_list_response.get('models', [])
+            if not isinstance(models_data, list): models_data = []
+
+            # --- REVISED Parsing Loop ---
+            local_models = []
+            log.debug(f"Attempting to parse models_data (type: {type(models_data)}): {models_data}")
+            for idx, m_item in enumerate(models_data):
+                log.debug(f"Processing model item {idx} (type: {type(m_item)}): {m_item}")
+                model_name = None
+                if isinstance(m_item, dict):
+                    model_name = m_item.get('name') or m_item.get('model')
+                    if model_name: log.debug(f"  Extracted name '{model_name}' from dict item.")
+                elif hasattr(m_item, 'model') and isinstance(m_item.model, str):
+                    model_name = m_item.model
+                    if model_name: log.debug(f"  Extracted name '{model_name}' from object attribute 'model'.")
+                elif hasattr(m_item, 'name') and isinstance(m_item.name, str):
+                     model_name = m_item.name
+                     if model_name: log.debug(f"  Extracted name '{model_name}' from object attribute 'name'.")
+                if model_name: local_models.append(model_name)
+                else: log.warning(f"  Could not extract model name from item {idx}: {m_item}")
+            # --- End REVISED Loop ---
+
+            log.info(f"Successfully parsed local models: {local_models}")
+
+            if ollama_model not in local_models:
+                log.warning(f"Model '{ollama_model}' not found locally in {local_models}. Attempting pull...");
+                try:
+                    self._pull_model_with_progress(ollama_model)
+                    log.info("Re-fetching model list after pull..."); updated_list_response = self.sync_client.list()
+                    updated_models_data = updated_list_response.get('models', [])
+                    # --- Use REVISED Parsing Logic Here Too ---
+                    updated_names = []
+                    log.debug(f"Attempting to parse updated models_data: {updated_models_data}")
+                    for idx, m_upd in enumerate(updated_models_data):
+                         log.debug(f"Processing updated item {idx}: {m_upd}")
+                         model_name_upd = None
+                         if isinstance(m_upd, dict): model_name_upd = m_upd.get('name') or m_upd.get('model')
+                         elif hasattr(m_upd, 'model') and isinstance(m_upd.model, str): model_name_upd = m_upd.model
+                         elif hasattr(m_upd, 'name') and isinstance(m_upd.name, str): model_name_upd = m_upd.name
+                         if model_name_upd: updated_names.append(model_name_upd)
+                         else: log.warning(f"  Could not extract name from updated item {idx}: {m_upd}")
+                    # --- End REVISED Logic ---
+                    log.debug(f"Model list after pull: {updated_names}")
+                    if ollama_model not in updated_names:
+                        log.error(f"Model '{ollama_model}' still not found after pull. Waiting..."); time.sleep(2)
+                        final_list_response = self.sync_client.list(); final_models_data = final_list_response.get('models', [])
+                         # --- Use REVISED Parsing Logic Here Again ---
+                        final_names = []
+                        log.debug(f"Attempting to parse final models_data: {final_models_data}")
+                        for idx, m_final in enumerate(final_models_data):
+                             log.debug(f"Processing final item {idx}: {m_final}")
+                             model_name_final = None
+                             if isinstance(m_final, dict): model_name_final = m_final.get('name') or m_final.get('model')
+                             elif hasattr(m_final, 'model') and isinstance(m_final.model, str): model_name_final = m_final.model
+                             elif hasattr(m_final, 'name') and isinstance(m_final.name, str): model_name_final = m_final.name
+                             if model_name_final: final_names.append(model_name_final)
+                             else: log.warning(f"  Could not extract name from final item {idx}: {m_final}")Okay, here is the full content of `analysis/analyzer.py` incorporating the refined model list parsing logic within the `_check_connection_and_model` method.
+
+**File: `analysis/analyzer.py` (Full Corrected Content)**
+
+```python
+import ollama
+import json
+import logging
+import time
+import os
+import asyncio
+from typing import Dict, Optional, Any
+
+from analysis.models import ResumeData, JobAnalysisResult, AnalyzedJob
+# Import the loaded settings dictionary from config.py
+from config import settings
+
+log = logging.getLogger(__name__)
+
+# Load prompts using paths from settings
 def load_prompt(prompt_key: str) -> str:
     # Access path using settings dictionary structure
     path = settings.get('analysis', {}).get(prompt_key)
@@ -48,60 +200,151 @@ class ResumeAnalyzer:
     def __init__(self):
         log.info("Initializing Ollama clients...")
         try:
-            # --- CORRECTED: Access Ollama config from settings dict ---
             ollama_cfg = settings.get('ollama', {})
-            base_url = ollama_cfg.get('base_url', 'http://localhost:11434') # Provide default
-            timeout = ollama_cfg.get('request_timeout', 180) # Provide default
-
+            base_url = ollama_cfg.get('base_url', 'http://localhost:11434')
+            timeout = ollama_cfg.get('request_timeout', 180)
             self.sync_client = ollama.Client(host=base_url, timeout=timeout)
             self.async_client = ollama.AsyncClient(host=base_url, timeout=timeout)
-            # --- END CORRECTION ---
             log.info("Ollama clients initialized.")
         except Exception as e:
              log.critical(f"Failed to initialize Ollama clients: {e}", exc_info=True)
              raise RuntimeError(f"Ollama client initialization failed: {e}") from e
 
-        # Load prompts using keys derived from settings structure
         self.resume_prompt_template = load_prompt("resume_prompt_path")
         self.suitability_prompt_template = load_prompt("suitability_prompt_path")
-        self._check_connection_and_model()
+        self._check_connection_and_model() # Sync check uses sync_client
 
-    # --- _check_connection_and_model uses settings dict ---
+    # --- _check_connection_and_model with REVISED parsing ---
     def _check_connection_and_model(self):
+        """Checks Ollama connection and ensures the configured model is available."""
         try:
-            # --- CORRECTED: Access Ollama config from settings dict ---
             ollama_cfg = settings.get('ollama', {})
             ollama_model = ollama_cfg.get('model', 'llama3:instruct') # Default model
             base_url = ollama_cfg.get('base_url', 'http://localhost:11434')
-            # --- END CORRECTION ---
 
             log.info(f"Checking Ollama connection at {base_url}...")
             self.sync_client.ps(); log.info("Ollama connection successful.")
             log.info("Fetching local Ollama models..."); ollama_list_response = self.sync_client.list()
-            log.debug(f"Raw list response: {ollama_list_response}")
-            models_data = ollama_list_response.get('models', []);
-            if not isinstance(models_data, list): models_data = []
-            local_models = [m.model for m in models_data if hasattr(m, 'model') and isinstance(m.model, str) and m.model]
-            log.info(f"Parsed local models: {local_models}")
+            log.debug(f"Raw Ollama list() response type: {type(ollama_list_response)}")
+            log.debug(f"Raw Ollama list() response content: {ollama_list_response}")
 
+            models_data = ollama_list_response.get('models', [])
+            if not isinstance(models_data, list): models_data = []
+
+            # --- REVISED Parsing Loop ---
+            local_models = []
+            log.debug(f"Attempting to parse models_data (type: {type(models_data)}): {models_data}")
+            for idx, m_item in enumerate(models_data):
+                log.debug(f"Processing model item {idx} (type: {type(m_item)}): {m_item}")
+                model_name = None
+                if isinstance(m_item, dict):
+                    model_name = m_item.get('name') or m_item.get('model')
+                    if model_name: log.debug(f"  Extracted name '{model_name}' from dict item.")
+                elif hasattr(m_item, 'model') and isinstance(m_item.model, str):
+                    model_name = m_item.model
+                    if model_name: log.debug(f"  Extracted name '{model_name}' from object attribute 'model'.")
+                elif hasattr(m_item, 'name') and isinstance(m_item.name, str):
+                     model_name = m_item.name
+                     if model_name: log.debug(f"  Extracted name '{model_name}' from object attribute 'name'.")
+
+                if model_name:
+                    local_models.append(model_name)
+                else:
+                    log.warning(f"  Could not extract a valid model name from item {idx}: {m_item}")
+            # --- End REVISED Loop ---
+
+            log.info(f"Successfully parsed local models: {local_models}") # Should not be empty now
+
+            # --- Check if model exists and pull if necessary ---
             if ollama_model not in local_models:
                 log.warning(f"Model '{ollama_model}' not found locally. Attempting pull...");
                 try:
                     self._pull_model_with_progress(ollama_model)
-                    log.info("Re-fetching model list after pull..."); updated_list_response = self.sync_client.list()
-                    updated_models_data = updated_list_response.get('models', []); updated_names = [m_upd.model for m_upd in updated_models_data if hasattr(m_upd, 'model')]
-                    log.debug(f"Model list after pull: {updated_names}")
-                    if ollama_model not in updated_names:
-                        log.error(f"Model '{ollama_model}' still not found after pull. Waiting..."); time.sleep(2)
-                        final_list_response = self.sync_client.list(); final_models_data = final_list_response.get('models', [])
-                        final_names = [m_final.model for m_final in final_models_data if hasattr(m_final, 'model')]
+                    log.info("Re-fetching model list after pull...");
+                    updated_list_response = self.sync_clientOkay, here is the full content for `analysis/analyzer.py` with the corrected and more robust model list parsing logic implemented in the `_check_connection_and_model` method.
+
+**File: `analysis/analyzer.py` (Full Corrected Content)**
+
+```python
+import ollama
+import json
+import logging
+import time
+import os
+import asyncio
+from typing import Dict, Optional, Any
+
+from analysis.models import ResumeData, JobAnalysisResult, AnalyzedJob
+# Import the loaded settings dictionary
+from config import settings
+
+log = logging.getLogger(__name__)
+
+# Load prompts using paths from settings
+def load_prompt(prompt_key: str) -> str:
+    path = settings.get('analysis', {}).get(prompt_key)
+    if not path:
+        import config as cfg_module
+        prompts_dir_fallback = os.path.join(os.path.dirname(cfg_module.__file__), 'analysis', 'prompts')
+        filename = settings.get('analysis', {}).get(prompt_key.replace('_path','_file'), None)
+        if filename: path = os.path.join(prompts_dir_fallback, filename); log.warning(f"Using constructed path: {path}")
+        else: log.error(f"Config missing for {prompt_key}."); raise ValueError(f"Missing config for {prompt_key}")
+    try:
+        if not os.path.isabs(path):
+             import config as cfg_module; base_dir = os.path.dirname(cfg_module.__file__); path = os.path.join(base_dir, path)
+        with open(path, 'r', encoding='utf-8') as f: return f.read()
+    except FileNotFoundError: log.error(f"Prompt file not found: {path}"); raise
+    except Exception as e: log.error(f"Error reading prompt file {path}: {e}"); raise
+
+class ResumeAnalyzer:
+    def __init__(self):
+        log.info("Initializing Ollama clients...")
+        try:
+            ollama_cfg = settings.get('ollama', {})
+            base_url = ollama_cfg.get('base_url', 'http://localhost:11434')
+            timeout = ollama_cfg.get('request_timeout', 180)
+            self.sync_client = ollama.Client(host=base_url, timeout=timeout)
+            self.async_client = ollama.AsyncClient(host=base_url, timeout=timeout)
+            log.info("Ollama clients initialized.")
+        except Exception as e: log.critical(f"Failed initialize Ollama clients: {e}", exc_info=True); raise RuntimeError(f"Ollama client init failed: {e}") from e
+        self.resume_prompt_template = load_prompt("resume_prompt_path")
+        self.suitability_prompt_template = load_prompt("suitability_prompt_path")
+        self._check_connection_and_model()
+
+    # --- Method with CORRECTED Parsing Logic ---
+    def _check_connection_and_model(self):
+        """Checks Ollama connection and ensures the configured model is available."""
+        try:
+            ollama_cfg = settings.get('ollama', {})
+            ollama_model = ollama_cfg.get('model', 'llama3:instruct')
+            base_url = ollama_cfg.get('base_url', 'http://localhost:11434')
+
+            log.info(f"Checking Ollama connection at {base_url}...")
+            self.sync_client.ps(); log.info("Ollama connection successful.")
+            log.info("Fetching local Ollama models...")
+            ollama_list_response = self.sync_client.list()
+            log.debug(f"Raw Ollama list() response type: {type(ollama_list_response)}")
+            log.debug(f"Raw Ollama list() response content: {ollama_list_response}")
+
+            models_data = ollama_list_response.get('models', [])
+            if not isinstance(models_data, list): models_data = []
+
+            # --- REVISED Parsing Loop ---
+            local_models = []
+            log.debug(f"Attempting to parse models_data (type: {type(models_data)}): {models_data}")
+            for idx, m_item in enumerate(models_data):
+                log.debug(f"Processing model item {idx} (type: {type(m_item)}): {m_item}")
+                model_name = None
+                if isinstance(m_item,
+                         # --- End REVISED Logic ---
                         if ollama_model not in final_names: log.error(f"Final check failed."); raise ConnectionError(f"Model '{ollama_model}' unavailable.")
                         else: log.info("Model found after delay.")
                 except Exception as pull_err: log.error(f"Pull/verify failed for '{ollama_model}': {pull_err}", exc_info=True); raise ConnectionError(f"Model '{ollama_model}' unavailable/pull failed.") from pull_err
             else: log.info(f"Using configured Ollama model: {ollama_model}")
         except Exception as e: log.critical(f"Ollama connection/setup failed: {e}", exc_info=True); raise ConnectionError(f"Ollama connection/setup failed: {e}") from e
 
-    # --- _pull_model_with_progress remains the same ---
+
+    # --- _pull_model_with_progress method remains unchanged ---
     def _pull_model_with_progress(self, model_name: str):
         current_digest = ""; status = ""
         try:
@@ -115,17 +358,11 @@ class ResumeAnalyzer:
         except Exception as e: print(); log.error(f"Error during model pull: {e}"); raise
         finally: print()
 
-    # --- _call_ollama_async uses settings dict ---
+    # --- _call_ollama_async method remains unchanged ---
     async def _call_ollama_async(self, prompt: str) -> Optional[Dict[str, Any]]:
-         # --- CORRECTED: Access config from settings dict ---
-         ollama_cfg = settings.get('ollama', {})
-         analysis_cfg = settings.get('analysis', {})
-         ollama_model = ollama_cfg.get('model', 'llama3:instruct')
-         max_retries = ollama_cfg.get('max_retries', 2)
-         retry_delay = ollama_cfg.get('retry_delay', 5)
-         max_prompt_chars = analysis_cfg.get('max_prompt_chars', 24000)
-         # --- END CORRECTION ---
-
+         ollama_cfg = settings.get('ollama', {}); analysis_cfg = settings.get('analysis', {})
+         ollama_model = ollama_cfg.get('model'); max_retries = ollama_cfg.get('max_retries', 2)
+         retry_delay = ollama_cfg.get('retry_delay', 5); max_prompt_chars = analysis_cfg.get('max_prompt_chars', 24000)
          log.debug(f"ASYNC: Sending request to {ollama_model}. Prompt length: {len(prompt)} chars.")
          if len(prompt) > max_prompt_chars: log.warning(f"Prompt length exceeds {max_prompt_chars} chars.")
          last_exception = None
@@ -145,9 +382,9 @@ class ResumeAnalyzer:
              else: log.error(f"ASYNC: Ollama call failed after {max_retries} attempts."); log.error(f"ASYNC: Last error: {last_exception}")
          return None
 
-    # --- extract_resume_data_async remains unchanged internally (calls async helper) ---
+    # --- extract_resume_data_async method remains unchanged ---
     async def extract_resume_data_async(self, resume_text: str) -> Optional[ResumeData]:
-        # (Content remains the same)
+        # (Content remains the same as previous async version)
         MAX_RESUME_CHARS_FOR_LLM = 15000
         if not resume_text or not resume_text.strip(): log.warning("Resume text empty."); return None
         if len(resume_text) > MAX_RESUME_CHARS_FOR_LLM: log.warning(f"Truncating resume text ({len(resume_text)} > {MAX_RESUME_CHARS_FOR_LLM})."); resume_text_for_prompt = resume_text[:MAX_RESUME_CHARS_FOR_LLM]
@@ -161,9 +398,10 @@ class ResumeAnalyzer:
             except Exception as e: log.error(f"ASYNC: Failed validate extracted resume: {e}", exc_info=True); log.error(f"Invalid JSON: {extracted_json}"); return None
         else: log.error("ASYNC: Failed get response for resume extract."); return None
 
-    # --- analyze_suitability_async remains unchanged internally (calls async helper) ---
+
+    # --- analyze_suitability_async method remains unchanged ---
     async def analyze_suitability_async(self, resume_data: ResumeData, job_data: Dict[str, Any]) -> Optional[JobAnalysisResult]:
-        # (Content remains the same)
+        # (Content remains the same as previous async version)
         if not resume_data: log.warning("Missing structured resume data."); return None
         if not job_data or not job_data.get("description"): log.warning(f"Missing job description for '{job_data.get('title', 'N/A')}'. Skipping analysis."); return None
         try:
