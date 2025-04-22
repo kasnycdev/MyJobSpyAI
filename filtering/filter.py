@@ -13,31 +13,33 @@ except ImportError:
     GEOPY_AVAILABLE = False
 
 from .filter_utils import parse_salary, normalize_string
-import config # Import config here for user agent
+# --- Import the loaded settings dictionary ---
+from config import settings
 
-# Use root logger
 log = logging.getLogger(__name__)
 
 # --- Geocoding Setup ---
 GEOCODER = None
 if GEOPY_AVAILABLE:
-    if not config.GEOPY_USER_AGENT or 'example.com' in config.GEOPY_USER_AGENT:
-         log.warning("GEOPY_USER_AGENT in config.py is not set or uses placeholder. Geocoding might fail.")
-    GEOCODER = Nominatim(user_agent=config.GEOPY_USER_AGENT, timeout=10)
+    # --- Access user agent from settings ---
+    user_agent = settings.get('geocoding', {}).get('geopy_user_agent', 'MyJobSpyAI/1.0 (Default)') # Use .get for safety
+    if 'PLEASE_UPDATE' in user_agent or 'example.com' in user_agent or user_agent == 'MyJobSpyAI/1.0 (Default)':
+        log.warning("GEOPY_USER_AGENT in config.yaml is not set or uses placeholder. Geocoding might fail.")
+    GEOCODER = Nominatim(user_agent=user_agent, timeout=10)
+    # --- End access ---
 else:
     log.warning("Geopy library not installed. Proximity and remote country filtering will be disabled.")
 
 _geocode_cache = {}
 _geocode_fail_cache = set()
 
-# --- get_lat_lon_country function remains unchanged ---
+# --- get_lat_lon_country function (remains the same) ---
 def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]:
-    # (Content of this function remains the same as previous correct version)
     if not GEOPY_AVAILABLE or not GEOCODER or not location_str: return None
     normalized_loc = location_str.lower().strip();
     if not normalized_loc: return None
     if normalized_loc in _geocode_cache: return _geocode_cache[normalized_loc]
-    if normalized_loc in _geocode_fail_cache: log.debug(f"Skipping geocode for previously failed: '{location_str}'"); return None
+    if normalized_loc in _geocode_fail_cache: log.debug(f"Skipping geocode for failed: '{location_str}'"); return None
     log.debug(f"Geocoding location: '{location_str}'")
     try:
         time.sleep(1.0); location_data = GEOCODER.geocode(normalized_loc, addressdetails=True, language='en')
@@ -47,17 +49,17 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
             if country_code and not country_name:
                  cc_map = {'us': 'United States', 'usa': 'United States', 'ca': 'Canada', 'gb': 'United Kingdom', 'uk': 'United Kingdom', 'de': 'Germany', 'fr': 'France', 'au': 'Australia'}
                  country_name = cc_map.get(country_code.lower());
-                 if country_name: log.debug(f"Inferred country name '{country_name}' from code '{country_code}'")
+                 if country_name: log.debug(f"Inferred country '{country_name}' from code '{country_code}'")
             if country_name:
-                 log.debug(f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}")
+                 log.debug(f"Geocoded '{location_str}' -> ({lat:.4f}, {lon:.4f}), Country: {country_name}")
                  result = (lat, lon, country_name); _geocode_cache[normalized_loc] = result; return result
-            else: log.warning(f"Geocoded '{location_str}' but couldn't extract country name. Address: {address}"); _geocode_fail_cache.add(normalized_loc); return None
-        else: log.warning(f"Failed to geocode '{location_str}' - No results."); _geocode_fail_cache.add(normalized_loc); return None
+            else: log.warning(f"Geocoded '{location_str}' but no country. Address: {address}"); _geocode_fail_cache.add(normalized_loc); return None
+        else: log.warning(f"Failed geocode '{location_str}' - No results."); _geocode_fail_cache.add(normalized_loc); return None
     except (GeocoderTimedOut, GeocoderServiceError) as geo_err: log.error(f"Geocoding error for '{location_str}': {geo_err}"); _geocode_fail_cache.add(normalized_loc); return None
     except Exception as e: log.error(f"Unexpected geocoding error for '{location_str}': {e}", exc_info=True); _geocode_fail_cache.add(normalized_loc); return None
 
 
-# --- Main Filter Function ---
+# --- Main Filter Function (remains the same logic, including corrected if/elifs) ---
 def apply_filters(
     jobs: List[Dict[str, Any]],
     salary_min: Optional[int] = None, salary_max: Optional[int] = None,
@@ -108,7 +110,7 @@ def apply_filters(
             elif salary_passes_check and log.isEnabledFor(logging.DEBUG): log.debug(f"PASSED (Salary Max): No job salary data for '{job_title}'")
         if not salary_passes_check: passes_all_filters = False; continue
 
-        # Work Model (Standard) - CORRECTED BLOCK
+        # Work Model (Standard)
         if normalized_work_models:
              job_model = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
              if not job_model:
@@ -144,23 +146,11 @@ def apply_filters(
         # Filter 2: Proximity
         if passes_all_filters and filter_proximity_location and target_lat_lon:
             job_model_prox = normalize_string(job.get('work_model')) or normalize_string(job.get('remote')); loc_text_prox = normalize_string(job_location_str)
-            # --- CORRECTED INFERENCE BLOCK ---
-            if not job_model_prox: # Infer if possible
-                 if 'remote' in loc_text_prox:
-                     job_model_prox = 'remote'
-                 elif 'hybrid' in loc_text_prox:
-                     job_model_prox = 'hybrid'
-                 elif 'on-site' in loc_text_prox or 'office' in loc_text_prox:
-                     job_model_prox = 'on-site'
-                 else:
-                     job_model_prox = None # Explicitly None if no match
-            # --- END CORRECTION ---
+            if not job_model_prox:
+                 if 'remote' in loc_text_prox: job_model_prox = 'remote'; elif 'hybrid' in loc_text_prox: job_model_prox = 'hybrid'; elif 'on-site' in loc_text_prox or 'office' in loc_text_prox: job_model_prox = 'on-site'; else: job_model_prox = None
             if not job_model_prox or job_model_prox not in normalized_proximity_models:
-                 passes_all_filters = False
-                 log.debug(f"FILTERED (Proximity Model): '{job_title}' ({job_url}). Model '{job_model_prox}' not allowed ({normalized_proximity_models}) for proximity filter.")
-                 continue # Skip this job
+                 passes_all_filters = False; log.debug(f"FILTERED (Proximity Model): '{job_title}' ({job_url}). Model '{job_model_prox}' not in {normalized_proximity_models}."); continue
             else:
-                 # Proceed with geocoding and distance check only if model matches
                  if not job_geo_result: job_geo_result = get_lat_lon_country(job_location_str)
                  if not job_geo_result: passes_all_filters = False; log.debug(f"FILTERED (Proximity Geocode Fail): Could not geocode '{job_location_str}' for '{job_title}' ({job_url}).")
                  else:
@@ -169,9 +159,7 @@ def apply_filters(
                           distance_miles = geodesic(target_lat_lon, job_lat_lon).miles
                           log.debug(f"Proximity check for '{job_title}' ({job_url}): Dist={distance_miles:.1f}mi from '{filter_proximity_location}'.")
                           if distance_miles > filter_proximity_range: passes_all_filters = False; log.debug(f"FILTERED (Proximity Range): Dist {distance_miles:.1f} > range {filter_proximity_range}mi for '{job_title}' ({job_url})")
-                      except Exception as dist_err: # Catch potential errors in geodesic calculation
-                           log.warning(f"Could not calculate distance between {target_lat_lon} and {job_lat_lon} for '{job_title}': {dist_err}")
-                           passes_all_filters = False # Filter out if distance calculation fails
+                      except Exception as dist_err: log.warning(f"Could not calculate distance for '{job_title}': {dist_err}"); passes_all_filters = False
             if not passes_all_filters: continue
 
         # --- Final Decision ---
