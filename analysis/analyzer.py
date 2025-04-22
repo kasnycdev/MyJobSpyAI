@@ -9,6 +9,9 @@ from typing import Dict, Optional, Any
 from analysis.models import ResumeData, JobAnalysisResult, AnalyzedJob
 from config import settings
 
+
+# OopCompanion:suppressRename
+
 log = logging.getLogger(__name__)
 
 def load_prompt(prompt_key: str) -> str:
