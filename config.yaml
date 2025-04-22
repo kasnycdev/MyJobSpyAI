@@ -1,0 +1,39 @@
+# config.yaml - User Configuration (Overrides defaults in config.py)
+
+# --- Output Configuration ---
+output_dir: output  # Relative to project root, will be made absolute
+scraped_jobs_filename: scraped_jobs.json
+analysis_filename: analyzed_jobs.json
+
+# --- Ollama LLM Configuration ---
+ollama:
+  base_url: http://localhost:11434
+  model: llama3:instruct           # Choose your preferred model
+  request_timeout: 450           # Timeout in seconds (increase if needed)
+  max_retries: 2
+  retry_delay: 5
+
+# --- Analysis Configuration ---
+analysis:
+  prompts_dir: analysis/prompts      # Relative path
+  resume_prompt_file: resume_extraction.prompt
+  suitability_prompt_file: suitability_analysis.prompt
+  max_prompt_chars: 24000
+
+# --- JobSpy Scraping Defaults ---
+scraping:
+  default_sites: ["linkedin", "indeed"] # Sensible defaults
+  default_results_limit: 25
+  default_hours_old: 72
+  default_country_indeed: "usa"
+
+# --- Geocoding (IMPORTANT: SET YOUR USER AGENT) ---
+geocoding:
+  # Required by Nominatim. Be specific and include contact info.
+  geopy_user_agent: "MyJobSpyAnalysisApp/1.2 (your_actual_email@domain.com)"
+
+# --- Logging ---
+logging:
+  level: INFO                   # Default log level (INFO, DEBUG, WARNING, ERROR)
+  # format: "%(message)s"       # Handled by RichHandler
+  # date_format: "[%X]"         # Handled by RichHandler
