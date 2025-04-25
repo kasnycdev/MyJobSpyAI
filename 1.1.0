@@ -1,0 +1,20 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting python-docx
+  Using cached python_docx-1.1.2-py3-none-any.whl.metadata (2.0 kB)
+Collecting lxml>=3.1.0 (from python-docx)
+  Downloading lxml-5.4.0.tar.gz (3.7 MB)
+     ---------------------------------------- 3.7/3.7 MB 14.3 MB/s eta 0:00:00
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting typing-extensions>=4.9.0 (from python-docx)
+  Using cached typing_extensions-4.13.2-py3-none-any.whl.metadata (3.0 kB)
+Using cached python_docx-1.1.2-py3-none-any.whl (244 kB)
+Using cached typing_extensions-4.13.2-py3-none-any.whl (45 kB)
+Building wheels for collected packages: lxml
+  Building wheel for lxml (pyproject.toml): started
+  Building wheel for lxml (pyproject.toml): finished with status 'error'
+Failed to build lxml

@@ -1,0 +1,29 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting pdfminer.six
+  Using cached pdfminer_six-20250416-py3-none-any.whl.metadata (4.1 kB)
+Collecting charset-normalizer>=2.0.0 (from pdfminer.six)
+  Downloading charset_normalizer-3.4.1-py3-none-any.whl.metadata (35 kB)
+Collecting cryptography>=36.0.0 (from pdfminer.six)
+  Using cached cryptography-44.0.2-cp39-abi3-win_amd64.whl.metadata (5.7 kB)
+Collecting cffi>=1.12 (from cryptography>=36.0.0->pdfminer.six)
+  Downloading cffi-1.17.1.tar.gz (516 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting pycparser (from cffi>=1.12->cryptography>=36.0.0->pdfminer.six)
+  Using cached pycparser-2.22-py3-none-any.whl.metadata (943 bytes)
+Using cached pdfminer_six-20250416-py3-none-any.whl (5.6 MB)
+Downloading charset_normalizer-3.4.1-py3-none-any.whl (49 kB)
+Using cached cryptography-44.0.2-cp39-abi3-win_amd64.whl (3.2 MB)
+Using cached pycparser-2.22-py3-none-any.whl (117 kB)
+Building wheels for collected packages: cffi
+  Building wheel for cffi (pyproject.toml): started
+  Building wheel for cffi (pyproject.toml): finished with status 'done'
+  Created wheel for cffi: filename=cffi-1.17.1-cp314-cp314-win_amd64.whl size=184351 sha256=dc702240617b5541d0ef29ea080ac7bc530a7caa73ffc15246ca012df4c0808a
+  Stored in directory: c:\users\kenne\appdata\local\pip\cache\wheels\85\3e\2b\7c0859254cbe5f4713e7b11c150483d1ef85f20b084caea2ec
+Successfully built cffi
+Installing collected packages: pycparser, charset-normalizer, cffi, cryptography, pdfminer.six
+Successfully installed cffi-1.17.1 charset-normalizer-3.4.1 cryptography-44.0.2 pdfminer.six-20250416 pycparser-2.22

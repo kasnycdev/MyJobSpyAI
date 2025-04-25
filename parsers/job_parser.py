@@ -1,10 +1,10 @@
 import json
 import os
 import logging
+import html
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# import html
 def load_job_mandates(json_file_path: str) -> list[dict]:
     """
     Loads job mandates from a JSON file.

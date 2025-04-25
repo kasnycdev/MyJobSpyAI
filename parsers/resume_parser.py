@@ -2,10 +2,10 @@ import os
 from docx import Document
 import PyPDF2
 import logging
+import html
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# import html
 def _parse_docx(file_path: str) -> str:
     """Parses text content from a DOCX file."""
     try:
