@@ -118,6 +118,6 @@ ipython_config.py
 .ipynb_checkpoints
 
 # Test Resume
-Kenneth.A.Santoro.MyJobSpy.Resume.pdf
+*.Resume.pdf
 qodana.yaml
 myjobspy.commandline.txt
