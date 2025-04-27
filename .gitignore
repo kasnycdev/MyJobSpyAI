@@ -1,6 +1,6 @@
 # Project exclude paths
 /.venv/
-
+.ruff
 # Environments & Dependencies
 .venv/
 venv/
@@ -13,7 +13,7 @@ __pypackages__/
 node_modules/
 
 # Python cache & compiled files
-__pycache__/
+*/__pycache__/*
 *.py[cod]
 *$py.class
 *.so

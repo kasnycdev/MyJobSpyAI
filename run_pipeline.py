@@ -71,7 +71,7 @@ def scrape_jobs_with_jobspy(
     linkedin_company_ids: Optional[List[int]] = None
     ) -> Optional[pd.DataFrame]:
     """Uses jobspy, logs with rich markup."""
-    log.info(f"[bold blue]Starting job scraping via JobSpy...[/bold blue]")
+    log.info("[bold blue]Starting job scraping via JobSpy...[/bold blue]")
     log.info(f"Search: '[cyan]{search_terms}[/cyan]' | Location: '[cyan]{location}[/cyan]' | Sites: [yellow]{sites}[/yellow]")
     log.info(f"Params: Results ≈{results_wanted}, Max Age={hours_old}h, Indeed Country='{country_indeed}', Offset={offset}")
     if proxies: log.info(f"[yellow]Using {len(proxies)} proxies.[/yellow]")
@@ -91,7 +91,7 @@ def scrape_jobs_with_jobspy(
             return jobs_df
     except ImportError as ie: log.critical(f"[bold red]Import error during scraping:[/bold red] {ie}."); return None
     except Exception as e:
-        if "linkedin_company_ids" in str(e) and "Input should be a valid list" in str(e): log.error(f"[bold red]JobSpy Config Error:[/bold red] LinkedIn Company IDs must be list."); log.error(f"Details: {e}", exc_info=False)
+        if "linkedin_company_ids" in str(e) and "Input should be a valid list" in str(e): log.error("[bold red]JobSpy Config Error:[/bold red] LinkedIn Company IDs must be list."); log.error(f"Details: {e}", exc_info=False)
         else: log.error(f"[bold red]Error during jobspy scraping:[/bold red] {e}", exc_info=True)
         return None
 
@@ -99,7 +99,7 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
     """Converts DataFrame, logs with rich markup."""
     log.info(f"Converting DataFrame and saving to [cyan]{output_path}[/cyan]")
     rename_map = {'job_url':'url','job_type':'employment_type','salary':'salary_text','benefits':'benefits_text'}
-    actual_rename_map = {k: v for k, v in rename_map.items() if k in jobs_df.columns};
+    actual_rename_map = {k: v for k, v in rename_map.items() if k in jobs_df.columns}
     if actual_rename_map: jobs_df = jobs_df.rename(columns=actual_rename_map); log.debug(f"Renamed columns: {actual_rename_map}")
     for col in ['date_posted', 'posted_date', 'date']:
         if col in jobs_df.columns:
@@ -111,7 +111,7 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
          if col not in jobs_df.columns: log.warning(f"[yellow]Column '{col}' missing, adding empty.[/yellow]"); jobs_df[col] = ''
     jobs_df = jobs_df.fillna(''); log.debug("Filled NA/NaN values.")
     jobs_list = jobs_df.to_dict('records'); log.debug(f"Converted to {len(jobs_list)} dicts.")
-    output_dir = os.path.dirname(output_path);
+    output_dir = os.path.dirname(output_path)
     if output_dir: os.makedirs(output_dir, exist_ok=True)
     try:
         with open(output_path, 'w', encoding='utf-8') as f: json.dump(jobs_list, f, indent=4)
@@ -193,7 +193,7 @@ async def run_pipeline_async():
             linkedin_company_ids=linkedin_company_ids_list )
         if jobs_df is None or jobs_df.empty:
             log.warning("[yellow]Scraping yielded no results. Exiting.[/yellow]")
-            analysis_output_dir = os.path.dirname(args.analysis_output);
+            analysis_output_dir = os.path.dirname(args.analysis_output)
             if analysis_output_dir: os.makedirs(analysis_output_dir, exist_ok=True)
             with open(args.analysis_output, 'w', encoding='utf-8') as f: json.dump([], f)
             log.info(f"Empty analysis results file created at [cyan]{args.analysis_output}[/cyan]")
@@ -230,7 +230,7 @@ async def run_pipeline_async():
         # --- Step 6: Print Summary Table ---
         log.info("[bold blue]Pipeline Summary:[/bold blue]")
         print_summary_table(final_results_list_dict, top_n=10) # Uses rich table
-        log.info(f"[bold green]Pipeline Run Finished Successfully[/bold green]")
+        log.info("[bold green]Pipeline Run Finished Successfully[/bold green]")
 
     except KeyboardInterrupt:
         # Use console.print for interrupt message
