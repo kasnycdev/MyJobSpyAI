@@ -1,7 +1,6 @@
 import ollama
 import json
 import logging
-import time
 import os
 import asyncio
 from typing import Dict, Optional, Any
@@ -13,7 +12,7 @@ try:
 except ImportError:
     JINJA2_AVAILABLE = False
 
-from analysis.models import ResumeData, JobAnalysisResult, AnalyzedJob
+from analysis.models import ResumeData, JobAnalysisResult
 # Import the loaded settings dictionary from config.py
 from config import settings
 
@@ -96,12 +95,12 @@ class ResumeAnalyzer:
             self.sync_client.ps(); log.info("[green]Ollama connection successful.[/green]")
             log.info("Fetching local Ollama models...")
             ollama_list_response = self.sync_client.list(); log.debug(f"Raw list response: {ollama_list_response}")
-            models_data = ollama_list_response.get('models', []);
+            models_data = ollama_list_response.get('models', [])
             if not isinstance(models_data, list): models_data = []
             local_models = [m.model for m in models_data if hasattr(m, 'model') and isinstance(m.model, str) and m.model]
             log.info(f"Parsed local models: [cyan]{local_models}[/cyan]")
             if ollama_model not in local_models:
-                log.warning(f"[yellow]Model '{ollama_model}' not found locally. Attempting pull...[/yellow]");
+                log.warning(f"[yellow]Model '{ollama_model}' not found locally. Attempting pull...[/yellow]")
                 try:
                     self._pull_model_with_progress(ollama_model)
                     log.info("Re-fetching model list after pull...")
@@ -124,7 +123,7 @@ class ResumeAnalyzer:
         current_digest = ""; status = ""
         try:
             for progress in ollama.pull(model_name, stream=True):
-                 digest = progress.get("digest", "");
+                 digest = progress.get("digest", "")
                  if digest != current_digest and current_digest != "": print()
                  if digest: current_digest = digest; status = progress.get('status', ''); print(f"Pulling {model_name}: {status}", end='\r')
                  else: status = progress.get('status', ''); print(f"Pulling {model_name}: {status}")
@@ -146,7 +145,7 @@ class ResumeAnalyzer:
                  response = await self.async_client.chat( model=ollama_model, messages=[{'role': 'user', 'content': prompt}], format='json', options={'temperature': 0.1} )
                  content = response['message']['content']; log.debug(f"ASYNC: Ollama raw response: {content[:500]}...")
                  try:
-                     content_strip = content.strip();
+                     content_strip = content.strip()
                      if content_strip.startswith("```json"): content_strip = content_strip[7:-3].strip() if content_strip.endswith("```") else content_strip[7:].strip()
                      elif content_strip.startswith("```"): content_strip = content_strip[3:-3].strip() if content_strip.endswith("```") else content_strip[3:].strip()
                      result = json.loads(content_strip); log.debug("ASYNC: Parsed JSON response."); return result
@@ -206,12 +205,12 @@ class ResumeAnalyzer:
         combined_json_response = await self._call_ollama_async(prompt) # Await async call
 
         if not combined_json_response or not isinstance(combined_json_response, dict):
-            log.error(f"[red]ASYNC: Failed get valid JSON dict for suitability: {job_title}.[/red]");
+            log.error(f"[red]ASYNC: Failed get valid JSON dict for suitability: {job_title}.[/red]")
             log.error(f"Raw response: {combined_json_response}"); return None
 
         analysis_data = combined_json_response.get("analysis")
         if not analysis_data or not isinstance(analysis_data, dict):
-            log.error(f"[red]ASYNC: Response JSON missing valid 'analysis' dict for: {job_title}.[/red]");
+            log.error(f"[red]ASYNC: Response JSON missing valid 'analysis' dict for: {job_title}.[/red]")
             log.debug(f"Full response: {combined_json_response}"); return None
 
         try:

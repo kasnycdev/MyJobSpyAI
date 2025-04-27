@@ -3,7 +3,7 @@ import json
 import os
 import argparse
 import asyncio
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 
 # Use ResumeAnalyzer which now has async methods
 from analysis.analyzer import ResumeAnalyzer
@@ -68,7 +68,7 @@ async def analyze_jobs_async(
     log.info("Processing analysis results...")
     for i, result_or_exc in enumerate(results_or_exceptions):
         job_dict = job_list[i]; job_title = job_dict.get('title', 'N/A'); analysis_result = None
-        if isinstance(result_or_exc, Exception): log.warning(f"[yellow]Analysis task for '{job_title}' failed:[/yellow] {result_or_exc}", exc_info=False); log.debug(f"Exc details:", exc_info=result_or_exc)
+        if isinstance(result_or_exc, Exception): log.warning(f"[yellow]Analysis task for '{job_title}' failed:[/yellow] {result_or_exc}", exc_info=False); log.debug("Exc details:", exc_info=result_or_exc)
         elif result_or_exc is None: log.warning(f"[yellow]Analysis task for '{job_title}' returned None (LLM fail/no description).[/yellow]")
         else: analysis_result = result_or_exc
 
@@ -100,7 +100,7 @@ def apply_filters_sort_and_save(
     log.info("Sorting results by suitability score...")
     final_filtered_results.sort(key=lambda x: x.analysis.suitability_score if x.analysis else 0, reverse=True )
     final_results_json = [result.model_dump(mode='json') for result in final_filtered_results]
-    output_dir = os.path.dirname(output_path);
+    output_dir = os.path.dirname(output_path)
     if output_dir: os.makedirs(output_dir, exist_ok=True)
     try:
         with open(output_path, 'w', encoding='utf-8') as f: json.dump(final_results_json, f, indent=4)
@@ -113,7 +113,7 @@ def apply_filters_sort_and_save(
 async def main_async():
     """Async main function for standalone execution."""
     # (Argument parsing unchanged)
-    parser = argparse.ArgumentParser(description="Analyze pre-existing job JSON against a resume."); # ... add args ...
+    parser = argparse.ArgumentParser(description="Analyze pre-existing job JSON against a resume.") # ... add args ...
     args = parser.parse_args()
     # (Standalone logging setup - might not use Rich unless explicitly configured here)
     log_level = logging.DEBUG if args.verbose else config.settings.get('logging', {}).get('level', 'INFO').upper()
@@ -126,7 +126,7 @@ async def main_async():
     log.info(f"Loading jobs from JSON file: {args.jobs}"); job_list = load_job_mandates(args.jobs)
     if not job_list: log.error("No jobs loaded from JSON file. Exiting."); return
     analyzed_results = await analyze_jobs_async(analyzer, structured_resume, job_list)
-    filter_args_dict = {}; # ... populate filter_args_dict from args ...
+    filter_args_dict = {} # ... populate filter_args_dict from args ...
     apply_filters_sort_and_save(analyzed_results, args.output, filter_args_dict)
     log.info("Standalone ASYNC analysis finished.")
 
