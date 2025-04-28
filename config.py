@@ -103,7 +103,9 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
 
     # --- Add derived absolute paths ---
     settings["scraped_jobs_path"] = os.path.join(settings["output_dir"], settings.get("scraped_jobs_filename", "scraped_jobs.json"))
-    settings["analysis_output_path"] = os.path.join(settings["output_dir"], settings.get("analysis_filename", "analyzed_jobs.json"))
+    output_settings = settings.get('output', {})
+    analysis_filename = output_settings.get('analysis_output_file', 'analyzed_jobs.json') # Get from 'output' section
+    settings["analysis_output_path"] = os.path.join(settings["output_dir"], analysis_filename)
     if "analysis" in settings:
         prompts_dir = settings["analysis"].get("prompts_dir", str(PROJECT_ROOT / "analysis/prompts"))
         settings["analysis"]["resume_prompt_path"] = os.path.join(prompts_dir, settings["analysis"].get("resume_prompt_file", "resume_extraction.prompt"))
