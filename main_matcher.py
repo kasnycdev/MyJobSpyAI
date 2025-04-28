@@ -123,7 +123,7 @@ async def main_async():
     except Exception as e: log.error(f"Failed to initialize analyzer: {e}", exc_info=True); return
     structured_resume = await load_and_extract_resume_async(args.resume, analyzer)
     if not structured_resume: log.error("Exiting due to resume processing failure."); return
-    log.info(f"Loading jobs from JSON file: {args.jobs}"); job_list = load_job_mandates(args.jobs)
+    log.info(f"Loading jobs from Parquet file: {args.jobs}"); job_list = load_job_mandates(args.jobs)
     if not job_list: log.error("No jobs loaded from JSON file. Exiting."); return
     analyzed_results = await analyze_jobs_async(analyzer, structured_resume, job_list)
     filter_args_dict = {} # ... populate filter_args_dict from args ...

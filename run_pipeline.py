@@ -1,5 +1,6 @@
 import argparse
 import logging
+import json  # Import the json module
 import pyarrow as pa
 import pandas as pd
 import os
@@ -78,7 +79,7 @@ def scrape_jobs_with_jobspy(
     if proxies: log.info(f"[yellow]Using {len(proxies)} proxies.[/yellow]")
     if linkedin_company_ids: log.info(f"Filtering by LinkedIn Company IDs: {linkedin_company_ids}")
     try:
-        jobs_df = scrape_jobs( site_name=sites, search_term=search_terms, location=location, results_wanted=results_wanted, hours_old=hours_old, country_indeed=country_indeed, proxies=proxies, offset=offset, linkedin_fetch_description=linkedin_fetch_description, linkedin_company_ids=linkedin_company_ids if linkedin_company_ids else [], verbose=1, description_format="markdown" )
+        jobs_df = scrape_jobs(site_name=sites, search_term=search_terms, location=location, results_wanted=results_wanted, days_old=days_old, country_indeed=country_indeed, proxies=proxies, offset=offset, linkedin_fetch_description=linkedin_fetch_description, linkedin_company_ids=linkedin_company_ids if linkedin_company_ids else [], verbose=1, description_format="markdown")
         if jobs_df is None or jobs_df.empty:
             log.warning("[yellow]Jobspy scraping returned no results or failed.[/yellow]"); return None
         else:
@@ -188,12 +189,13 @@ async def run_pipeline_async():
             except ValueError: parser.error("Invalid format for --linkedin-company-ids. Must be comma-separated integers.")
 
         # --- Step 1: Scrape Jobs ---
-        jobs_df = scrape_jobs_with_jobspy(
+        jobs_df = scrape_jobs_with_jobspy(  # Use days_old
             search_terms=args.search, location=scrape_location, sites=[s.strip().lower() for s in args.sites.split(',')],
-            results_wanted=args.results, hours_old=args.hours_old, country_indeed=args.country_indeed,
-            proxies=[p.strip() for p in args.proxies.split(',')] if args.proxies else None, offset=args.offset,
-            linkedin_fetch_description=args.linkedin_fetch_description,
-            linkedin_company_ids=linkedin_company_ids_list )
+            results_wanted=args.results, days_old=args.days_old, country_indeed=args.country_indeed,
+            proxies=[p.strip() for p in args.proxies.split(',')] if args.proxies else None,
+            offset=args.offset, linkedin_fetch_description=args.linkedin_fetch_description,
+            linkedin_company_ids=linkedin_company_ids_list
+        )
         if jobs_df is None or jobs_df.empty:
             log.warning("[yellow]Scraping yielded no results. Exiting.[/yellow]")
             analysis_output_dir = os.path.dirname(args.analysis_output)
