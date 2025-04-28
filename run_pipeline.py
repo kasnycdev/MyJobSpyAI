@@ -39,22 +39,22 @@ except ImportError:
 logging.basicConfig( level=settings.get('logging', {}).get('level', 'INFO').upper(), format=settings.get('logging', {}).get('format', '%(message)s'), datefmt=settings.get('logging', {}).get('date_format', '[%X]'), handlers=[RichHandler(rich_tracebacks=True, show_path=False)] )
 logging.getLogger("httpx").setLevel(logging.WARNING); log = logging.getLogger(__name__); console = Console()
 
-# --- scrape_jobs_with_jobspy function --- CORRECTED SIGNATURE ---
+# --- scrape_jobs_with_jobspy function --- CORRECTED SIGNATURE (hours_old) ---
 def scrape_jobs_with_jobspy(
-    search_terms: str, location: str, sites: list[str], results_wanted: int, hours_ago: int, # Use hours_ago
+    search_terms: str, location: str, sites: list[str], results_wanted: int, hours_old: int, # Use hours_old
     country_indeed: str, proxies: Optional[list[str]] = None, offset: int = 0
     ) -> Optional[pd.DataFrame]:
     """Uses the jobspy library to scrape jobs, with better logging."""
     log.info(f"[bold blue]Starting job scraping via JobSpy...[/bold blue]")
     log.info(f"Search: '[cyan]{search_terms}[/cyan]' | Location: '[cyan]{location}[/cyan]' | Sites: {sites}")
-    # --- UPDATED LOG MESSAGE ---
-    log.info(f"Params: Results ≈{results_wanted}, Max Age={hours_ago}h, Indeed Country='{country_indeed}', Offset={offset}")
+    # --- UPDATED LOG MESSAGE (hours_old) ---
+    log.info(f"Params: Results ≈{results_wanted}, Max Age={hours_old}h, Indeed Country='{country_indeed}', Offset={offset}")
     if proxies: log.info(f"Using {len(proxies)} proxies.")
     try:
-        # --- CORRECTED INTERNAL CALL ---
+        # --- CORRECTED INTERNAL CALL (hours_old) ---
         jobs_df = scrape_jobs(
             site_name=sites, search_term=search_terms, location=location, results_wanted=results_wanted,
-            hours_ago=hours_ago, # Use hours_ago
+            hours_old=hours_old, # Use hours_old
             country_indeed=country_indeed, proxies=proxies, offset=offset, verbose=1, description_format="markdown" )
         # --- END CORRECTION ---
         if jobs_df is None or jobs_df.empty: log.warning("Jobspy scraping returned no results or failed."); return None
@@ -66,6 +66,8 @@ def scrape_jobs_with_jobspy(
                  if col not in jobs_df.columns: log.warning(f"Essential column '{col}' missing, adding empty."); jobs_df[col] = ''
             return jobs_df
     except ImportError as ie: log.critical(f"Import error during scraping: {ie}."); return None
+    except TypeError as te: # Catch TypeError specifically
+         log.error(f"TypeError during jobspy scrape call: {te}. Check argument names.", exc_info=True); return None
     except Exception as e: log.error(f"An error occurred during jobspy scraping: {e}", exc_info=True); return None
 
 
@@ -117,15 +119,14 @@ async def run_pipeline_async():
     parser = argparse.ArgumentParser( description="Run Job Scraping (JobSpy) & GenAI Analysis Pipeline.", formatter_class=argparse.ArgumentDefaultsHelpFormatter )
 
     scrape_cfg = settings.get('scraping', {})
-    analysis_cfg = settings.get('analysis', {}) # Keep analysis_cfg for potential future use
 
     scrape_group = parser.add_argument_group('Scraping Options (JobSpy)')
     scrape_group.add_argument("--search", required=True, help="Job title, keywords, or company.")
     scrape_group.add_argument("--location", default=None, help="Primary location for scraping. Overridden if --filter-remote-country.")
     scrape_group.add_argument("--sites", default=",".join(scrape_cfg.get('default_sites', [])), help="Comma-separated sites.")
     scrape_group.add_argument("--results", type=int, default=scrape_cfg.get('default_results_limit', 20), help="Approx total jobs per site.")
-    # --- CORRECTED ARGUMENT ---
-    scrape_group.add_argument("--hours-ago", type=int, default=scrape_cfg.get('default_hours_ago', 72), help="Max job age in hours (0=disable). Use with caution.")
+    # --- CORRECTED ARGUMENT (hours_old) ---
+    scrape_group.add_argument("--hours-old", type=int, default=scrape_cfg.get('default_hours_old', 72), help="Max job age in hours (0=disable).")
     # --- END CORRECTION ---
     scrape_group.add_argument("--country-indeed", default=scrape_cfg.get('default_country_indeed', 'usa'), help="Country for Indeed search.")
     scrape_group.add_argument("--proxies", help="Comma-separated proxies.")
@@ -151,14 +152,13 @@ async def run_pipeline_async():
 
     args = parser.parse_args()
 
-    # Setup Logging Level based on verbosity flag
+    # Setup Logging Level
     log_level_name = "DEBUG" if args.verbose else settings.get('logging', {}).get('level', 'INFO').upper()
-    log_level = getattr(logging, log_level_name, logging.INFO)
-    logging.getLogger().setLevel(log_level); log.info(f"Log level set to: {log_level_name}")
+    log_level = getattr(logging, log_level_name, logging.INFO); logging.getLogger().setLevel(log_level); log.info(f"Log level set to: {log_level_name}")
     log.info(f"[bold green]Starting ASYNC Pipeline Run[/bold green] ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
 
     try:
-        # --- Argument validation and location determination (remains the same) ---
+        # Argument validation and location determination (remains the same)
         if not args.location and not args.filter_remote_country and not args.filter_proximity_location: parser.error("Ambiguous location: Specify --location OR --filter-remote-country OR --filter-proximity-location.")
         if args.filter_proximity_location and args.filter_remote_country: parser.error("Conflicting filters: Cannot use --filter-proximity-location and --filter-remote-country.")
         if args.filter_proximity_location and args.filter_proximity_range is None: parser.error("--filter-proximity-range required with --filter-proximity-location.")
@@ -168,7 +168,7 @@ async def run_pipeline_async():
         elif args.filter_proximity_location: scrape_location = args.filter_proximity_location.strip(); log.info(f"Using proximity target '{scrape_location}' as primary scrape location.")
         elif args.location: scrape_location = args.location; log.info(f"Using provided --location '{scrape_location}' as primary scrape location.")
 
-        # --- Step 1: Scrape Jobs --- CORRECTED CALL ---
+        # --- Step 1: Scrape Jobs --- CORRECTED CALL (hours_old) ---
         scraper_sites = [site.strip().lower() for site in args.sites.split(',')]
         proxy_list = [p.strip() for p in args.proxies.split(',')] if args.proxies else None
         jobs_df = scrape_jobs_with_jobspy(
@@ -176,7 +176,7 @@ async def run_pipeline_async():
             location=scrape_location,
             sites=scraper_sites,
             results_wanted=args.results,
-            hours_ago=args.hours_ago, # Use hours_ago from args
+            hours_old=args.hours_old, # Use hours_old from args
             country_indeed=args.country_indeed,
             proxies=proxy_list,
             offset=args.offset
