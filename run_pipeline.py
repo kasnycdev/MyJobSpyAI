@@ -1,6 +1,7 @@
 import argparse
 import logging
-import json
+import pyarrow as pa
+import pandas as pd
 import os
 import sys
 import asyncio
@@ -114,16 +115,13 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
     output_dir = os.path.dirname(output_path)
     if output_dir: os.makedirs(output_dir, exist_ok=True)
     try:
-        with open(output_path, 'w', encoding='utf-8') as f: json.dump(jobs_list, f, indent=4)
+        jobs_df = pd.DataFrame(jobs_list)  # Convert back to DataFrame for parquet
+        pa.parquet.write_table(pa.Table.from_pandas(jobs_df), output_path)
         log.info(f"[green]Saved {len(jobs_list)} scraped jobs[/green] to [cyan]{output_path}[/cyan]")
         return jobs_list
-    except TypeError as json_err:
-         log.error(f"[bold red]JSON Serialization Error:[/bold red] {json_err}", exc_info=True)
-         for i, record in enumerate(jobs_list):
-              try: json.dumps(record)
-              except TypeError: log.error(f"[red]Problem record index {i}:[/red] {record}"); break
-         return []
-    except Exception as e: log.error(f"[bold red]Error saving scraped jobs JSON:[/bold red] {e}", exc_info=True); return []
+    except Exception as e:
+        log.error(f"[bold red]Error saving scraped jobs to Parquet:[/bold red] {e}", exc_info=True)
+        return []
 
 
 def print_summary_table(results_json: List[Dict[str, Any]], top_n: int = 10):

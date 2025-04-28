@@ -38,6 +38,7 @@ requests # Used by geopy, potentially jobspy
 beautifulsoup4 # Used by jobspy for parsing
 lxml # Used by python-docx
 python-dateutil # Used by pandas
-
+pyarrow
+parquet
 # Note: playwright is installed via 'playwright install' command.
 # Note: beautifulsoup4, httpx, requests etc. are pulled by jobspy/ollama/geopy

@@ -15,7 +15,7 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "output" # Default if not in YAML
 # --- Default Settings (Fallback if YAML is missing fields) ---
 DEFAULT_SETTINGS = {
     "output_dir": str(DEFAULT_OUTPUT_DIR),
-    "scraped_jobs_filename": "scraped_jobs.json",
+    "scraped_jobs_filename": "scraped_jobs.parquet",
     "analysis_filename": "analyzed_jobs.json",
     "ollama": {
         "base_url": "http://localhost:11434",
@@ -106,6 +106,8 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
     output_settings = settings.get('output', {})
     analysis_filename = output_settings.get('analysis_output_file', 'analyzed_jobs.json') # Get from 'output' section
     settings["analysis_output_path"] = os.path.join(settings["output_dir"], analysis_filename)
+    debug_filename = output_settings.get('debug_output_file', 'debug_info.json')
+    settings["debug_output_path"] = os.path.join(settings["output_dir"], debug_filename)
     if "analysis" in settings:
         prompts_dir = settings["analysis"].get("prompts_dir", str(PROJECT_ROOT / "analysis/prompts"))
         settings["analysis"]["resume_prompt_path"] = os.path.join(prompts_dir, settings["analysis"].get("resume_prompt_file", "resume_extraction.prompt"))
