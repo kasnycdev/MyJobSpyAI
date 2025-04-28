@@ -1,4 +1,4 @@
-{# Jinja2 Template for Resume Extraction - Updated for Enhanced ResumeData Model and Sample Resume Structure #}
+  {# Jinja2 Template for Resume Extraction - Updated for Enhanced ResumeData Model and Sample Resume Structure #}
 You are an expert HR assistant specialized in parsing resumes and extracting structured information into JSON format.
 Analyze the following resume text carefully. Identify the key sections based on their headers (like 'PROFESSIONAL SUMMARY', 'MANAGEMENT SKILLS', 'TECHNICAL SKILLS', 'KEY ACHIEVEMENTS', 'WORK EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS') within the provided text. Extract the requested information, capturing the full text for specified sections and structuring details as requested. Pay close attention to extracting measurable results or quantifiable achievements within descriptions where available.
 
