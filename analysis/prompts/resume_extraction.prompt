@@ -1,43 +1,59 @@
-{# Jinja2 Template for Resume Extraction #}
-You are an expert HR assistant specialized in parsing resumes and extracting structured information.
-Analyze the following resume text carefully. Identify the key sections based on their headers (like 'PROFESSIONAL SUMMARY', 'MANAGEMENT SKILLS', 'TECHNICAL SKILLS', 'KEY ACHIEVEMENTS', 'WORK EXPERIENCE', 'EDUCATION') within the provided text. Extract the requested information, capturing the full text for specified sections. Pay attention to extracting measurable results or quantifiable achievements within descriptions where available.
+{# Jinja2 Template for Resume Extraction - Updated for Enhanced ResumeData Model and Sample Resume Structure #}
+You are an expert HR assistant specialized in parsing resumes and extracting structured information into JSON format.
+Analyze the following resume text carefully. Identify the key sections based on their headers (like 'PROFESSIONAL SUMMARY', 'MANAGEMENT SKILLS', 'TECHNICAL SKILLS', 'KEY ACHIEVEMENTS', 'WORK EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS') within the provided text. Extract the requested information, capturing the full text for specified sections and structuring details as requested. Pay close attention to extracting measurable results or quantifiable achievements within descriptions where available.
+
 Output *only* a valid JSON object containing the extracted data, adhering strictly to the specified structure. Do not include any introductory text, explanations, markdown formatting (like ```json), or any text outside the JSON object itself.
 
 Resume Text:
----
 {{ resume_text }}
----
 
-JSON Structure to populate (Ensure 'education', 'experience', and 'key_accomplishments' fields are LISTS containing objects):
+JSON Structure to populate (Ensure all lists contain objects/strings as specified):
 {{ "{{" }} {# Note: Escaping curly braces for literal output #}
-  "summary": "string (Extract the **full and complete text** found under the 'PROFESSIONAL SUMMARY' header.)",
-  "management_skills": ["string (Extract **all items listed** under the 'MANAGEMENT SKILLS' header into this list.)"],
-  "technical_skills": ["string (Extract **all items listed** under the 'TECHNICAL SKILLS' header into this list.)"],
-  "key_accomplishments": [
-      {{ "{{" }} // Structure for each accomplishment
-          "title": "string (Title/heading of the accomplishment block, e.g., 'Data Platform Transformation')",
-          "description": "string (Full description text for that accomplishment. Include quantifiable results if mentioned.)"
-      {{ "}}" }}
-      // Include more objects if multiple accomplishments are found
-  ],
-  "experience": [
-    {{ "{{" }} // Structure for each experience entry
-      "title": "string (Job title)",
-      "company": "string (Company name)",
-      "years": "float_or_string (Calculated duration in role, e.g., 0.7 or '8 months')",
-      "description": "string (Full text of all bullet points combined. Capture specific actions and quantifiable achievements.)"
+ "full_name": "string | null (Extract the candidate's full name, typically at the top)",
+ "contact_information": {{ "{{" }}
+   "email": "string | null",
+   "phone": "string | null",
+   "linkedin": "string | null",
+   "address": "string | null (City, State, Zip if available)"
+ {{ "}}" }},
+ "summary": "string | null (Extract the **full and complete text** found under the 'PROFESSIONAL SUMMARY' header.)",
+ "technical_skills": [
+     {{ "{{" }} // Structure for each technical skill - Extract from 'TECHNICAL SKILLS' section
+         "name": "string (Name of the skill, e.g., 'Python', 'Kubernetes')",
+         "level": "string | null (Proficiency level if mentioned, e.g., 'Advanced', 'Expert')",
+         "years_experience": "integer | null (Years of experience if mentioned)"
+     {{ "}}" }}
+     // Include more objects if multiple skills are listed
+ ],
+ "soft_skills": ["string (Extract **all items listed** under the 'MANAGEMENT SKILLS' header into this list.)"],
+ "work_experience": [
+   {{ "{{" }} // Structure for each experience entry - Extract from 'WORK EXPERIENCE' section
+     "job_title": "string (Job title, e.g., 'Director, DevOps/Compute Fabric SRE Services')",
+     "company": "string (Company name, e.g., 'RBC Capital Markets')",
+     "duration": "string | null (Duration string, e.g., '08/2023 – 04/2024')",
+     "responsibilities": ["string (List of bullet points or descriptive sentences detailing responsibilities)"],
+     "quantifiable_achievements": ["string (Extract specific, measurable achievements mentioned within the responsibilities, e.g., 'resulting in a remarkable 30% boost in data processing speed')"]
+   {{ "}}" }}
+   // Include more objects for each role found
+ ],
+  "projects": [
+    {{ "{{" }} // Structure for each project/key achievement - Extract from 'KEY ACHIEVEMENTS' section
+      "name": "string (Title of the achievement block, e.g., 'Data Platform Transformation')",
+      "description": "string (Full description text for that achievement. Include quantifiable results.)",
+      "technologies_used": ["string (List any specific technologies mentioned within the description, e.g., 'Dremio', 'Elastic Stack', 'Kubernetes')"]
     {{ "}}" }}
-    // Include more objects for each role found
+    // Include more objects if multiple achievements are found
   ],
-  "education": [
-    {{ "{{" }} // Structure for each education entry - MUST be a list even if only one degree.
-      "degree": "string (Degree/program name)",
-      "institution": "string (Institution name)",
-      "years": "string (Years attended range, e.g., '1995-1997')"
-    {{ "}}" }}
-     // Include more objects if multiple degrees are found
-  ],
-  "total_years_experience": "float (Estimated total years based on earliest start and latest end date of listed roles)"
+ "education": [
+   {{ "{{" }} // Structure for each education entry - Extract from 'EDUCATION' section
+     "degree": "string (Degree/program name, e.g., 'Computer Engineering')",
+     "institution": "string (Institution name, e.g., 'College of Staten Island')",
+     "graduation_year": "string | null (Years attended or graduation year, e.g., '1995 - 1997')"
+   {{ "}}" }}
+    // Include more objects if multiple degrees are found
+ ],
+ "certifications": ["string (Extract **all items listed** under the 'CERTIFICATIONS' header, e.g., 'IT Management Specialist 2015 Learning Tree')"],
+ "languages": [] {# Assuming no languages section in this specific resume, keep structure #}
 {{ "}}" }} {# Note: Escaping curly braces for literal output #}
 
 Extracted JSON:
