@@ -1,3 +1,8 @@
+output:
+    directory: output # Example - customize as needed
+    scraped_jobs_file: scraped_jobs.json
+    analysis_output_file: analysis_results.json # New setting
+    debug_output_file: debug_info.json  # New debug output file setting
 # config.py
 import yaml
 import os
