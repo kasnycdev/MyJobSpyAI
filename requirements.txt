@@ -12,7 +12,7 @@ ollama #>= 0.2.0
 pydantic #>= 2.5.0
 
 # Job Scraping (using JobSpy library)
-python-jobspy #>= 0.29.0 # Ensures necessary sub-dependencies are pulled
+jobspy >= 0.29.0 # Ensures necessary sub-dependencies are pulled
 
 # Geocoding for Advanced Location Filtering
 geopy #>= 2.4.0
