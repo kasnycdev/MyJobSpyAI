@@ -148,10 +148,13 @@ def apply_filters(
              job_model_rc = normalize_string(job.get('work_model')) or normalize_string(job.get('remote')); loc_text_rc = normalize_string(job_location_str); is_remote = job_model_rc == 'remote' or 'remote' in loc_text_rc
              log.debug(f"Remote Country Check: IsRemote={is_remote}, JobLoc='{job_location_str}', Filter='{normalized_remote_country}'")
              if is_remote:
-                  if not job_geo_result: job_geo_result = get_lat_lon_country(job_location_str)
+                  if not job_geo_result:
+                      log.debug(f"Attempting geocode for remote check: '{job_location_str}'")
+                      job_geo_result = get_lat_lon_country(job_location_str)
                   job_country = job_geo_result[2] if job_geo_result else None
-                  log.debug(f"Remote Country Check: Geocoded JobCountry='{job_country}'")
+                  log.debug(f"Remote Country Check: Geocode result='{job_geo_result}', Extracted JobCountry='{job_country}'")
                   if not job_country or normalize_string(job_country) != normalized_remote_country: passes_all_filters = False; log.debug("FILTERED (Remote Country): Country mismatch.")
+                  else: log.debug("PASSED (Remote Country): Job is remote and country matches.")
              else: passes_all_filters = False; log.debug("FILTERED (Remote Country): Job not identified as remote.")
              if not passes_all_filters: log.debug("-> Job FILTERED on Remote Country."); continue
 
