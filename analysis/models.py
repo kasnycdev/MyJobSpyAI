@@ -1,45 +1,77 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Dict, Any
 
-# --- Model Definitions ---
+# --- Enhanced Resume Data Model ---
+class ExperienceDetail(BaseModel):
+    job_title: Optional[str] = Field(None, description="Specific job title held.")
+    company: Optional[str] = Field(None, description="Company name.")
+    duration: Optional[str] = Field(None, description="Duration of employment (e.g., 'Jan 2020 - Dec 2022', '3 years').")
+    responsibilities: List[str] = Field([], description="Key responsibilities and achievements.")
+    quantifiable_achievements: List[str] = Field([], description="Specific, measurable achievements (e.g., 'Increased sales by 15%', 'Managed team of 5').")
 
-class ExperienceItem(BaseModel):
-    title: Optional[str] = Field(None, description="Job title")
-    company: Optional[str] = Field(None, description="Company name")
-    years: Optional[Union[float, str]] = Field(None, description="Years in the role")
-    description: Optional[str] = Field(None, description="Full description of responsibilities/achievements")
+class EducationDetail(BaseModel):
+    degree: Optional[str] = Field(None, description="Degree obtained (e.g., 'B.S. Computer Science').")
+    institution: Optional[str] = Field(None, description="Name of the educational institution.")
+    graduation_year: Optional[str] = Field(None, description="Year of graduation or expected graduation.") # Keep as string for flexibility
 
-class EducationItem(BaseModel):
-    degree: Optional[str] = Field(None, description="Degree obtained")
-    institution: Optional[str] = Field(None, description="Institution name")
-    years: Optional[str] = Field(None, description="Years attended or graduation year")
-
-class AccomplishmentItem(BaseModel):
-    title: Optional[str] = Field(None, description="Title/heading of the accomplishment block")
-    description: Optional[str] = Field(None, description="Full description of the accomplishment")
+class SkillDetail(BaseModel):
+    name: str = Field(..., description="Name of the skill.")
+    level: Optional[str] = Field(None, description="Proficiency level (e.g., 'Advanced', 'Intermediate', 'Familiar', 'Expert').")
+    years_experience: Optional[int] = Field(None, description="Approximate years of experience with the skill.")
 
 class ResumeData(BaseModel):
-    """Structured data extracted from a resume."""
-    summary: Optional[str] = Field(None, description="Full professional summary")
-    management_skills: List[str] = Field([], description="List of management skills")
-    technical_skills: List[str] = Field([], description="List of technical skills")
-    key_accomplishments: List[AccomplishmentItem] = Field([], description="List of key accomplishments")
-    experience: List[ExperienceItem] = Field([], description="Work experience history")
-    education: List[EducationItem] = Field([], description="Educational background")
-    total_years_experience: Optional[Union[float, str]] = Field(None, description="Estimated total years of professional experience (float preferred)")
+    """Structured representation of resume data extracted by LLM."""
+    full_name: Optional[str] = Field(None, description="Candidate's full name.")
+    contact_information: Dict[str, Optional[str]] = Field({}, description="Dictionary containing email, phone, LinkedIn URL, portfolio URL etc.")
+    summary: Optional[str] = Field(None, description="Professional summary or objective statement.")
+    work_experience: List[ExperienceDetail] = Field([], description="List of professional experiences.")
+    education: List[EducationDetail] = Field([], description="List of educational qualifications.")
+    technical_skills: List[SkillDetail] = Field([], description="List of technical skills with optional proficiency/years.")
+    soft_skills: List[str] = Field([], description="List of soft skills or competencies.")
+    certifications: List[str] = Field([], description="List of relevant certifications.")
+    projects: List[Dict[str, Any]] = Field([], description="List of personal or academic projects with details like name, description, technologies used.")
+    languages: List[str] = Field([], description="List of spoken/written languages.")
+    raw_text_hash: Optional[str] = Field(None, description="MD5 hash of the raw text used for extraction (for caching).")
 
+# --- Structured Job Data Model (Extracted from Description) ---
+class ParsedJobData(BaseModel):
+    """Structured representation of key job mandate details extracted by LLM."""
+    job_title_extracted: Optional[str] = Field(None, description="Job title as interpreted from the description.")
+    key_responsibilities: List[str] = Field([], description="Primary duties and tasks mentioned.")
+    required_skills: List[SkillDetail] = Field([], description="Skills explicitly listed as required or essential.")
+    preferred_skills: List[SkillDetail] = Field([], description="Skills listed as preferred, desired, or 'nice-to-have'.")
+    required_experience_years: Optional[int] = Field(None, description="Minimum years of experience required (numeric).")
+    preferred_experience_years: Optional[int] = Field(None, description="Preferred years of experience.")
+    required_education: Optional[str] = Field(None, description="Minimum education level or degree specified (e.g., 'Bachelor's degree', 'Master's in CS').")
+    preferred_education: Optional[str] = Field(None, description="Preferred education level or degree.")
+    salary_range_extracted: Optional[str] = Field(None, description="Salary range found within the description text, if any.")
+    work_model_extracted: Optional[str] = Field(None, description="Work model inferred (Remote, Hybrid, On-site).")
+    company_culture_hints: List[str] = Field([], description="Keywords or phrases hinting at company culture (e.g., 'fast-paced', 'collaborative').")
+    tools_technologies: List[str] = Field([], description="Specific tools or technologies mentioned (e.g., 'AWS', 'Jira', 'Salesforce').")
+
+# --- Enhanced Analysis Result Model ---
 class JobAnalysisResult(BaseModel):
-    """Analysis results for a single job compared to the resume."""
-    suitability_score: int = Field(..., ge=0, le=100, description="Overall suitability score (0-100%)")
-    justification: str = Field(..., description="Textual explanation for the score")
-    skill_match: Optional[bool] = Field(None, description="Does the resume have the core required skills?")
-    experience_match: Optional[bool] = Field(None, description="Does the resume meet the required experience level?")
-    qualification_match: Optional[bool] = Field(None, description="Does the resume meet the core qualifications?")
-    salary_alignment: Optional[str] = Field(None, description="Assessment of salary fit (e.g., 'Likely Fit', 'Below Range', 'Above Range', 'N/A')")
-    benefit_alignment: Optional[str] = Field(None, description="Brief assessment of benefit alignment (e.g., 'Mentions Health', 'N/A')")
-    missing_keywords: List[str] = Field([], description="Key required skills/keywords potentially missing from the resume")
+    """Detailed analysis comparing resume to job description."""
+    suitability_score: int = Field(..., ge=0, le=100, description="Overall suitability score (0-100).")
+    justification: str = Field(..., description="Detailed explanation for the score, citing resume/job details.")
+    pros: List[str] = Field([], description="Specific points where the resume strongly matches the job requirements.")
+    cons: List[str] = Field([], description="Specific points where the resume lacks alignment or requirements are not met.")
+    skill_match_summary: Optional[str] = Field(None, description="Brief summary of skill alignment.")
+    experience_match_summary: Optional[str] = Field(None, description="Brief summary of experience alignment.")
+    education_match_summary: Optional[str] = Field(None, description="Brief summary of education alignment.")
+    missing_keywords: List[str] = Field([], description="Keywords/skills from the job description potentially missing in the resume.")
+    # Optional: Add sub-scores if the prompt is designed to output them
+    # skill_score: Optional[int] = Field(None, ge=0, le=100)
+    # experience_score: Optional[int] = Field(None, ge=0, le=100)
+    # education_score: Optional[int] = Field(None, ge=0, le=100)
 
 class AnalyzedJob(BaseModel):
-    """Combines original job data with analysis results."""
-    original_job_data: Dict[str, Any] = Field(..., description="The original job mandate dictionary")
-    analysis: JobAnalysisResult = Field(..., description="The GenAI analysis results")
+    """Combines original job data with its analysis result and extracted details."""
+    original_job_data: Dict[str, Any] = Field(..., description="The raw job data dictionary as scraped/loaded.")
+    parsed_job_details: Optional[ParsedJobData] = Field(None, description="Structured details extracted from the job description by the LLM.")
+    analysis: Optional[JobAnalysisResult] = Field(None, description="The suitability analysis result comparing resume to the job.")
+
+    # Add a helper property for sorting/filtering convenience if needed
+    @property
+    def score(self) -> int:
+        return self.analysis.suitability_score if self.analysis else 0

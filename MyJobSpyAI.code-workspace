@@ -1,0 +1,41 @@
+{
+	"folders": [
+		{
+			"name": "MyJobSpyAI",
+			"path": "MyJobSpyAI",
+			"analysis": {
+				"exclude": [
+					"node_modules",
+					"dist",
+					"build",
+					"out",
+					"coverage",
+					"__tests__",
+					"__mocks__",
+					".vscode-test"
+				]
+			},
+			"filtering"
+
+			"path": "filt"..  ".", "analysis": {
+				"exclude": [
+					"node_modules",
+					"dist",
+					"build",
+					"out",
+					"coverage",
+					"__tests__",
+					"__mocks__",
+					".vscode-test"
+				]
+			}
+		}
+	],
+	"settings": {
+		"code-auto-commit.commitTimeInterval": 900000,
+		"code-auto-commit.autoPush": true,
+		"projectManager.git.baseFolders": [
+			"%USERPROFILE%\\\\.vscode\\\\Projects"
+		]
+	}
+}

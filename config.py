@@ -28,6 +28,7 @@ DEFAULT_SETTINGS = {
         "prompts_dir": "analysis/prompts", # Relative to project root
         "resume_prompt_file": "resume_extraction.prompt",
         "suitability_prompt_file": "suitability_analysis.prompt",
+        "job_extraction_prompt_file": "job_extraction.prompt", # <-- Add this
         "max_prompt_chars": 24000,
     },
     "scraping": {
@@ -107,6 +108,7 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
         prompts_dir = settings["analysis"].get("prompts_dir", str(PROJECT_ROOT / "analysis/prompts"))
         settings["analysis"]["resume_prompt_path"] = os.path.join(prompts_dir, settings["analysis"].get("resume_prompt_file", "resume_extraction.prompt"))
         settings["analysis"]["suitability_prompt_path"] = os.path.join(prompts_dir, settings["analysis"].get("suitability_prompt_file", "suitability_analysis.prompt"))
+        settings["analysis"]["job_extraction_prompt_path"] = os.path.join(prompts_dir, settings["analysis"].get("job_extraction_prompt_file", "job_extraction.prompt")) # <-- Add this
 
     logging.debug(f"Final configuration settings: {settings}") # Use standard logging
     return settings

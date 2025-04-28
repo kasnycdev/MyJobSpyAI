@@ -133,12 +133,17 @@ def print_summary_table(results_json: List[Dict[str, Any]], top_n: int = 10):
     table = Table(title=f"Top {min(top_n, len(results_json))} Job Matches", show_header=True, header_style="bold magenta", show_lines=False, border_style="dim")
     table.add_column("Score", style="bold cyan", width=6, justify="right"); table.add_column("Title", style="bold white", min_width=20, no_wrap=False); table.add_column("Company", style="green"); table.add_column("Location", style="dim blue"); table.add_column("URL", style="underline blue", overflow="fold")
     count = 0
-    for result in results_json:
+    # results_json now contains serialized AnalyzedJob objects
+    for result_dict in results_json:
         if count >= top_n: break
-        analysis = result.get('analysis', {}); original = result.get('original_job_data', {})
-        score = analysis.get('suitability_score', 0)
+        # Access score and original data from the serialized structure
+        analysis_data = result_dict.get('analysis', {})
+        original_data = result_dict.get('original_job_data', {})
+        score = analysis_data.get('suitability_score', 0) if analysis_data else 0
+        # score = result_dict.get('score', 0) # Simpler if score property is reliably serialized
+
         if score == 0: continue
-        score_str = f"{score}%"; table.add_row(score_str, original.get('title', 'N/A'), original.get('company', 'N/A'), original.get('location', 'N/A'), original.get('url', '#')); count += 1
+        score_str = f"{score}%"; table.add_row(score_str, original_data.get('title', 'N/A'), original_data.get('company', 'N/A'), original_data.get('location', 'N/A'), original_data.get('url', '#')); count += 1
     if count == 0: console.print("[yellow]No analyzed jobs with score > 0 to display.[/yellow]")
     else: console.print(table)
 
@@ -224,8 +229,11 @@ async def run_pipeline_async():
              filter_args_dict['filter_proximity_location'] = args.filter_proximity_location.strip()
              filter_args_dict['filter_proximity_range'] = args.filter_proximity_range
              filter_args_dict['filter_proximity_models'] = [pm.strip().lower() for pm in args.filter_proximity_models.split(',')]
-        # apply_filters_sort_and_save uses internal logging
+
+        # apply_filters_sort_and_save now takes List[AnalyzedJob] and returns List[Dict] (serialized)
+        # The filtering logic inside apply_filters_sort_and_save was updated to handle this
         final_results_list_dict = apply_filters_sort_and_save( analyzed_results, args.analysis_output, filter_args_dict )
+
 
         # --- Step 6: Print Summary Table ---
         log.info("[bold blue]Pipeline Summary:[/bold blue]")

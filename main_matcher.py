@@ -67,17 +67,28 @@ async def analyze_jobs_async(
 
     log.info("Processing analysis results...")
     for i, result_or_exc in enumerate(results_or_exceptions):
-        job_dict = job_list[i]; job_title = job_dict.get('title', 'N/A'); analysis_result = None
-        if isinstance(result_or_exc, Exception): log.warning(f"[yellow]Analysis task for '{job_title}' failed:[/yellow] {result_or_exc}", exc_info=False); log.debug("Exc details:", exc_info=result_or_exc)
-        elif result_or_exc is None: log.warning(f"[yellow]Analysis task for '{job_title}' returned None (LLM fail/no description).[/yellow]")
-        else: analysis_result = result_or_exc
+        job_dict = job_list[i]; job_title = job_dict.get('title', 'N/A'); analyzed_job_result: Optional[AnalyzedJob] = None
 
-        if analysis_result is None:
-            try:
-                analysis_result = JobAnalysisResult( suitability_score=0, justification="Analysis task failed or job data insufficient.", skill_match=None, experience_match=None, qualification_match=None, salary_alignment="N/A", benefit_alignment="N/A", missing_keywords=[] )
-            except Exception as placeholder_err: log.critical(f"[bold red]Failed create placeholder for failed analysis of '{job_title}':[/bold red] {placeholder_err}", exc_info=True); continue
-        analyzed_job = AnalyzedJob(original_job_data=job_dict, analysis=analysis_result)
-        analyzed_results.append(analyzed_job)
+        if isinstance(result_or_exc, Exception):
+            log.warning(f"[yellow]Analysis task for '{job_title}' failed:[/yellow] {result_or_exc}", exc_info=False); log.debug("Exc details:", exc_info=result_or_exc)
+            # Create a placeholder AnalyzedJob indicating failure
+            analysis_placeholder = JobAnalysisResult(suitability_score=0, justification=f"Analysis task failed: {type(result_or_exc).__name__}", pros=[], cons=[], missing_keywords=[])
+            analyzed_job_result = AnalyzedJob(original_job_data=job_dict, parsed_job_details=None, analysis=analysis_placeholder)
+        elif result_or_exc is None:
+            log.warning(f"[yellow]Analysis task for '{job_title}' returned None (LLM fail/no description/extraction fail).[/yellow]")
+            # Create a placeholder AnalyzedJob indicating failure
+            analysis_placeholder = JobAnalysisResult(suitability_score=0, justification="Analysis returned None (LLM failure or insufficient data).", pros=[], cons=[], missing_keywords=[])
+            analyzed_job_result = AnalyzedJob(original_job_data=job_dict, parsed_job_details=None, analysis=analysis_placeholder)
+        elif isinstance(result_or_exc, AnalyzedJob):
+             analyzed_job_result = result_or_exc # Successfully analyzed
+        else:
+             log.error(f"[bold red]Unexpected result type for '{job_title}': {type(result_or_exc)}[/bold red]")
+             # Create a placeholder AnalyzedJob indicating failure
+             analysis_placeholder = JobAnalysisResult(suitability_score=0, justification=f"Unexpected analysis result type: {type(result_or_exc).__name__}", pros=[], cons=[], missing_keywords=[])
+             analyzed_job_result = AnalyzedJob(original_job_data=job_dict, parsed_job_details=None, analysis=analysis_placeholder)
+
+        if analyzed_job_result:
+             analyzed_results.append(analyzed_job_result)
 
     log.info(f"ASYNC analysis complete. Processed results for {len(analyzed_results)} jobs.")
     return analyzed_results
@@ -92,13 +103,17 @@ def apply_filters_sort_and_save(
     jobs_to_filter = [res.original_job_data for res in analyzed_results]
     if filter_args:
         log.info("Applying post-analysis filters...")
+        # Assuming apply_filters works on list of dicts (original_job_data)
         filtered_original_jobs = apply_filters(jobs_to_filter, **filter_args) # Uses filter.py logging
         log.info(f"{len(filtered_original_jobs)} jobs passed filters.")
+        # Create a unique key set from filtered original jobs to match back
         filtered_keys = set((job.get('url', job.get('job_url')), job.get('title'), job.get('company'), job.get('location')) for job in filtered_original_jobs)
+        # Filter the AnalyzedJob list based on the keys from the filtered original jobs
         final_filtered_results = [res for res in analyzed_results if (res.original_job_data.get('url', res.original_job_data.get('job_url')), res.original_job_data.get('title'), res.original_job_data.get('company'), res.original_job_data.get('location')) in filtered_keys]
-    else: final_filtered_results = analyzed_results
+    else:
+        final_filtered_results = analyzed_results # No filters applied
     log.info("Sorting results by suitability score...")
-    final_filtered_results.sort(key=lambda x: x.analysis.suitability_score if x.analysis else 0, reverse=True )
+    final_filtered_results.sort(key=lambda x: x.score, reverse=True )
     final_results_json = [result.model_dump(mode='json') for result in final_filtered_results]
     output_dir = os.path.dirname(output_path)
     if output_dir: os.makedirs(output_dir, exist_ok=True)

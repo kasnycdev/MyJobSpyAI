@@ -1,0 +1,41 @@
+You are an expert HR analyst tasked with extracting structured information from a job description. Analyze the provided job description text and output a JSON object conforming to the specified schema. Focus ONLY on information explicitly stated or strongly implied in the text. Do NOT invent details. If a field cannot be determined, omit it or use an empty list/null where appropriate.
+
+**JSON Output Schema:**
+
+```json
+{
+  "job_title_extracted": "string | null", // Interpret the most accurate job title from the text
+  "key_responsibilities": ["string"], // List key duties and tasks
+  "required_skills": [ // Skills explicitly stated as REQUIRED, mandatory, essential
+    {"name": "string", "level": "string | null", "years_experience": "integer | null"}
+  ],
+  "preferred_skills": [ // Skills stated as PREFERRED, desired, bonus, nice-to-have
+    {"name": "string", "level": "string | null", "years_experience": "integer | null"}
+  ],
+  "required_experience_years": "integer | null", // Minimum years of relevant experience (numeric)
+  "preferred_experience_years": "integer | null", // Preferred years of relevant experience (numeric)
+  "required_education": "string | null", // Minimum education level/field (e.g., "Bachelor's degree", "Master's in CS")
+  "preferred_education": "string | null", // Preferred education level/field
+  "salary_range_extracted": "string | null", // Salary range if mentioned verbatim (e.g., "$100k - $120k")
+  "work_model_extracted": "string | null", // Infer "Remote", "Hybrid", or "On-site" if possible
+  "company_culture_hints": ["string"], // Keywords hinting at culture (e.g., "fast-paced", "collaborative")
+  "tools_technologies": ["string"] // Specific tools/platforms mentioned (e.g., "AWS", "Jira", "Python", "React")
+}
+```
+
+**Instructions:**
+
+*   **Skills:** Distinguish clearly between required and preferred. Extract proficiency level (e.g., "Expert", "Proficient") or years if mentioned alongside the skill.
+*   **Experience:** Extract numeric values for years required/preferred. If a range is given (e.g., "5-7 years"), use the lower bound for `required_experience_years`.
+*   **Education:** Capture the level (Bachelor's, Master's, PhD) and field if specified.
+*   **Salary:** Only extract if explicitly stated in the description text itself. Do not infer from external sources.
+*   **Work Model:** Infer based on keywords like "remote", "hybrid", "in-office", "on-site".
+*   **Tools/Technologies:** List specific software, platforms, languages, frameworks mentioned.
+*   **Be Concise:** Extract the core information accurately.
+
+**Job Description Text:**
+```text
+{{ job_description }}
+```
+
+**JSON Output:**
