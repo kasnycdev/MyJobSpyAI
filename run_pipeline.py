@@ -188,15 +188,16 @@ async def run_pipeline_async():
 
         if jobs_df is None or jobs_df.empty:
             log.warning("Scraping yielded no results. Pipeline cannot continue.")
-            if analysis_output_dir := os.path.dirname(args.analysis_output):
-                os.makedirs(analysis_output_dir, exist_ok=True)
-            empty_df = pd.DataFrame()
             try:
+                if analysis_output_dir := os.path.dirname(args.analysis_output):
+                    os.makedirs(analysis_output_dir, exist_ok=True)
+                empty_df = pd.DataFrame()
                 empty_df.to_parquet(args.analysis_output, engine='pyarrow')
                 log.info(f"Empty analysis results file created at {args.analysis_output}")
+                sys.exit(0)  # Exit after creating empty file
             except Exception as e:
                 log.error(f"[bold red]Error saving empty Parquet file:[/bold red] {e}", exc_info=True)
-            sys.exit(0)
+                sys.exit(1)  # Exit with error code
 
         # --- Steps 2-6 remain unchanged ---
         jobs_list = convert_and_save_scraped(jobs_df, args.scraped_jobs_file)

@@ -14,6 +14,9 @@ class EducationDetail(BaseModel):
     institution: Optional[str] = Field(None, description="Name of the educational institution.")
     graduation_year: Optional[str] = Field(None, description="Year of graduation or expected graduation.") # Keep as string for flexibility
 
+    def model_dump(self, *args, **kwargs):
+        return super().model_dump(*args, **kwargs)
+
 class SkillDetail(BaseModel):
     name: str = Field(..., description="Name of the skill.")
     level: Optional[str] = Field(None, description="Proficiency level (e.g., 'Advanced', 'Intermediate', 'Familiar', 'Expert').")
