@@ -127,7 +127,7 @@ async def run_pipeline_async():
     scrape_group.add_argument("--sites", default=",".join(scrape_cfg.get('default_sites', [])), help="Comma-separated sites.")
     scrape_group.add_argument("--results", type=int, default=scrape_cfg.get('default_results_limit', 20), help="Approx total jobs per site.")
     # --- CORRECTED ARGUMENT (hours_old) ---
-    scrape_group.add_argument("--hours-old", type=int, default=scrape_cfg.get('default_hours_old', 72), help="Max job age in hours (0=disable).")
+    scrape_group.add_argument("--days-old", type=int, default=scrape_cfg.get('default_days_old', 3), help="Max job age in days (0=disable).")
     # --- END CORRECTION ---
     scrape_group.add_argument("--country-indeed", default=scrape_cfg.get('default_country_indeed', 'usa'), help="Country for Indeed search.")
     scrape_group.add_argument("--proxies", help="Comma-separated proxies.")
@@ -179,7 +179,7 @@ async def run_pipeline_async():
             location=scrape_location,
             sites=scraper_sites,
             results_wanted=args.results,
-            hours_old=args.hours_old, # Use hours_old from args
+            days_old=args.days_old,  # Use days_old
             country_indeed=args.country_indeed,
             proxies=proxy_list,
             offset=args.offset
@@ -190,7 +190,11 @@ async def run_pipeline_async():
             log.warning("Scraping yielded no results. Pipeline cannot continue.")
             if analysis_output_dir := os.path.dirname(args.analysis_output):
                 os.makedirs(analysis_output_dir, exist_ok=True)
-            with open(args.analysis_output, 'w', encoding='utf-8') as f: json.dump([], f)
+            empty_df = pd.DataFrame()
+    try:
+        empty_df.to_parquet(args.analysis_output, engine='pyarrow')
+    except Exception as e:
+        log.error(f"[bold red]Error saving empty Parquet file:[/bold red] {e}", exc_info=True)
             log.info(f"Empty analysis results file created at {args.analysis_output}")
             sys.exit(0)
 
