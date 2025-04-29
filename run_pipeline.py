@@ -127,7 +127,7 @@ async def run_pipeline_async():
     scrape_group.add_argument("--sites", default=",".join(scrape_cfg.get('default_sites', [])), help="Comma-separated sites.")
     scrape_group.add_argument("--results", type=int, default=scrape_cfg.get('default_results_limit', 20), help="Approx total jobs per site.")
     # --- CORRECTED ARGUMENT (hours_old) ---
-    scrape_group.add_argument("--days-old", type=int, default=scrape_cfg.get('default_hours_old', 3), help="Max job age in days (0=disable).")
+    scrape_group.add_argument("--hours_old", type=int, default=scrape_cfg.get('default_hours_old', 3), help="Max job age in days (0=disable).")
     # --- END CORRECTION ---
     scrape_group.add_argument("--country-indeed", default=scrape_cfg.get('default_country_indeed', 'usa'), help="Country for Indeed search.")
     scrape_group.add_argument("--proxies", help="Comma-separated proxies.")
