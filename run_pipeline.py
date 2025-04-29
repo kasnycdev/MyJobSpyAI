@@ -191,11 +191,11 @@ async def run_pipeline_async():
             if analysis_output_dir := os.path.dirname(args.analysis_output):
                 os.makedirs(analysis_output_dir, exist_ok=True)
             empty_df = pd.DataFrame()
-    try:
-        empty_df.to_parquet(args.analysis_output, engine='pyarrow')
-    except Exception as e:
-        log.error(f"[bold red]Error saving empty Parquet file:[/bold red] {e}", exc_info=True)
-            log.info(f"Empty analysis results file created at {args.analysis_output}")
+            try:
+                empty_df.to_parquet(args.analysis_output, engine='pyarrow')
+                log.info(f"Empty analysis results file created at {args.analysis_output}")
+            except Exception as e:
+                log.error(f"[bold red]Error saving empty Parquet file:[/bold red] {e}", exc_info=True)
             sys.exit(0)
 
         # --- Steps 2-6 remain unchanged ---
