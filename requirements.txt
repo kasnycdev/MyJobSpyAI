@@ -30,7 +30,6 @@ Jinja2 #>= 3.1.0 # For loading prompt templates
 # === Important Transitive Dependencies (Usually installed by above) ===
 # Listing pandas explicitly is good practice as it's heavily used after scraping
 pandas #>= 2.0.0
-numpy >= 2.2.5 # For pandas and other libraries
 
 # Explicitly listing key sub-dependencies for clarity and consistency
 httpx # Used by ollama, jobspy
@@ -42,3 +41,4 @@ pyarrow
 # Note: playwright is installed via 'playwright install' command.
 # Note: beautifulsoup4, httpx, requests etc. are pulled by jobspy/ollama/geopy
 
+#numpy >= 2.2.5 # For pandas and other libraries
