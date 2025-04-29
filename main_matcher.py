@@ -116,9 +116,9 @@ def apply_filters_sort_and_save(
             final_results_df.to_parquet(output_path, engine='pyarrow')
         except Exception as e:
             log.error(f"[bold red]Error saving Parquet file:[/bold red] {e}", exc_info=True)
-        log.info(f"[green]Successfully saved {len(final_results_json)} analyzed jobs[/green] to [cyan]{output_path}[/cyan]")
-    except Exception as e: log.error(f"[bold red]Error writing output file {output_path}:[/bold red] {e}", exc_info=True); log.debug(f"Problem data (first item): {final_results_json[0] if final_results_json else 'N/A'}")
-    return final_results_json
+        log.info(f"[green]Successfully saved {len(final_results_df)} analyzed jobs[/green] to [cyan]{output_path}[/cyan]")
+    except Exception as e: log.error(f"[bold red]Error writing output file {output_path}:[/bold red] {e}", exc_info=True); log.debug(f"Problem data (first item): {final_results_df[0] if final_results_df else 'N/A'}")
+    return final_results_df
 
 
 # --- Main execution block updated for async ---
