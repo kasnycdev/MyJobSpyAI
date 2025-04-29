@@ -2,19 +2,17 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 # --- Enhanced Resume Data Model ---
+import pandas as pd
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+
+
 class ExperienceDetail(BaseModel):
     job_title: Optional[str] = Field(None, description="Specific job title held.")
     company: Optional[str] = Field(None, description="Company name.")
     duration: Optional[str] = Field(None, description="Duration of employment (e.g., 'Jan 2020 - Dec 2022', '3 years').")
     responsibilities: List[str] = Field([], description="Key responsibilities and achievements.")
     quantifiable_achievements: List[str] = Field([], description="Specific, measurable achievements (e.g., 'Increased sales by 15%', 'Managed team of 5').")
-
-    import pandas as pd
-    from pydantic import BaseModel, Field
-    from typing import List, Optional, Dict, Any
-
-    class ExperienceDetail(BaseModel):
-        # ... (Existing code)
 
     class EducationDetail(BaseModel):
         degree: Optional[str] = Field(None, description="Degree obtained (e.g., 'B.S. Computer Science').")
