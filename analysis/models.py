@@ -39,7 +39,7 @@ class ResumeData(BaseModel):
 
 
 
-class ParsedJobData(BaseModel):
+class ParsedJobData(BaseModel):``
     """Structured representation of key job mandate details extracted by LLM."""
     job_title_extracted: Optional[str] = Field(None, description="Job title as interpreted from the description.")
     key_responsibilities: List[str] = Field([], description="Primary duties and tasks mentioned.")
