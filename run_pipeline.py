@@ -97,8 +97,8 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
 
 
 # --- print_summary_table function (no changes needed here) ---
-def print_summary_table(results_json: List[Dict[str, Any]], top_n: int = 10):
-    # ... (content remains the same) ...
+def print_summary_table(results_df: pd.DataFrame, top_n: int = 10):
+    results_json = results_df.to_dict(orient='records')
     if not results_json: console.print("[yellow]No analysis results to summarize.[/yellow]"); return
     table = Table(title=f"Top {min(top_n, len(results_json))} Job Matches", show_header=True, header_style="bold magenta", show_lines=False)
     table.add_column("Score", style="dim", width=6, justify="right"); table.add_column("Title", style="bold", min_width=20); table.add_column("Company"); table.add_column("Location"); table.add_column("URL", overflow="fold", style="cyan")
