@@ -66,7 +66,7 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
 
     if config_path.exists():
         # Use basic logging until config is loaded if logging config itself is in YAML
-        temp_logger = logging.getLogger(__name__ + ".config_loader")
+        temp_logger = logging.getLogger(f"{__name__}.config_loader")
         temp_logger.info(f"Loading configuration from {config_path}")
         try:
             with open(config_path, 'r', encoding='utf-8') as f:

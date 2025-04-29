@@ -94,14 +94,22 @@ def apply_filters_sort_and_save(
         log.info("Applying post-analysis filters...")
         filtered_original_jobs = apply_filters(jobs_to_filter, **filter_args) # Uses filter.py logging
         log.info(f"{len(filtered_original_jobs)} jobs passed filters.")
-        filtered_keys = set((job.get('url', job.get('job_url')), job.get('title'), job.get('company'), job.get('location')) for job in filtered_original_jobs)
+        filtered_keys = {
+            (
+                job.get('url', job.get('job_url')),
+                job.get('title'),
+                job.get('company'),
+                job.get('location'),
+            )
+            for job in filtered_original_jobs
+        }
         final_filtered_results = [res for res in analyzed_results if (res.original_job_data.get('url', res.original_job_data.get('job_url')), res.original_job_data.get('title'), res.original_job_data.get('company'), res.original_job_data.get('location')) in filtered_keys]
     else: final_filtered_results = analyzed_results
     log.info("Sorting results by suitability score...")
     final_filtered_results.sort(key=lambda x: x.analysis.suitability_score if x.analysis else 0, reverse=True )
     final_results_json = [result.model_dump(mode='json') for result in final_filtered_results]
-    output_dir = os.path.dirname(output_path)
-    if output_dir: os.makedirs(output_dir, exist_ok=True)
+    if output_dir := os.path.dirname(output_path):
+        os.makedirs(output_dir, exist_ok=True)
     try:
         with open(output_path, 'w', encoding='utf-8') as f: json.dump(final_results_json, f, indent=4)
         log.info(f"[green]Successfully saved {len(final_results_json)} analyzed jobs[/green] to [cyan]{output_path}[/cyan]")

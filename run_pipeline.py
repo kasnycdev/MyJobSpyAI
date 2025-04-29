@@ -45,7 +45,7 @@ def scrape_jobs_with_jobspy(
     country_indeed: str, proxies: Optional[list[str]] = None, offset: int = 0
     ) -> Optional[pd.DataFrame]:
     """Uses the jobspy library to scrape jobs, with better logging."""
-    log.info(f"[bold blue]Starting job scraping via JobSpy...[/bold blue]")
+    log.info("[bold blue]Starting job scraping via JobSpy...[/bold blue]")
     log.info(f"Search: '[cyan]{search_terms}[/cyan]' | Location: '[cyan]{location}[/cyan]' | Sites: {sites}")
     # --- UPDATED LOG MESSAGE (hours_old) ---
     log.info(f"Params: Results ≈{results_wanted}, Max Age={hours_old}h, Indeed Country='{country_indeed}', Offset={offset}")
@@ -76,19 +76,20 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
     # ... (content remains the same) ...
     log.info(f"Converting DataFrame to list and saving to {output_path}")
     rename_map = {'job_url': 'url','job_type': 'employment_type','salary': 'salary_text','benefits': 'benefits_text'}
-    actual_rename_map = {k: v for k, v in rename_map.items() if k in jobs_df.columns}; jobs_df = jobs_df.rename(columns=actual_rename_map)
+    actual_rename_map = {k: v for k, v in rename_map.items() if k in jobs_df.columns}
+    jobs_df = jobs_df.rename(columns=actual_rename_map)
     possible_date_columns = ['date_posted', 'posted_date', 'date']
     for col in possible_date_columns:
-        if col in jobs_df.columns:
-            if pd.api.types.is_datetime64_any_dtype(jobs_df[col]) or jobs_df[col].dtype == 'object':
-                 try: jobs_df[col] = pd.to_datetime(jobs_df[col], errors='coerce'); jobs_df[col] = jobs_df[col].dt.strftime('%Y-%m-%d')
-                 except Exception: jobs_df[col] = jobs_df[col].astype(str)
+        if col in jobs_df.columns and (pd.api.types.is_datetime64_any_dtype(jobs_df[col]) or jobs_df[col].dtype == 'object'):
+            try: jobs_df[col] = pd.to_datetime(jobs_df[col], errors='coerce'); jobs_df[col] = jobs_df[col].dt.strftime('%Y-%m-%d')
+            except Exception: jobs_df[col] = jobs_df[col].astype(str)
     essential_cols = ['title','company','location','description','url','salary_text','employment_type','benefits_text','skills','date_posted']
     for col in essential_cols:
          if col not in jobs_df.columns: log.warning(f"Column '{col}' missing, adding empty."); jobs_df[col] = ''
-    jobs_df = jobs_df.fillna(''); jobs_list = jobs_df.to_dict('records')
-    output_dir = os.path.dirname(output_path);
-    if output_dir: os.makedirs(output_dir, exist_ok=True)
+    jobs_df = jobs_df.fillna('')
+    jobs_list = jobs_df.to_dict('records')
+    if output_dir := os.path.dirname(output_path):
+        os.makedirs(output_dir, exist_ok=True)
     try:
         with open(output_path, 'w', encoding='utf-8') as f: json.dump(jobs_list, f, indent=4)
         log.info(f"Saved {len(jobs_list)} scraped jobs to {output_path}"); return jobs_list
@@ -154,7 +155,9 @@ async def run_pipeline_async():
 
     # Setup Logging Level
     log_level_name = "DEBUG" if args.verbose else settings.get('logging', {}).get('level', 'INFO').upper()
-    log_level = getattr(logging, log_level_name, logging.INFO); logging.getLogger().setLevel(log_level); log.info(f"Log level set to: {log_level_name}")
+    log_level = getattr(logging, log_level_name, logging.INFO)
+    logging.getLogger().setLevel(log_level)
+    log.info(f"Log level set to: {log_level_name}")
     log.info(f"[bold green]Starting ASYNC Pipeline Run[/bold green] ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
 
     try:
@@ -185,10 +188,11 @@ async def run_pipeline_async():
 
         if jobs_df is None or jobs_df.empty:
             log.warning("Scraping yielded no results. Pipeline cannot continue.")
-            analysis_output_dir = os.path.dirname(args.analysis_output);
-            if analysis_output_dir: os.makedirs(analysis_output_dir, exist_ok=True)
+            if analysis_output_dir := os.path.dirname(args.analysis_output):
+                os.makedirs(analysis_output_dir, exist_ok=True)
             with open(args.analysis_output, 'w', encoding='utf-8') as f: json.dump([], f)
-            log.info(f"Empty analysis results file created at {args.analysis_output}"); sys.exit(0)
+            log.info(f"Empty analysis results file created at {args.analysis_output}")
+            sys.exit(0)
 
         # --- Steps 2-6 remain unchanged ---
         jobs_list = convert_and_save_scraped(jobs_df, args.scraped_jobs_file)
@@ -212,7 +216,7 @@ async def run_pipeline_async():
         final_results_list_dict = apply_filters_sort_and_save( analyzed_results, args.analysis_output, filter_args_dict )
         log.info("[bold blue]Pipeline Summary:[/bold blue]")
         print_summary_table(final_results_list_dict, top_n=10)
-        log.info(f"[bold green]Pipeline Run Finished Successfully[/bold green]")
+        log.info("[bold green]Pipeline Run Finished Successfully[/bold green]")
 
     except KeyboardInterrupt: print(); log.warning("[yellow]Pipeline interrupted by user (Ctrl+C).[/yellow]"); sys.exit(130)
     except Exception as e: log.critical(f"Unexpected critical error: {e}", exc_info=True); sys.exit(1)

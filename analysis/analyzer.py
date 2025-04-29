@@ -90,11 +90,15 @@ class ResumeAnalyzer:
     # --- _check_connection_and_model remains the same ---
     def _check_connection_and_model(self):
         try:
-            ollama_cfg = settings.get('ollama', {}); ollama_model = ollama_cfg.get('model'); base_url = ollama_cfg.get('base_url')
+            ollama_cfg = settings.get('ollama', {})
+            ollama_model = ollama_cfg.get('model')
+            base_url = ollama_cfg.get('base_url')
             log.info(f"Checking Ollama connection at {base_url}...")
-            self.sync_client.ps(); log.info("[green]Ollama connection successful.[/green]")
+            self.sync_client.ps()
+            log.info("[green]Ollama connection successful.[/green]")
             log.info("Fetching local Ollama models...")
-            ollama_list_response = self.sync_client.list(); log.debug(f"Raw list response: {ollama_list_response}")
+            ollama_list_response = self.sync_client.list()
+            log.debug(f"Raw list response: {ollama_list_response}")
             models_data = ollama_list_response.get('models', [])
             if not isinstance(models_data, list): models_data = []
             local_models = [m.model for m in models_data if hasattr(m, 'model') and isinstance(m.model, str) and m.model]
@@ -102,33 +106,39 @@ class ResumeAnalyzer:
             if ollama_model not in local_models:
                 log.warning(f"[yellow]Model '{ollama_model}' not found locally. Attempting pull...[/yellow]")
                 try:
-                    self._pull_model_with_progress(ollama_model)
-                    log.info("Re-fetching model list after pull...")
-                    updated_list_response = self.sync_client.list(); updated_models_data = updated_list_response.get('models', [])
-                    updated_names = []
-                    for idx, m_upd in enumerate(updated_models_data):
-                         model_name = m_upd.model if hasattr(m_upd, 'model') else (m_upd.get('name') if isinstance(m_upd, dict) else None)
-                         if model_name: updated_names.append(model_name)
-                         else: log.warning(f"[yellow]Could not extract name from updated item {idx}:[/yellow] {m_upd}")
-                    log.debug(f"Model list after pull: {updated_names}")
-                    if ollama_model not in updated_names: log.error(f"[bold red]Model '{ollama_model}' still not found after pull.[/bold red]"); raise ConnectionError(f"Model '{ollama_model}' unavailable.")
-                    else: log.info("[green]Model found after pull.[/green]")
+                    self._extracted_from__check_connection_and_model_15(ollama_model)
                 except Exception as pull_err: log.error(f"[bold red]Pull/verify failed for '{ollama_model}':[/bold red] {pull_err}", exc_info=True); raise ConnectionError(f"Model '{ollama_model}' unavailable/pull failed.") from pull_err
             else: log.info(f"Using configured Ollama model: [cyan]{ollama_model}[/cyan]")
         except Exception as e: log.critical(f"[bold red]Ollama connection/setup failed:[/bold red] {e}", exc_info=True); raise ConnectionError(f"Ollama connection/setup failed: {e}") from e
 
+    # TODO Rename this here and in `_check_connection_and_model`
+    def _extracted_from__check_connection_and_model_15(self, ollama_model):
+        self._pull_model_with_progress(ollama_model)
+        log.info("Re-fetching model list after pull...")
+        updated_list_response = self.sync_client.list()
+        updated_models_data = updated_list_response.get('models', [])
+        updated_names = []
+        for idx, m_upd in enumerate(updated_models_data):
+             model_name = m_upd.model if hasattr(m_upd, 'model') else (m_upd.get('name') if isinstance(m_upd, dict) else None)
+             if model_name: updated_names.append(model_name)
+             else: log.warning(f"[yellow]Could not extract name from updated item {idx}:[/yellow] {m_upd}")
+        log.debug(f"Model list after pull: {updated_names}")
+        if ollama_model not in updated_names: log.error(f"[bold red]Model '{ollama_model}' still not found after pull.[/bold red]"); raise ConnectionError(f"Model '{ollama_model}' unavailable.")
+        else: log.info("[green]Model found after pull.[/green]")
+
     # --- _pull_model_with_progress remains the same ---
     def _pull_model_with_progress(self, model_name: str):
         # (Sync pulling logic remains the same)
-        current_digest = ""; status = ""
+        current_digest = ""
+        status = ""
         try:
             for progress in ollama.pull(model_name, stream=True):
-                 digest = progress.get("digest", "")
-                 if digest != current_digest and current_digest != "": print()
-                 if digest: current_digest = digest; status = progress.get('status', ''); print(f"Pulling {model_name}: {status}", end='\r')
-                 else: status = progress.get('status', ''); print(f"Pulling {model_name}: {status}")
-                 if progress.get('error'): raise Exception(f"Pull error: {progress['error']}")
-                 if 'status' in progress and 'success' in progress['status'].lower(): print(); log.info(f"[green]Successfully pulled model {model_name}[/green]"); break
+                digest = progress.get("digest", "")
+                if digest != current_digest != "": print()
+                if digest: current_digest = digest; status = progress.get('status', ''); print(f"Pulling {model_name}: {status}", end='\r')
+                else: status = progress.get('status', ''); print(f"Pulling {model_name}: {status}")
+                if progress.get('error'): raise Exception(f"Pull error: {progress['error']}")
+                if 'status' in progress and 'success' in progress['status'].lower(): print(); log.info(f"[green]Successfully pulled model {model_name}[/green]"); break
         except Exception as e: print(); log.error(f"[bold red]Error during model pull:[/bold red] {e}"); raise
         finally: print()
 
