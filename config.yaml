@@ -30,7 +30,7 @@ scraping:
   linkedin_company_ids: []
 
 geocoding:
-  geopy_user_agent: "MyJobSpyAI/1.0 (your_email@example.com)" # Update with your email
+  geopy_user_agent: "MyJobSpyAI/1.0 (kasnycdev@gmail.com)" # Update with your email
 
 logging:
   level: INFO
