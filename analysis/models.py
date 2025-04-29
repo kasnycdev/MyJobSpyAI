@@ -2,11 +2,6 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 # --- Enhanced Resume Data Model ---
-import pandas as pd
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
-
-
 class ExperienceDetail(BaseModel):
     job_title: Optional[str] = Field(None, description="Specific job title held.")
     company: Optional[str] = Field(None, description="Company name.")
@@ -14,40 +9,12 @@ class ExperienceDetail(BaseModel):
     responsibilities: List[str] = Field([], description="Key responsibilities and achievements.")
     quantifiable_achievements: List[str] = Field([], description="Specific, measurable achievements (e.g., 'Increased sales by 15%', 'Managed team of 5').")
 
+    import pandas as pd
+    from pydantic import BaseModel, Field
+    from typing import List, Optional, Dict, Any
 
-class EducationDetail(BaseModel):
-    degree: Optional[str] = Field(None, description="Degree obtained (e.g., 'B.S. Computer Science').")
-    institution: Optional[str] = Field(None, description="Name of the educational institution.")
-    graduation_year: Optional[str] = Field(None, description="Year of graduation or expected graduation.")
-
-
-class SkillDetail(BaseModel):
-    name: str = Field(..., description="Name of the skill.")
-    level: Optional[str] = Field(None, description="Proficiency level (e.g., 'Advanced', 'Intermediate', 'Familiar', 'Expert').")
-    years_experience: Optional[int] = Field(None, description="Approximate years of experience with the skill.")
-
-
-class ResumeData(BaseModel):
-    """Structured representation of resume data extracted by LLM."""
-    full_name: Optional[str] = Field(None, description="Candidate's full name.")
-    contact_information: Dict[str, Optional[str]] = Field({}, description="Dictionary containing email, phone, LinkedIn URL, portfolio URL etc.")
-    summary: Optional[str] = Field(None, description="Professional summary or objective statement.")
-    work_experience: List[ExperienceDetail] = Field([], description="List of professional experiences.")
-    education: List[EducationDetail] = Field([], description="List of educational qualifications.")
-    technical_skills: List[SkillDetail] = Field([], description="List of technical skills with optional proficiency/years.")
-    soft_skills: List[str] = Field([], description="List of soft skills or competencies.")
-    certifications: List[str] = Field([], description="List of relevant certifications.")
-    projects: List[Dict[str, Any]] = Field([], description="List of personal or academic projects with details like name, description, technologies used.")
-    languages: List[str] = Field([], description="List of spoken/written languages.")
-    raw_text_hash: Optional[str] = Field(None, description="MD5 hash of the raw text used for extraction (for caching).")
-
-
-# --- Structured Job Data Model (Extracted from Description) ---
-class ParsedJobData(BaseModel):
-    """Structured representation of key job mandate details extracted by LLM."""
-    # ... (Existing code)
-
-# ... (Rest of the classes: JobAnalysisResult, AnalyzedJob)
+    class ExperienceDetail(BaseModel):
+        # ... (Existing code)
 
     class EducationDetail(BaseModel):
         degree: Optional[str] = Field(None, description="Degree obtained (e.g., 'B.S. Computer Science').")
