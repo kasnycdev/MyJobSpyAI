@@ -71,7 +71,49 @@ class AnalyzedJob(BaseModel):
     parsed_job_details: Optional[ParsedJobData] = Field(None, description="Structured details extracted from the job description by the LLM.")
     analysis: Optional[JobAnalysisResult] = Field(None, description="The suitability analysis result comparing resume to the job.")
 
-    # Add a helper property for sorting/filtering convenience if needed
-    @property
-    def score(self) -> int:
-        return self.analysis.suitability_score if self.analysis else 0
+    # Add a helper property for sorting/filtering convenience if needed    import pandas as pd
+    from pydantic import BaseModel, Field
+    from typing import List, Optional, Dict, Any
+
+    class ExperienceDetail(BaseModel):
+        # ... (Existing code)
+
+    class EducationDetail(BaseModel):
+        # ... (Existing code)
+
+    class SkillDetail(BaseModel):
+        # ... (Existing code)
+
+    class ResumeData(BaseModel):
+        # ... (Existing code)
+
+    class ParsedJobData(BaseModel):
+        # ... (Existing code)
+
+    class JobAnalysisResult(BaseModel):
+        # ... (Existing code)
+
+    class AnalyzedJob(BaseModel):
+        original_job_data: Dict[str, Any]
+        parsed_job_details: Optional[ParsedJobData]
+        analysis: Optional[JobAnalysisResult]
+
+        @property
+        def score(self) -> int:
+            return self.analysis.suitability_score if self.analysis else 0
+
+        def model_dump(self, *args, **kwargs):
+            """Custom model_dump to handle Pandas objects."""
+            exclude_unset = kwargs.pop('exclude_unset', True)
+            by_alias = kwargs.pop('by_alias', True)
+            dumped = super().model_dump(*args, **kwargs)
+
+            # Convert Pandas objects to dictionaries
+            if isinstance(dumped['original_job_data'], pd.Series):
+                dumped['original_job_data'] = dumped['original_job_data'].to_dict()
+            if dumped['parsed_job_details'] is not None and isinstance(dumped['parsed_job_details'], dict):
+                dumped['parsed_job_details'] = dumped['parsed_job_details']
+            if dumped['analysis'] is not None and isinstance(dumped['analysis'], dict):
+                dumped['analysis'] = dumped['analysis']
+
+            return dumped

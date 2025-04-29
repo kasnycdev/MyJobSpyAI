@@ -145,7 +145,8 @@ def apply_filters(
         job_location_str = job.get('location', ''); job_geo_result = None
         # Filter 1: Remote Job in Specific Country
         if passes_all_filters and normalized_remote_country:
-             job_model_rc = normalize_string(job.get('work_model')) or normalize_string(job.get('remote')); loc_text_rc = normalize_string(job_location_str); is_remote = job_model_rc == 'remote' or 'remote' in loc_text_rc
+             job_model_rc = normalize_string(job.get('work_model')) or normalize_string(job.get('remote')); loc_text_rc = normalize_string(job_location_str)
+             is_remote = job_model_rc == 'remote' or 'remote' in loc_text_rc or 'remote' in job.get('job_type', '').lower() or 'remote' in job.get('title', '').lower()
              log.debug(f"Remote Country Check: IsRemote={is_remote}, JobLoc='{job_location_str}', Filter='{normalized_remote_country}'")
              if is_remote:
                   if not job_geo_result:

@@ -8,8 +8,9 @@ output:
 
 ollama:
   base_url: http://localhost:11434
-  model: deepseek-r1:14b  # Example - adjust as needed
-  request_timeout: 900  # Timeout in seconds
+  #model: deepseek-r1:14b  # Example - adjust as needed
+  model: llama3:instruct  # Example - adjust as needed
+  request_timeout: 900    # Timeout in seconds
   max_retries: 2
   retry_delay: 5
 
