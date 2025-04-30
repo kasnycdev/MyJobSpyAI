@@ -27,8 +27,7 @@ def _parse_pdf(file_path: str) -> str:
         with open(file_path, 'rb') as file:
             reader = PdfReader(file)
             for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
+                if (page_text := page.extract_text()):
                     text += page_text + "\n"
         return text.strip()
     except Exception as e:

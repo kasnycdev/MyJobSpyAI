@@ -168,8 +168,6 @@ class AnalyzedJob(BaseModel):
 
     def model_dump(self, *args, **kwargs):
         """Custom model_dump to handle Pandas objects."""
-        exclude_unset = kwargs.pop('exclude_unset', True)
-        by_alias = kwargs.pop('by_alias', True)
         dumped = super().model_dump(*args, **kwargs)
 
         # Convert Pandas objects to dictionaries
