@@ -1,0 +1,13 @@
+# Automatically created by ruff.
+*
+__pycache__
+config.yaml
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info
+*.egg
+*.whl
+*.zip
+*.tar.gz

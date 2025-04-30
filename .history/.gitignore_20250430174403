@@ -1,9 +1,7 @@
 # Project exclude paths
-*/.venv/*
+/.venv/
 .ruff
-*/.ruff_cache/
-*/.history/*
-*/.vscode/*
+.rff
 # Environments & Dependencies
 .venv/
 venv/
