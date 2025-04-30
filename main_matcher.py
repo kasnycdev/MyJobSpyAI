@@ -109,16 +109,18 @@ def apply_filters_sort_and_save(
     log.info("Sorting results by suitability score...")
     final_filtered_results.sort(key=lambda x: x.analysis.suitability_score if x.analysis else 0, reverse=True )
     final_results_df = pd.DataFrame([result.model_dump() for result in final_filtered_results])
+
+    # Save to JSON
     if output_dir := os.path.dirname(output_path):
         os.makedirs(output_dir, exist_ok=True)
     try:
-        try:
-            final_results_df.to_parquet(output_path, engine='pyarrow')
-        except Exception as e:
-            log.error(f"[bold red]Error saving Parquet file:[/bold red] {e}", exc_info=True)
-        log.info(f"[green]Successfully saved {len(final_results_df)} analyzed jobs[/green] to [cyan]{output_path}[/cyan]")
-    except Exception as e: log.error(f"[bold red]Error writing output file {output_path}:[/bold red] {e}", exc_info=True); log.debug(f"Problem data (first item): {final_results_df[0] if final_results_df else 'N/A'}")
-    return final_results_df
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(final_results_list, f, indent=4)  # Save as JSON
+        log.info(f"[green]Successfully saved {len(final_results_list)} analyzed jobs[/green] to [cyan]{output_path}[/cyan]")
+    except Exception as e:
+        log.error(f"[bold red]Error saving JSON file:[/bold red] {e}", exc_info=True)
+
+    return final_results_list  # Return list of dictionaries
 
 
 # --- Main execution block updated for async ---
