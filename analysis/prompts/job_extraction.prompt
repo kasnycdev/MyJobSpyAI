@@ -19,7 +19,20 @@ You are an expert HR analyst tasked with extracting structured information from 
   "salary_range_extracted": "string | null", // Salary range if mentioned verbatim (e.g., "$100k - $120k")
   "work_model_extracted": "string | null", // Infer "Remote", "Hybrid", or "On-site" if possible
   "company_culture_hints": ["string"], // Keywords hinting at culture (e.g., "fast-paced", "collaborative")
-  "tools_technologies": ["string"] // Specific tools/platforms mentioned (e.g., "AWS", "Jira", "Python", "React")
+  "tools_technologies": ["string"], // Specific tools/platforms mentioned (e.g., "AWS", "Jira", "Python", "React")
+  "job_type": "string | null", // Type of job (e.g., "Full-time", "Part-time", "Contract", "Internship")
+  "industry": "string | null", // Industry or sector (e.g., "Technology", "Finance", "Healthcare")
+  "company_name": "string | null", // Name of the company
+  "company_size": "string | null", // Size of the company (e.g., "Startup", "Small", "Medium", "Large")
+  "location": "string | null", // Location of the job (e.g., "New York", "San Francisco", "Remote")
+  "job_description": "string | null", // Full job description text
+  "required_certifications": ["string"], // Certifications explicitly stated as REQUIRED
+  "preferred_certifications": ["string"], // Certifications stated as PREFERRED
+  "security_clearance": "string | null", // Security clearance required (e.g., "Top Secret", "Secret", "None")
+  "travel_requirements": "string | null", // Travel requirements (e.g., "Up to 10%", "Up to 20%", "None")
+  "job_id": "string | null", // Unique job ID (if available)
+  "source": "string | null", // Source of the job posting (e.g., "Indeed", "LinkedIn", "Glassdoor")
+  "posting_date": "string | null" // Date the job was posted (if available)
 }
 ```
 
@@ -37,5 +50,3 @@ You are an expert HR analyst tasked with extracting structured information from 
 ```text
 {{ job_description }}
 ```
-
-**JSON Output:**

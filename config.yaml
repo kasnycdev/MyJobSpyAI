@@ -26,7 +26,7 @@ scraping:
   default_results_limit: 50
   default_days_old: 3  # Use days, not hours
   default_country_indeed: "usa"
-  linkedin_fetch_description: true
+  linkedin_fetch_description: True
   linkedin_company_ids: []
 
 geocoding:
