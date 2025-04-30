@@ -46,17 +46,13 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
         return _geocode_cache[normalized_loc]
 
     if normalized_loc in _geocode_fail_cache:
-        log.debug(
-            f"Skipping geocode for previously failed: '{location_str}'"
-        )
+        log.debug(f"Skipping geocode for previously failed: '{location_str}'")
         return None
 
     log.debug(f"Geocoding location: '{location_str}'")
     try:
         time.sleep(1.0)  # Rate limit
-        location_data = GEOCODER.geocode(
-            normalized_loc, addressdetails=True, language='en'
-        )
+        location_data = GEOCODER.geocode(normalized_loc, addressdetails=True, language='en')
         if location_data and location_data.latitude and location_data.longitude:
             lat, lon = location_data.latitude, location_data.longitude
             address = location_data.raw.get('address', {})
@@ -76,14 +72,10 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
                 }
                 country_name = cc_map.get(country_code.lower())
                 if country_name:
-                    log.debug(
-                        f"Inferred country name '{country_name}' from code '{country_code}'"
-                    )
+                    log.debug(f"Inferred country name '{country_name}' from code '{country_code}'")
 
             if country_name:
-                log.debug(
-                    f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}"
-                )
+                log.debug(f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}")
                 result = (lat, lon, country_name)
                 _geocode_cache[normalized_loc] = result
                 return result
@@ -95,22 +87,15 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
                 _geocode_fail_cache.add(normalized_loc)
                 return None
         else:
-            log.warning(
-                f"[yellow]Failed to geocode '{location_str}' - No results.[/yellow]"
-            )
+            log.warning(f"[yellow]Failed to geocode '{location_str}' - No results.[/yellow]")
             _geocode_fail_cache.add(normalized_loc)
             return None
     except (GeocoderTimedOut, GeocoderServiceError) as geo_err:
-        log.error(
-            f"[red]Geocoding error for '{location_str}': {geo_err}[/red]"
-        )
+        log.error(f"[red]Geocoding error for '{location_str}': {geo_err}[/red]")
         _geocode_fail_cache.add(normalized_loc)
         return None
     except Exception as e:
-        log.error(
-            f"[red]Unexpected geocoding error for '{location_str}': {e}[/red]",
-            exc_info=True,
-        )
+        log.error(f"[red]Unexpected geocoding error for '{location_str}': {e}[/red]", exc_info=True)
         _geocode_fail_cache.add(normalized_loc)
         return None
 
@@ -132,32 +117,18 @@ def apply_filters(
     Filters jobs based on standard criteria PLUS advanced location filters.
     """
     filtered_jobs = []
-    normalized_work_models = (
-        [normalize_string(wm) for wm in work_models] if work_models else []
-    )
-    normalized_job_types = (
-        [normalize_string(jt) for jt in job_types] if job_types else []
-    )
-    normalized_remote_country = (
-        normalize_string(filter_remote_country) if filter_remote_country else None
-    )
-    normalized_proximity_models = (
-        [normalize_string(pm) for pm in filter_proximity_models]
-        if filter_proximity_models
-        else []
-    )
+    normalized_work_models = [normalize_string(wm) for wm in work_models] if work_models else []
+    normalized_job_types = [normalize_string(jt) for jt in job_types] if job_types else []
+    normalized_remote_country = normalize_string(filter_remote_country) if filter_remote_country else None
+    normalized_proximity_models = [normalize_string(pm) for pm in filter_proximity_models] if filter_proximity_models else []
 
     target_lat_lon = None
     if filter_proximity_location and filter_proximity_range is not None:
-        log.info(
-            f"Attempting to geocode target proximity location: '{filter_proximity_location}'"
-        )
+        log.info(f"Attempting to geocode target proximity location: '{filter_proximity_location}'")
         target_geo_result = get_lat_lon_country(filter_proximity_location)
         if target_geo_result:
             target_lat_lon = (target_geo_result[0], target_geo_result[1])
-            log.info(
-                f"Target proximity location geocoded to: {target_lat_lon}"
-            )
+            log.info(f"Target proximity location geocoded to: {target_lat_lon}")
         else:
             log.error(
                 f"[red]Could not geocode target proximity location "
@@ -175,9 +146,7 @@ def apply_filters(
         job_title = job.get('title', 'N/A')
         passes_all_filters = True
 
-        log.debug(
-            f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---"
-        )
+        log.debug(f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---")
 
         # Salary
         job_min_salary, job_max_salary = None, None
@@ -185,44 +154,24 @@ def apply_filters(
         if isinstance(salary_text, str) and salary_text:
             job_min_salary, job_max_salary = parse_salary(salary_text)
         if job_min_salary is not None or job_max_salary is not None:
-            log.debug(
-                f"Salary Check: Parsed JobSal=[{job_min_salary}-{job_max_salary}] from '{salary_text}'"
-            )
-        elif log.isEnabledFor(logging.DEBUG) and (
-            salary_min is not None or salary_max is not None
-        ):
+            log.debug(f"Salary Check: Parsed JobSal=[{job_min_salary}-{job_max_salary}] from '{salary_text}'")
+        elif log.isEnabledFor(logging.DEBUG) and (salary_min is not None or salary_max is not None):
             log.debug("Salary Check: No salary info for job.")
         salary_passes_check = True
         if salary_min is not None:
-            if job_max_salary is not None:
-                if job_max_salary < salary_min:
-                    salary_passes_check = False
-                    log.debug(
-                        f"FILTERED (Salary Min): Max {job_max_salary} < filter {salary_min}"
-                    )
-            elif job_min_salary is not None:
-                if job_min_salary < salary_min:
-                    salary_passes_check = False
-                    log.debug(
-                        f"FILTERED (Salary Min): Min {job_min_salary} < filter {salary_min}"
-                    )
-            elif salary_passes_check and log.isEnabledFor(logging.DEBUG):
-                log.debug("PASSED (Salary Min): No job salary data.")
+            if job_max_salary is not None and job_max_salary < salary_min:
+                salary_passes_check = False
+                log.debug(f"FILTERED (Salary Min): Max {job_max_salary} < filter {salary_min}")
+            elif job_min_salary is not None and job_min_salary < salary_min:
+                salary_passes_check = False
+                log.debug(f"FILTERED (Salary Min): Min {job_min_salary} < filter {salary_min}")
         if salary_passes_check and salary_max is not None:
-            if job_min_salary is not None:
-                if job_min_salary > salary_max:
-                    salary_passes_check = False
-                    log.debug(
-                        f"FILTERED (Salary Max): Min {job_min_salary} > filter {salary_max}"
-                    )
-            elif job_max_salary is not None:
-                if job_max_salary > salary_max:
-                    salary_passes_check = False
-                    log.debug(
-                        f"FILTERED (Salary Max): Max {job_max_salary} > filter {salary_max}"
-                    )
-            elif salary_passes_check and log.isEnabledFor(logging.DEBUG):
-                log.debug("PASSED (Salary Max): No job salary data.")
+            if job_min_salary is not None and job_min_salary > salary_max:
+                salary_passes_check = False
+                log.debug(f"FILTERED (Salary Max): Min {job_min_salary} > filter {salary_max}")
+            elif job_max_salary is not None and job_max_salary > salary_max:
+                salary_passes_check = False
+                log.debug(f"FILTERED (Salary Max): Max {job_max_salary} > filter {salary_max}")
         if not salary_passes_check:
             log.debug("-> Job FILTERED on Salary.")
             passes_all_filters = False
@@ -230,9 +179,7 @@ def apply_filters(
 
         # Work Model (Standard)
         if normalized_work_models:
-            job_model = normalize_string(job.get('work_model')) or normalize_string(
-                job.get('remote')
-            )
+            job_model = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
             if not job_model:
                 job_loc_wm = normalize_string(job.get('location'))
                 if 'remote' in job_loc_wm:
@@ -243,9 +190,7 @@ def apply_filters(
                     job_model = 'on-site'
                 else:
                     job_model = None
-            log.debug(
-                f"Work Model Check: Job model='{job_model}', Filter='{normalized_work_models}'"
-            )
+            log.debug(f"Work Model Check: Job model='{job_model}', Filter='{normalized_work_models}'")
             if not job_model or job_model not in normalized_work_models:
                 log.debug("FILTERED (Work Model): Job model mismatch.")
                 passes_all_filters = False
@@ -254,15 +199,8 @@ def apply_filters(
         # Job Type
         if passes_all_filters and normalized_job_types:
             job_type_text = normalize_string(job.get('employment_type'))
-            job_type_passes = False
-            if job_type_text:
-                for jt_filter in normalized_job_types:
-                    if jt_filter in job_type_text:
-                        job_type_passes = True
-                        break
-            log.debug(
-                f"Job Type Check: Job type='{job_type_text}', Filter='{normalized_job_types}'"
-            )
+            job_type_passes = any(jt_filter in job_type_text for jt_filter in normalized_job_types if job_type_text)
+            log.debug(f"Job Type Check: Job type='{job_type_text}', Filter='{normalized_job_types}'")
             if not job_type_passes:
                 log.debug("FILTERED (Job Type): Job type mismatch.")
                 passes_all_filters = False
@@ -273,13 +211,12 @@ def apply_filters(
         job_geo_result = None
         # Filter 1: Remote Job in Specific Country
         if passes_all_filters and normalized_remote_country:
-            job_model_rc = normalize_string(job.get('work_model')) or normalize_string(
-                job.get('remote')
-            )
+            job_model_rc = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
             loc_text_rc = normalize_string(job_location_str)
             is_remote = job_model_rc == 'remote' or 'remote' in loc_text_rc
             log.debug(
-                f"Remote Country Check: IsRemote={is_remote}, JobLoc='{job_location_str}', Filter='{normalized_remote_country}'"
+                f"Remote Country Check: IsRemote={is_remote}, JobLoc='{job_location_str}', "
+                f"Filter='{normalized_remote_country}'"
             )
 
             if is_remote:
@@ -311,9 +248,7 @@ def apply_filters(
 
         # Filter 2: Proximity
         if passes_all_filters and filter_proximity_location and target_lat_lon:
-            job_model_prox = normalize_string(job.get('work_model')) or normalize_string(
-                job.get('remote')
-            )
+            job_model_prox = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
             loc_text_prox = normalize_string(job_location_str)
 
             if not job_model_prox:
@@ -327,7 +262,8 @@ def apply_filters(
                     job_model_prox = None
 
             log.debug(
-                f"Proximity Check: JobModel='{job_model_prox}', AllowedModels='{normalized_proximity_models}', JobLoc='{job_location_str}'"
+                f"Proximity Check: JobModel='{job_model_prox}', AllowedModels='{normalized_proximity_models}', "
+                f"JobLoc='{job_location_str}'"
             )
 
             if not job_model_prox or job_model_prox not in normalized_proximity_models:

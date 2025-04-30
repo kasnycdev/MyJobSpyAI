@@ -1,11 +1,11 @@
 import re
 import logging
-from typing import Optional, Tuple # <--- ADD THIS LINE
+from typing import Optional, Tuple  # <--- ADD THIS LINE
 
 # Use root logger
 log = logging.getLogger(__name__)
 
-def parse_salary(salary_text: Optional[str], target_currency: str = "USD") -> Tuple[Optional[int], Optional[int]]:    # <-- Use Tuple here too
+def parse_salary(salary_text: Optional[str], target_currency: str = "USD") -> Tuple[Optional[int], Optional[int]]:  # <-- Use Tuple here too
     """
     Very basic salary text parser. Tries to extract min/max annual salary.
     Assumes annual salary. Converts roughly based on common symbols.
@@ -24,7 +24,7 @@ def parse_salary(salary_text: Optional[str], target_currency: str = "USD") -> Tu
     min_salary, max_salary = None, None
     # Pre-process text: lowercase, remove commas/currency symbols/common phrases
     text = salary_text.lower().replace(',', '').replace('per year', '').replace('annually', '')
-    text = re.sub(r'[£$€]', '', text).strip() # Remove common currency symbols
+    text = re.sub(r'[£$€]', '', text).strip()  # Remove common currency symbols
 
     # Handle "k" for thousands AFTER removing symbols/commas
     text = re.sub(r'(\d+)\s*k', lambda m: str(int(m.group(1)) * 1000), text)
@@ -35,7 +35,6 @@ def parse_salary(salary_text: Optional[str], target_currency: str = "USD") -> Tu
         except ValueError:
             log.warning(f"Found range pattern but failed to convert numbers in: '{salary_text}'")
 
-
     if up_to_match := re.search(
         r'(?:up to|max(?:imum)?|less than|under)\s*(\d+)', text
     ):
@@ -45,7 +44,7 @@ def parse_salary(salary_text: Optional[str], target_currency: str = "USD") -> Tu
             log.debug(f"Parsed max salary: {max_salary} from '{salary_text}'")
             return None, max_salary
         except ValueError:
-             log.warning(f"Found 'up to' pattern but failed to convert number in: '{salary_text}'")
+            log.warning(f"Found 'up to' pattern but failed to convert number in: '{salary_text}'")
 
     if min_match := re.search(
         r'(?:min(?:imum)?|starting at|from|over|above)\s*(\d+)', text
@@ -56,12 +55,12 @@ def parse_salary(salary_text: Optional[str], target_currency: str = "USD") -> Tu
             log.debug(f"Parsed min salary: {min_salary} from '{salary_text}'")
             return min_salary, None
         except ValueError:
-             log.warning(f"Found 'min' pattern but failed to convert number in: '{salary_text}'")
+            log.warning(f"Found 'min' pattern but failed to convert number in: '{salary_text}'")
 
     # Look for a single plausible number if no ranges/keywords found
     # Avoid matching things like years (e.g., 2023)
     single_match = re.findall(r'\d+', text)
-    plausible_salaries = [int(n) for n in single_match if 5000 < int(n) < 1000000] # Heuristic range for annual salary
+    plausible_salaries = [int(n) for n in single_match if 5000 < int(n) < 1000000]  # Heuristic range for annual salary
 
     if len(plausible_salaries) == 1:
         salary_val = plausible_salaries[0]
@@ -69,10 +68,9 @@ def parse_salary(salary_text: Optional[str], target_currency: str = "USD") -> Tu
         log.debug(f"Parsed single salary value: {salary_val} from '{salary_text}'")
         return salary_val, salary_val
     elif len(plausible_salaries) > 1:
-         # Multiple numbers without clear range words - ambiguous. Could take min/max?
-         log.warning(f"Ambiguous salary - multiple numbers found in '{salary_text}': {plausible_salaries}. Taking min/max.")
-         return min(plausible_salaries), max(plausible_salaries)
-
+        # Multiple numbers without clear range words - ambiguous. Could take min/max?
+        log.warning(f"Ambiguous salary - multiple numbers found in '{salary_text}': {plausible_salaries}. Taking min/max.")
+        return min(plausible_salaries), max(plausible_salaries)
 
     log.debug(f"Could not parse salary info from text: '{salary_text}'")
     return None, None
@@ -94,7 +92,8 @@ def normalize_string(text: Optional[str]) -> str:
         return ""
     # Check if it's already a string before lowercasing
     if isinstance(text, (str, bytes)):
-         return str(text).lower().strip()
+        return str(text).lower().strip()
     else:
-         # Handle potential non-string types gracefully (e.g., numbers)
-         return str(text).strip()
+        # Handle potential non-string types gracefully (e.g., numbers)
+        return str(text).strip()
+        

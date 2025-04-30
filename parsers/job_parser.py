@@ -3,7 +3,10 @@ import os
 import logging
 import html
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def load_job_mandates(json_file_path: str) -> list[dict]:
     """
@@ -22,20 +25,35 @@ def load_job_mandates(json_file_path: str) -> list[dict]:
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
+
         if isinstance(data, list):
-            logging.info("Successfully loaded %d job mandates from %s", len(data), html.escape(json_file_path))
+            logging.info(
+                "Successfully loaded %d job mandates from %s",
+                len(data),
+                html.escape(json_file_path)
+            )
             # Basic validation: ensure items are dictionaries
             if all(isinstance(job, dict) for job in data):
                 return data
             else:
-                logging.error("JSON file does not contain a list of job objects (dictionaries).")
+                logging.error(
+                    "JSON file does not contain a list of job objects (dictionaries)."
+                )
                 return []
         else:
             logging.error("JSON file root is not a list.")
             return []
     except json.JSONDecodeError as e:
-        logging.error("Error decoding JSON file %s: %s", html.escape(json_file_path), str(e))
+        logging.error(
+            "Error decoding JSON file %s: %s",
+            html.escape(json_file_path),
+            str(e)
+        )
         return []
     except Exception as e:
-        logging.error("An unexpected error occurred while loading %s: %s", html.escape(json_file_path), str(e))
+        logging.error(
+            "An unexpected error occurred while loading %s: %s",
+            html.escape(json_file_path),
+            str(e)
+        )
         return []
