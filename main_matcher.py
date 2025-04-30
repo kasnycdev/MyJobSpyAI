@@ -6,13 +6,13 @@ import argparse
 import asyncio
 from typing import List, Dict, Any, Optional
 
-# Use ResumeAnalyzer which now has async methods
+import config
 from analysis.analyzer import ResumeAnalyzer
 from parsers.resume_parser import parse_resume
 from parsers.job_parser import load_job_mandates
 from analysis.models import ResumeData, AnalyzedJob, JobAnalysisResult
-from filtering.filter import apply_filters # filter functions remain synchronous
-import config
+from filtering.filter import apply_filters  # filter functions remain synchronous
+from rich.console import Console; console = Console()
 
 # Rich for UX (used for progress bar)
 try:
@@ -23,6 +23,7 @@ except ImportError:
 
 # Setup logger
 log = logging.getLogger(__name__)
+
 
 # --- ASYNC Resume Loading/Extraction ---
 async def load_and_extract_resume_async(resume_path: str, analyzer: ResumeAnalyzer) -> Optional[ResumeData]:
@@ -36,6 +37,7 @@ async def load_and_extract_resume_async(resume_path: str, analyzer: ResumeAnalyz
     if not structured_resume_data: log.error("[bold red]Failed to extract structured data from resume.[/bold red]"); return None
     log.info("[green]Successfully extracted structured data from resume.[/green]")
     return structured_resume_data
+
 
 # --- ASYNC Job Analysis ---
 async def analyze_jobs_async(
@@ -53,18 +55,18 @@ async def analyze_jobs_async(
     # Setup rich progress bar
     progress_context = None
     if RICH_AVAILABLE:
-        progress_context = Progress( SpinnerColumn(), "[progress.description]{task.description}", BarColumn(), "[progress.percentage]{task.percentage:>3.0f}%", TextColumn("[progress.completed]{task.completed} of {task.total} jobs"), TimeElapsedColumn() )
+        progress_context = Progress(SpinnerColumn(), "[progress.description]{task.description}", BarColumn(), "[progress.percentage]{task.percentage:>3.0f}%", TextColumn("[progress.completed]{task.completed} of {task.total} jobs"), TimeElapsedColumn())
     else: log.warning("[yellow]Rich library not found, progress bar disabled.[/yellow]")
 
     results_or_exceptions = []
     if progress_context:
-         with progress_context as progress:
-              analysis_task_tracker = progress.add_task("[cyan]Analyzing Jobs...", total=len(tasks))
-              results_or_exceptions = await asyncio.gather(*tasks, return_exceptions=True)
-              progress.update(analysis_task_tracker, completed=len(tasks), description="[green]Analysis Complete")
+        with progress_context as progress:
+            analysis_task_tracker = progress.add_task("[cyan]Analyzing Jobs...", total=len(tasks))
+            results_or_exceptions = await asyncio.gather(*tasks, return_exceptions=True)
+            progress.update(analysis_task_tracker, completed=len(tasks), description="[green]Analysis Complete")
     else:
-         log.info(f"Running {len(tasks)} analysis tasks concurrently (no progress bar)...")
-         results_or_exceptions = await asyncio.gather(*tasks, return_exceptions=True)
+        log.info(f"Running {len(tasks)} analysis tasks concurrently (no progress bar)...")
+        results_or_exceptions = await asyncio.gather(*tasks, return_exceptions=True)
 
     log.info("Processing analysis results...")
     for i, result_or_exc in enumerate(results_or_exceptions):
@@ -75,7 +77,7 @@ async def analyze_jobs_async(
 
         if analysis_result is None:
             try:
-                analysis_result = JobAnalysisResult( suitability_score=0, justification="Analysis task failed or job data insufficient.", skill_match=None, experience_match=None, qualification_match=None, salary_alignment="N/A", benefit_alignment="N/A", missing_keywords=[] )
+                analysis_result = JobAnalysisResult(suitability_score=0, justification="Analysis task failed or job data insufficient.", skill_match=None, experience_match=None, qualification_match=None, salary_alignment="N/A", benefit_alignment="N/A", missing_keywords=[])
             except Exception as placeholder_err: log.critical(f"[bold red]Failed create placeholder for failed analysis of '{job_title}':[/bold red] {placeholder_err}", exc_info=True); continue
         analyzed_job = AnalyzedJob(original_job_data=job_dict, analysis=analysis_result)
         analyzed_results.append(analyzed_job)
@@ -93,7 +95,7 @@ def apply_filters_sort_and_save(
     jobs_to_filter = [res.original_job_data for res in analyzed_results]
     if filter_args:
         log.info("Applying post-analysis filters...")
-        filtered_original_jobs = apply_filters(jobs_to_filter, **filter_args) # Uses filter.py logging
+        filtered_original_jobs = apply_filters(jobs_to_filter, **filter_args)  # Uses filter.py logging
         log.info(f"{len(filtered_original_jobs)} jobs passed filters.")
         filtered_keys = {
             (
@@ -107,8 +109,8 @@ def apply_filters_sort_and_save(
         final_filtered_results = [res for res in analyzed_results if (res.original_job_data.get('url', res.original_job_data.get('job_url')), res.original_job_data.get('title'), res.original_job_data.get('company'), res.original_job_data.get('location')) in filtered_keys]
     else: final_filtered_results = analyzed_results
     log.info("Sorting results by suitability score...")
-    final_filtered_results.sort(key=lambda x: x.analysis.suitability_score if x.analysis else 0, reverse=True )
-    final_results_df = pd.DataFrame([result.model_dump() for result in final_filtered_results])
+    final_filtered_results.sort(key=lambda x: x.score, reverse=True) # Use the score property
+    final_results_list = [result.model_dump() for result in final_filtered_results if result] # Convert to list of dicts
 
     # Save to JSON
     if output_dir := os.path.dirname(output_path):
@@ -127,7 +129,7 @@ def apply_filters_sort_and_save(
 async def main_async():
     """Async main function for standalone execution."""
     # (Argument parsing unchanged)
-    parser = argparse.ArgumentParser(description="Analyze pre-existing job JSON against a resume.") # ... add args ...
+    parser = argparse.ArgumentParser(description="Analyze pre-existing job JSON against a resume.")  # ... add args ...
     args = parser.parse_args()
     # (Standalone logging setup - might not use Rich unless explicitly configured here)
     log_level = logging.DEBUG if args.verbose else config.settings.get('logging', {}).get('level', 'INFO').upper()
@@ -140,10 +142,11 @@ async def main_async():
     log.info(f"Loading jobs from Parquet file: {args.jobs}"); job_list = load_job_mandates(args.jobs)
     if not job_list: log.error("No jobs loaded from JSON file. Exiting."); return
     analyzed_results = await analyze_jobs_async(analyzer, structured_resume, job_list)
-    filter_args_dict = {} # ... populate filter_args_dict from args ...
+    filter_args_dict = {}  # ... populate filter_args_dict from args ...
     apply_filters_sort_and_save(analyzed_results, args.output, filter_args_dict)
     log.info("Standalone ASYNC analysis finished.")
 
+
 if __name__ == "__main__":
     try: asyncio.run(main_async())
-    except KeyboardInterrupt: console.print("\n[yellow]Standalone analysis interrupted.[/yellow]"); sys.exit(130) # Use console here
+    except KeyboardInterrupt: console.print("\n[yellow]Standalone analysis interrupted.[/yellow]"); sys.exit(130)  # Use console here

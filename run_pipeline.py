@@ -30,10 +30,10 @@ except AttributeError: print("CRITICAL ERROR: 'settings' dictionary not found in
 try:
     from rich.console import Console; from rich.logging import RichHandler; from rich.table import Table
 except ImportError:
-     print("WARNING: 'rich' library not found. Console output will be basic.")
-     class Console: print = staticmethod(print)
-     class RichHandler(logging.StreamHandler): pass
-     class Table: print = staticmethod(print)
+    print("WARNING: 'rich' library not found. Console output will be basic.")
+    class Console: print = staticmethod(print)
+    class RichHandler(logging.StreamHandler): pass
+    class Table: print = staticmethod(print)
 
 # Setup logging using Rich
 logging.basicConfig( level=settings.get('logging', {}).get('level', 'INFO').upper(), format=settings.get('logging', {}).get('format', '%(message)s'), datefmt=settings.get('logging', {}).get('date_format', '[%X]'), handlers=[RichHandler(rich_tracebacks=True, show_path=False)] )
@@ -63,11 +63,11 @@ def scrape_jobs_with_jobspy(
             log.debug(f"DataFrame columns: {jobs_df.columns.tolist()}")
             essential_scrape_cols = ['title', 'company', 'location', 'description', 'job_url', 'date_posted', 'job_type']
             for col in essential_scrape_cols:
-                 if col not in jobs_df.columns: log.warning(f"Essential column '{col}' missing, adding empty."); jobs_df[col] = ''
+                if col not in jobs_df.columns: log.warning(f"Essential column '{col}' missing, adding empty."); jobs_df[col] = ''
             return jobs_df
     except ImportError as ie: log.critical(f"Import error during scraping: {ie}."); return None
     except TypeError as te: # Catch TypeError specifically
-         log.error(f"TypeError during jobspy scrape call: {te}. Check argument names.", exc_info=True); return None
+        log.error(f"TypeError during jobspy scrape call: {te}. Check argument names.", exc_info=True); return None
     except Exception as e: log.error(f"An error occurred during jobspy scraping: {e}", exc_info=True); return None
 
 
@@ -85,7 +85,7 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
             except Exception: jobs_df[col] = jobs_df[col].astype(str)
     essential_cols = ['title','company','location','description','url','salary_text','employment_type','benefits_text','skills','date_posted']
     for col in essential_cols:
-         if col not in jobs_df.columns: log.warning(f"Column '{col}' missing, adding empty."); jobs_df[col] = ''
+        if col not in jobs_df.columns: log.warning(f"Column '{col}' missing, adding empty."); jobs_df[col] = ''
     jobs_df = jobs_df.fillna('')
     jobs_list = jobs_df.to_dict('records')
     if output_dir := os.path.dirname(output_path):
@@ -97,22 +97,35 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
 
 
 # --- print_summary_table function (no changes needed here) ---
-def print_summary_table(results_df: pd.DataFrame, top_n: int = 10):
-    results_json = results_df.to_dict(orient='records')
-    if not results_json: console.print("[yellow]No analysis results to summarize.[/yellow]"); return
+def print_summary_table(results_json: List[Dict[str, Any]], top_n: int = 10):
+    # Assuming results_json is a list of dictionaries
+    if not results_json: 
+        console.print("[yellow]No analysis results to summarize.[/yellow]"); 
+        return
+    
     table = Table(title=f"Top {min(top_n, len(results_json))} Job Matches", show_header=True, header_style="bold magenta", show_lines=False)
-    table.add_column("Score", style="dim", width=6, justify="right"); table.add_column("Title", style="bold", min_width=20); table.add_column("Company"); table.add_column("Location"); table.add_column("URL", overflow="fold", style="cyan")
+    table.add_column("Score", style="dim", width=6, justify="right"); 
+    table.add_column("Title", style="bold", min_width=20); 
+    table.add_column("Company"); 
+    table.add_column("Location"); 
+    table.add_column("URL", overflow="fold", style="cyan")
+    
     count = 0
     for result in results_json:
-        if count >= top_n: break
-        analysis = result.get('analysis', {}); original = result.get('original_job_data', {})
+        analysis = result.get('analysis', {}); 
+        original = result.get('original_job_data', {})
         score = analysis.get('suitability_score', -1)
-        if score is None or score == 0: continue
+        if score is None or score == 0: 
+            continue
         score_str = f"{score}%"
         table.add_row(score_str, original.get('title', 'N/A'), original.get('company', 'N/A'), original.get('location', 'N/A'), original.get('url', '#'))
         count += 1
-    if count == 0: console.print("[yellow]No successfully analyzed jobs with score > 0 to display.[/yellow]")
-    else: console.print(table)
+        if count >= top_n: 
+            break
+    if count == 0: 
+        console.print("[yellow]No successfully analyzed jobs with score > 0 to display.[/yellow]")
+    else: 
+        console.print(table)
 
 
 # --- Main ASYNC Execution Function ---
@@ -215,9 +228,9 @@ async def run_pipeline_async():
         if args.filter_job_types: filter_args_dict['job_types'] = [jt.strip().lower() for jt in args.filter_job_types.split(',')]
         if args.filter_remote_country: filter_args_dict['filter_remote_country'] = args.filter_remote_country.strip()
         if args.filter_proximity_location:
-             filter_args_dict['filter_proximity_location'] = args.filter_proximity_location.strip()
-             filter_args_dict['filter_proximity_range'] = args.filter_proximity_range
-             filter_args_dict['filter_proximity_models'] = [pm.strip().lower() for pm in args.filter_proximity_models.split(',')]
+            filter_args_dict['filter_proximity_location'] = args.filter_proximity_location.strip()
+            filter_args_dict['filter_proximity_range'] = args.filter_proximity_range
+            filter_args_dict['filter_proximity_models'] = [pm.strip().lower() for pm in args.filter_proximity_models.split(',')]
         final_results_list_dict = apply_filters_sort_and_save( analyzed_results, args.analysis_output, filter_args_dict )
         log.info("[bold blue]Pipeline Summary:[/bold blue]")
         print_summary_table(final_results_list_dict, top_n=10)

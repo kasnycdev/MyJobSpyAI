@@ -2,7 +2,7 @@
 
 output:
   directory: output  # Relative to project root
-  scraped_jobs_file: scraped_jobs.parquet
+  scraped_jobs_file: scraped_jobs.json
   analysis_output_file: analysis_results.json
   debug_output_file: debug_info.json
 
