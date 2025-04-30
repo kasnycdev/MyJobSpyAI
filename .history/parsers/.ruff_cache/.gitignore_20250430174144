@@ -1,9 +1,0 @@
-# Automatically created by ruff.
-*
-__pycache__
-config.yaml
-*.pyc
-*.pyo
-*.pyd
-*.pdb
-*.egg-info
