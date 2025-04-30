@@ -48,6 +48,7 @@ def scrape_jobs_with_jobspy(
     log.info("[bold blue]Starting job scraping via JobSpy...[/bold blue]")
     log.info(f"Search: '[cyan]{search_terms}[/cyan]' | Location: '[cyan]{location}[/cyan]' | Sites: {sites}")
     # --- UPDATED LOG MESSAGE (hours_old) ---
+    log.debug(f"linkedin_fetch_description: {settings.get('scraping', {}).get('linkedin_fetch_description')}")
     log.info(f"Params: Results ≈{results_wanted}, Max Age={hours_old}h, Indeed Country='{country_indeed}', Offset={offset}")
     if proxies: log.info(f"Using {len(proxies)} proxies.")
     try:
@@ -55,7 +56,7 @@ def scrape_jobs_with_jobspy(
         jobs_df = scrape_jobs(
             site_name=sites, search_term=search_terms, location=location, results_wanted=results_wanted,
             hours_old=hours_old, # Use hours_old
-            country_indeed=country_indeed, proxies=proxies, offset=offset, verbose=1, description_format="markdown" )
+            country_indeed=country_indeed, proxies=proxies, offset=offset, verbose=1, description_format="markdown",linkedin_fetch_description=settings.get('scraping', {}).get('linkedin_fetch_description'))
         # --- END CORRECTION ---
         if jobs_df is None or jobs_df.empty: log.warning("Jobspy scraping returned no results or failed."); return None
         else:
@@ -205,11 +206,11 @@ async def run_pipeline_async():
                 if analysis_output_dir := os.path.dirname(args.analysis_output):
                     os.makedirs(analysis_output_dir, exist_ok=True)
                 empty_df = pd.DataFrame()
-                empty_df.to_parquet(args.analysis_output, engine='pyarrow')
+                empty_df.to_json(settings.get('output', {}).get('scraped_jobs_file'), orient='records')
                 log.info(f"Empty analysis results file created at {args.analysis_output}")
                 sys.exit(0)  # Exit after creating empty file
             except Exception as e:
-                log.error(f"[bold red]Error saving empty Parquet file:[/bold red] {e}", exc_info=True)
+                log.error(f"[bold red]Error saving empty analysis results file: {e}", exc_info=True)
                 sys.exit(1)  # Exit with error code
 
         # --- Steps 2-6 remain unchanged ---

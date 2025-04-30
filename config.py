@@ -16,12 +16,12 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "output" # Default if not in YAML
 # --- Default Settings (Fallback if YAML is missing fields) ---
 DEFAULT_SETTINGS = {
     "output_dir": str(DEFAULT_OUTPUT_DIR),
-    "scraped_jobs_filename": "scraped_jobs.parquet",
+    "scraped_jobs_filename": "scraped_jobs.json",
     "analysis_filename": "analyzed_jobs.json",
     "ollama": {
         "base_url": "http://localhost:11434",
         "model": "llama3:instruct",
-        "request_timeout": 450,
+        "request_timeout": 600,
         "max_retries": 2,
         "retry_delay": 5,
     },
@@ -33,7 +33,7 @@ DEFAULT_SETTINGS = {
         "max_prompt_chars": 24000,
     },
     "scraping": {
-        "default_sites": ["linkedin", "indeed"],
+        "default_sites": ["linkedin"],
         "default_results_limit": 25,
         "default_hours_old": 72,
         "default_country_indeed": "usa",
@@ -41,7 +41,7 @@ DEFAULT_SETTINGS = {
         "linkedin_company_ids": []
     },
     "geocoding": {
-        "geopy_user_agent": "MyJobSpyAI/1.0 (PLEASE_UPDATE_EMAIL@example.com)" # <-- User should update this in config.yaml
+        "geopy_user_agent": "MyJobSpyAI/1.0 (kasnycdev@gmail.com)" # <-- User should update this in config.yaml
     },
     "logging": {
         "level": "INFO",
@@ -76,9 +76,9 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
                 settings = _deep_merge_dicts(settings, user_config)
                 temp_logger.info("Successfully loaded and merged configuration.")
             elif user_config is None:
-                 temp_logger.warning(f"Config file {config_path} empty. Using defaults.")
+                temp_logger.warning(f"Config file {config_path} empty. Using defaults.")
             else:
-                 temp_logger.error(f"Config file {config_path} invalid format. Using defaults.")
+                temp_logger.error(f"Config file {config_path} invalid format. Using defaults.")
         except yaml.YAMLError as e:
             temp_logger.error(f"Error parsing YAML {config_path}: {e}. Using defaults.")
         except Exception as e:
@@ -92,9 +92,9 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
         # Ensure prompts_dir is treated as relative to project root if not absolute
         prompts_dir_path = Path(settings["analysis"]["prompts_dir"])
         if not prompts_dir_path.is_absolute():
-             settings["analysis"]["prompts_dir"] = str(PROJECT_ROOT / prompts_dir_path)
+            settings["analysis"]["prompts_dir"] = str(PROJECT_ROOT / prompts_dir_path)
         else:
-             settings["analysis"]["prompts_dir"] = str(prompts_dir_path) # Keep absolute path
+            settings["analysis"]["prompts_dir"] = str(prompts_dir_path) # Keep absolute path
 
     # --- Ensure output dir exists ---
     try:
