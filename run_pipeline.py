@@ -8,55 +8,68 @@ import argparse
 import asyncio
 from datetime import datetime
 from analysis.analyzer import ResumeAnalyzer
+from colorama import init  # Import colorama
+import traceback
 
-# Use the jobspy library for scraping
-try:
-    from jobspy import scrape_jobs
-except ImportError:
-    print("CRITICAL ERROR: 'jobspy' library not found.")
-    sys.exit(1)
+# Ensure settings is imported from config.py
+from config import settings
 
-# Import analysis components
-try:
-    from main_matcher import load_and_extract_resume_async, analyze_jobs_async, apply_filters_sort_and_save
-except ImportError as e:
-    print(f"CRITICAL ERROR: Could not import analysis functions: {e}")
-    sys.exit(1)
+# Initialize colorama
+init(autoreset=True)
 
-# Import the loaded settings dictionary from config.py
-try:
-    from config import settings
-except ImportError:
-    print("CRITICAL ERROR: config.py not found or cannot be imported.")
-    sys.exit(1)
-except AttributeError:
-    print("CRITICAL ERROR: 'settings' dictionary not found in config.py.")
-    sys.exit(1)
+from rich.console import Console
+from rich.logging import RichHandler
 
-# Rich for UX needs settings for logging setup
-try:
-    from rich.console import Console
-    from rich.logging import RichHandler
-    from rich.table import Table
-except ImportError:
-    print("WARNING: 'rich' library not found. Console output will be basic.")
-    class Console:
-        print = staticmethod(print)
-    class RichHandler(logging.StreamHandler):
-        pass
-    class Table:
-        print = staticmethod(print)
+# Initialize rich console
+console = Console()
 
-# Setup logging using Rich
+# Update logging configuration to use RichHandler
 logging.basicConfig(
     level=settings.get('logging', {}).get('level', 'INFO').upper(),
     format=settings.get('logging', {}).get('format', '%(message)s'),
     datefmt=settings.get('logging', {}).get('date_format', '[%X]'),
     handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
 )
-logging.getLogger("httpx").setLevel(logging.WARNING)
-log = logging.getLogger(__name__)
-console = Console()
+
+# Replace os.system("color") with a rich console message
+console.print("[green]Rich console initialized successfully.[/green]")
+
+# Use the jobspy library for scraping
+try:
+    from jobspy import scrape_jobs
+except ImportError:
+    console.print("[red]CRITICAL ERROR: 'jobspy' library not found.[/red]")
+    sys.exit(1)
+
+# Import analysis components
+try:
+    from main_matcher import load_and_extract_resume_async, analyze_jobs_async, apply_filters_sort_and_save
+except ImportError as e:
+    console.print(f"[red]CRITICAL ERROR: Could not import analysis functions: {e}[/red]")
+    sys.exit(1)
+
+# Import the loaded settings dictionary from config.py
+try:
+    from config import settings
+except ImportError:
+    console.print("[red]CRITICAL ERROR: config.py not found or cannot be imported.[/red]")
+    sys.exit(1)
+except AttributeError:
+    console.print("[red]CRITICAL ERROR: 'settings' dictionary not found in config.py.[/red]")
+    sys.exit(1)
+
+# Rich for UX needs settings for logging setup
+try:
+    from rich.table import Table
+except ImportError:
+    console.print("[yellow]WARNING: 'rich' library not found. Console output will be basic.[/yellow]")
+    class Table:
+        print = staticmethod(print)
+
+# Helper function for logging exceptions
+def log_exception(message, exception):
+    console.log(message)
+    console.log(traceback.format_exc())
 
 # --- scrape_jobs_with_jobspy function --- CORRECTED SIGNATURE (hours_old) ---
 def scrape_jobs_with_jobspy(
@@ -64,18 +77,18 @@ def scrape_jobs_with_jobspy(
     country_indeed: str, proxies: Optional[list[str]] = None, offset: int = 0
 ) -> Optional[pd.DataFrame]:
     """Uses the jobspy library to scrape jobs, with better logging."""
-    log.info("[bold blue]Starting job scraping via JobSpy...[/bold blue]")
-    log.info(
+    console.log("[blue]Starting job scraping via JobSpy...[/blue]")
+    console.log(
         f"Search: '[cyan]{search_terms}[/cyan]' | Location: '[cyan]{location}[/cyan]' | "
         f"Sites: {sites}"
     )
-    log.debug(f"linkedin_fetch_description: {settings.get('scraping', {}).get('linkedin_fetch_description')}")
-    log.info(
+    console.log(f"linkedin_fetch_description: {settings.get('scraping', {}).get('linkedin_fetch_description')}")
+    console.log(
         f"Params: Results ≈{results_wanted}, Max Age={hours_old}h, "
         f"Indeed Country='{country_indeed}', Offset={offset}"
     )
     if proxies:
-        log.info(f"Using {len(proxies)} proxies.")
+        console.log(f"Using {len(proxies)} proxies.")
     try:
         jobs_df = scrape_jobs(
             site_name=sites, search_term=search_terms, location=location, results_wanted=results_wanted,
@@ -85,31 +98,31 @@ def scrape_jobs_with_jobspy(
             linkedin_fetch_description=settings.get('scraping', {}).get('linkedin_fetch_description')
         )
         if jobs_df is None or jobs_df.empty:
-            log.warning("Jobspy scraping returned no results or failed.")
+            console.log("[yellow]Jobspy scraping returned no results or failed.[/yellow]")
             return None
         else:
-            log.info(f"Jobspy scraping successful. Found {len(jobs_df)} jobs.")
-            log.debug(f"DataFrame columns: {jobs_df.columns.tolist()}")
+            console.log(f"Jobspy scraping successful. Found {len(jobs_df)} jobs.")
+            console.log(f"DataFrame columns: {jobs_df.columns.tolist()}")
             essential_scrape_cols = ['title', 'company', 'location', 'description', 'job_url', 'date_posted', 'job_type']
             for col in essential_scrape_cols:
                 if col not in jobs_df.columns:
-                    log.warning(f"Essential column '{col}' missing, adding empty.")
+                    console.log(f"[yellow]Essential column '{col}' missing, adding empty.[/yellow]")
                     jobs_df[col] = ''
             return jobs_df
     except ImportError as ie:
-        log.critical(f"Import error during scraping: {ie}.")
+        log_exception(f"[red]Import error during scraping: {ie}.[/red]", ie)
         return None
     except TypeError as te:  # Catch TypeError specifically
-        log.error(f"TypeError during jobspy scrape call: {te}. Check argument names.", exc_info=True)
+        log_exception(f"[red]TypeError during jobspy scrape call: {te}. Check argument names.[/red]", te)
         return None
     except Exception as e:
-        log.error(f"An error occurred during jobspy scraping: {e}", exc_info=True)
+        log_exception(f"[red]An error occurred during jobspy scraping: {e}[/red]", e)
         return None
 
 
 # --- convert_and_save_scraped function (no changes needed here) ---
 def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Dict[str, Any]]:
-    log.info(f"Converting DataFrame to list and saving to {output_path}")
+    console.log(f"Converting DataFrame to list and saving to {output_path}")
     rename_map = {'job_url': 'url', 'job_type': 'employment_type', 'salary': 'salary_text', 'benefits': 'benefits_text'}
     actual_rename_map = {k: v for k, v in rename_map.items() if k in jobs_df.columns}
     jobs_df = jobs_df.rename(columns=actual_rename_map)
@@ -125,7 +138,7 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
                       'benefits_text', 'skills', 'date_posted']
     for col in essential_cols:
         if col not in jobs_df.columns:
-            log.warning(f"Column '{col}' missing, adding empty.")
+            console.log(f"[yellow]Column '{col}' missing, adding empty.[/yellow]")
             jobs_df[col] = ''
     jobs_df = jobs_df.fillna('')
     jobs_list = jobs_df.to_dict('records')
@@ -134,12 +147,12 @@ def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Di
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(jobs_list, f, indent=4)
-        log.info(
-            f"[green]Successfully saved {len(jobs_list)} scraped jobs to {output_path}"
+        console.log(
+            f"[green]Successfully saved {len(jobs_list)} scraped jobs to {output_path}[/green]"
         )
         return jobs_list
     except Exception as e:
-        log.error(f"Error saving scraped jobs JSON: {e}", exc_info=True)
+        console.log(f"[red]Error saving scraped jobs JSON: {e}[/red]", exc_info=True)
         return []
 
 
@@ -232,9 +245,9 @@ async def run_pipeline_async():
     log_level_name = "DEBUG" if args.verbose else settings.get('logging', {}).get('level', 'INFO').upper()
     log_level = getattr(logging, log_level_name, logging.INFO)
     logging.getLogger().setLevel(log_level)
-    log.info(f"Log level set to: {log_level_name}")
-    log.info(
-        f"[bold green]Starting ASYNC Pipeline Run[/bold green] "
+    console.log(f"Log level set to: {log_level_name}")
+    console.log(
+        f"[green]Starting ASYNC Pipeline Run[/green] "
         f"({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
     )
 
@@ -251,13 +264,13 @@ async def run_pipeline_async():
         scrape_location = None
         if args.filter_remote_country:
             scrape_location = args.filter_remote_country.strip()
-            log.info(f"Using country '{scrape_location}' as primary scrape location.")
+            console.log(f"Using country '{scrape_location}' as primary scrape location.")
         elif args.filter_proximity_location:
             scrape_location = args.filter_proximity_location.strip()
-            log.info(f"Using proximity target '{scrape_location}' as primary scrape location.")
+            console.log(f"Using proximity target '{scrape_location}' as primary scrape location.")
         elif args.location:
             scrape_location = args.location
-            log.info(
+            console.log(
                 f"Using provided --location '{scrape_location}' as primary scrape location."
             )
 
@@ -277,35 +290,35 @@ async def run_pipeline_async():
         # --- END CORRECTION ---
 
         if jobs_df is None or jobs_df.empty:
-            log.warning("Scraping yielded no results. Pipeline cannot continue.")
+            console.log("[yellow]Scraping yielded no results. Pipeline cannot continue.[/yellow]")
             try:
                 if analysis_output_dir := os.path.dirname(args.analysis_output):
                     os.makedirs(analysis_output_dir, exist_ok=True)
                 empty_df = pd.DataFrame()
                 empty_df.to_json(settings.get('output', {}).get('scraped_jobs_file'), orient='records')
-                log.info(f"Empty analysis results file created at {args.analysis_output}")
+                console.log(f"[green]Empty analysis results file created at {args.analysis_output}[/green]")
                 sys.exit(0)  # Exit after creating empty file
             except Exception as e:
-                log.error(f"[bold red]Error saving empty analysis results file: {e}", exc_info=True)
+                log_exception(f"[red]Error saving empty analysis results file: {e}[/red]", e)
                 sys.exit(1)  # Exit with error code
 
         # --- Steps 2-6 remain unchanged ---
         jobs_list = convert_and_save_scraped(jobs_df, args.scraped_jobs_file)
         if not jobs_list:
-            log.error("Failed to convert/save scraped data. Exiting.")
+            console.log("[red]Failed to convert/save scraped data. Exiting.[/red]")
             sys.exit(1)
         try:
             analyzer = ResumeAnalyzer()
         except Exception as e:
-            log.critical(f"Failed to initialize ResumeAnalyzer: {e}.", exc_info=True)
+            log_exception(f"[red]Failed to initialize ResumeAnalyzer: {e}.[/red]", e)
             sys.exit(1)
         structured_resume = await load_and_extract_resume_async(args.resume, analyzer)
         if not structured_resume:
-            log.critical("Failed to load/extract resume data. Exiting.")
+            console.log("[red]Failed to load/extract resume data. Exiting.[/red]")
             sys.exit(1)
         analyzed_results = await analyze_jobs_async(analyzer, structured_resume, jobs_list)
         if not analyzed_results:
-            log.warning("Analysis step produced no results.")
+            console.log("[yellow]Analysis step produced no results.[/yellow]")
         filter_args_dict = {}
         if args.min_salary is not None:
             filter_args_dict['salary_min'] = args.min_salary
@@ -324,16 +337,16 @@ async def run_pipeline_async():
         final_results_list_dict = apply_filters_sort_and_save(
             analyzed_results, args.analysis_output, filter_args_dict
         )
-        log.info("[bold blue]Pipeline Summary:[/bold blue]")
+        console.log("[blue]Pipeline Summary:[/blue]")
         print_summary_table(final_results_list_dict, top_n=10)
-        log.info("[bold green]Pipeline Run Finished Successfully[/bold green]")
+        console.print("[green]Pipeline Run Finished Successfully[/green]")
 
     except KeyboardInterrupt:
         print()
-        log.warning("[yellow]Pipeline interrupted by user (Ctrl+C).[/yellow]")
+        console.log("[yellow]Pipeline interrupted by user (Ctrl+C).[/yellow]")
         sys.exit(130)
     except Exception as e:
-        log.critical(f"Unexpected critical error: {e}", exc_info=True)
+        log_exception(f"[red]Unexpected critical error: {e}[/red]", e)
         sys.exit(1)
 
 
@@ -342,5 +355,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(run_pipeline_async())
     except KeyboardInterrupt:
-        print("\nExecution cancelled by user.")
+        console.print("\nExecution cancelled by user.")
         sys.exit(130)

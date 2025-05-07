@@ -19,12 +19,12 @@ analysis:
   resume_prompt_file: resume_extraction.prompt
   suitability_prompt_file: suitability_analysis.prompt
   job_extraction_prompt_file: job_extraction.prompt
-  max_prompt_chars: 24000
+  max_prompt_chars: 48000
 
 scraping:
   default_sites: ["linkedin"]
-  default_results_limit: 50
-  default_days_old: 3  # Use days, not hours
+  default_results_limit: 10
+  default_days_old: 14  # Use days, not hours
   default_country_indeed: "usa"
   linkedin_fetch_description: True
   linkedin_company_ids: []

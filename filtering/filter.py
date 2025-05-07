@@ -1,6 +1,11 @@
 import logging
 import time
 from typing import Dict, Optional, List, Any
+from colorama import Fore, Style  # Import colorama
+from rich.console import Console
+
+# Initialize rich console
+console = Console()
 
 # Import geopy and specific exceptions
 try:
@@ -14,18 +19,15 @@ except ImportError:
 from .filter_utils import parse_salary, normalize_string
 from config import settings
 
-# Use root logger
-log = logging.getLogger(__name__)
-
 # --- Geocoding Setup ---
 GEOCODER = None
 if GEOPY_AVAILABLE:
     user_agent = settings.get('geocoding', {}).get('geopy_user_agent', 'MyJobSpyAI/1.0 (DEFAULT)')
     if not user_agent or 'PLEASE_UPDATE' in user_agent or 'example.com' in user_agent:
-        log.warning("[yellow]GEOPY_USER_AGENT not set/default in config.yaml. Geocoding may fail.[/yellow]")
+        console.log("[yellow]GEOPY_USER_AGENT not set/default in config.yaml. Geocoding may fail.[/yellow]")
     GEOCODER = Nominatim(user_agent=user_agent, timeout=10)
 else:
-    log.warning("[yellow]Geopy library not installed. Location filtering disabled.[/yellow]")
+    console.log("[yellow]Geopy library not installed. Location filtering disabled.[/yellow]")
 
 _geocode_cache = {}
 _geocode_fail_cache = set()
@@ -45,10 +47,10 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
         return _geocode_cache[normalized_loc]
 
     if normalized_loc in _geocode_fail_cache:
-        log.debug(f"Skipping geocode for previously failed: '{location_str}'")
+        console.log(f"Skipping geocode for previously failed: '{location_str}'")
         return None
 
-    log.debug(f"Geocoding location: '{location_str}'")
+    console.log(f"Geocoding location: '{location_str}'")
     try:
         time.sleep(1.0)  # Rate limit
         location_data = GEOCODER.geocode(normalized_loc, addressdetails=True, language='en')
@@ -71,29 +73,29 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
                 }
                 country_name = cc_map.get(country_code.lower())
                 if country_name:
-                    log.debug(f"Inferred country name '{country_name}' from code '{country_code}'")
+                    console.log(f"Inferred country name '{country_name}' from code '{country_code}'")
 
             if country_name:
-                log.debug(f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}")
+                console.log(f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}")
                 result = (lat, lon, country_name)
                 _geocode_cache[normalized_loc] = result
                 return result
             else:
-                log.warning(
+                console.log(
                     f"[yellow]Geocoded '{location_str}' but couldn't extract country name. Address: {address}[/yellow]"
                 )
                 _geocode_fail_cache.add(normalized_loc)
                 return None
         else:
-            log.warning(f"[yellow]Failed to geocode '{location_str}' - No results.[/yellow]")
+            console.log(f"[yellow]Failed to geocode '{location_str}' - No results.[/yellow]")
             _geocode_fail_cache.add(normalized_loc)
             return None
     except (GeocoderTimedOut, GeocoderServiceError) as geo_err:
-        log.error(f"[red]Geocoding error for '{location_str}': {geo_err}[/red]")
+        console.log(f"[red]Geocoding error for '{location_str}': {geo_err}[/red]")
         _geocode_fail_cache.add(normalized_loc)
         return None
     except Exception as e:
-        log.error(f"[red]Unexpected geocoding error for '{location_str}': {e}[/red]", exc_info=True)
+        console.log(f"[red]Unexpected geocoding error for '{location_str}': {e}[/red]", exc_info=True)
         _geocode_fail_cache.add(normalized_loc)
         return None
 
@@ -121,19 +123,19 @@ def apply_filters(
 
     target_lat_lon = None
     if filter_proximity_location and filter_proximity_range is not None:
-        log.info(f"Attempting to geocode target proximity location: '{filter_proximity_location}'")
+        console.log(f"Attempting to geocode target proximity location: '{filter_proximity_location}'")
         if (target_geo_result := get_lat_lon_country(filter_proximity_location)):
             target_lat_lon = (target_geo_result[0], target_geo_result[1])
-            log.info(f"Target proximity location geocoded to: {target_lat_lon}")
+            console.log(f"Target proximity location geocoded to: {target_lat_lon}")
         else:
-            log.error(
+            console.log(
                 f"[red]Could not geocode target proximity location "
                 f"'{filter_proximity_location}'. Proximity filter disabled.[/red]"
             )
             filter_proximity_location = None
             filter_proximity_range = None
 
-    log.info("Applying filters to job list...")
+    console.log("Applying filters to job list...")
     initial_count = len(jobs)
     jobs_processed_count = 0
 
@@ -142,7 +144,7 @@ def apply_filters(
         job_title = job.get('title', 'N/A')
         passes_all_filters = True
 
-        log.debug(f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---")
+        console.log(f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---")
 
         # Salary
         salary_text = job.get('salary_text')
@@ -210,7 +212,7 @@ def apply_filters(
                     if not job_country or normalize_string(job_country) != normalized_remote_country:
                         passes_all_filters = False
                 else:
-                    log.warning(
+                    console.log(
                         f"[yellow]Geocoding failed for '{job_location_str}'. Assuming it matches the remote country filter.[/yellow]"
                     )
             else:
@@ -249,7 +251,7 @@ def apply_filters(
                         if distance_miles > filter_proximity_range:
                             passes_all_filters = False
                     except Exception as dist_err:
-                        log.warning(
+                        console.log(
                             f"[yellow]Could not calculate distance for '{job_title}': {dist_err}[/yellow]"
                         )
                         passes_all_filters = False
@@ -258,5 +260,5 @@ def apply_filters(
             filtered_jobs.append(job)
 
     final_count = len(filtered_jobs)
-    log.info(f"Filtering complete. {final_count} out of {initial_count} jobs passed active filters.")
+    console.log(f"Filtering complete. {final_count} out of {initial_count} jobs passed active filters.")
     return filtered_jobs

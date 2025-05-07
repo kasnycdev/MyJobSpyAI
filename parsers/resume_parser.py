@@ -3,8 +3,38 @@ import logging
 import html
 from docx import Document
 from PyPDF2 import PdfReader
+from colorama import Fore, Style, init  # Import colorama
+from rich.console import Console
+from rich.logging import RichHandler
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Initialize colorama
+init(autoreset=True)
+
+# Initialize rich console
+console = Console()
+
+# Update logging configuration to use RichHandler
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
+)
+
+
+def _preprocess_text(text: str) -> str:
+    """
+    Preprocesses extracted text to clean and normalize it.
+
+    Args:
+        text: The raw extracted text.
+
+    Returns:
+        The cleaned and normalized text.
+    """
+    # Remove extra whitespace and normalize line breaks
+    text = text.strip()
+    text = '\n'.join(line.strip() for line in text.splitlines() if line.strip())
+    return text
 
 
 def _parse_docx(file_path: str) -> str:
@@ -12,11 +42,10 @@ def _parse_docx(file_path: str) -> str:
     try:
         doc = Document(file_path)
         full_text = [para.text for para in doc.paragraphs]
-        return '\n'.join(full_text)
+        raw_text = '\n'.join(full_text)
+        return _preprocess_text(raw_text)
     except Exception as e:
-        logging.error(
-            f"Error parsing DOCX file {html.escape(file_path)}: {html.escape(str(e))}"
-        )
+        console.log(f"[red]Error parsing DOCX file {html.escape(file_path)}: {html.escape(str(e))}[/red]")
         return ""
 
 
@@ -29,9 +58,9 @@ def _parse_pdf(file_path: str) -> str:
             for page in reader.pages:
                 if (page_text := page.extract_text()):
                     text += page_text + "\n"
-        return text.strip()
+        return _preprocess_text(text)
     except Exception as e:
-        logging.error(f"Error parsing PDF file {file_path}: {e}")
+        console.log(f"[red]Error parsing PDF file {file_path}: {e}[/red]")
         return ""
 
 
@@ -46,20 +75,17 @@ def parse_resume(file_path: str) -> str:
         The extracted text content as a string, or empty string on error.
     """
     if not os.path.exists(file_path):
-        logging.error("Resume file not found: %s", file_path)
+        console.log(f"[red]Resume file not found: {file_path}[/red]")
         return ""
 
     _, file_extension = os.path.splitext(file_path.lower())
 
     if file_extension == ".docx":
-        logging.info("Parsing DOCX resume: %s", file_path)
+        console.log(f"Parsing DOCX resume: {file_path}")
         return _parse_docx(file_path)
     elif file_extension == ".pdf":
-        logging.info("Parsing PDF resume: %s", file_path)
+        console.log(f"Parsing PDF resume: {file_path}")
         return _parse_pdf(file_path)
     else:
-        logging.error(
-            "Unsupported resume file format: %s. Please use .docx or .pdf.",
-            file_extension
-        )
+        console.log(f"[red]Unsupported resume file format: {file_extension}. Please use .docx or .pdf.[/red]")
         return ""
