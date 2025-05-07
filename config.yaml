@@ -18,7 +18,7 @@ openai: # Settings for OpenAI-compatible APIs (LM Studio, etc.)
   model: "codellama-7b-instruct" # Example model identifier
   api_key: "lm-studio" # Placeholder, often not needed for local LM Studio
   request_timeout: 900    # Timeout in seconds for API calls
-  max_retries: 2          # Max number of retries on failure
+  max_retries: 0          # Max number of retries on failure
   retry_delay: 5          # Initial delay in seconds before first retry (exponential backoff)
 
 ollama: # Settings for local Ollama server
@@ -38,7 +38,7 @@ gemini: # Settings for Google Gemini API (via AI Studio)
   # Note: Timeout, retries might be handled differently by the google-generativeai client library itself.
   # These values might be used for custom retry logic if needed, but check library defaults first.
   request_timeout: 900
-  max_retries: 2
+  max_retries: 0
   retry_delay: 5
 
 # --- Analysis Settings ---
@@ -48,6 +48,7 @@ analysis:
   suitability_prompt_file: suitability_analysis.prompt
   job_extraction_prompt_file: job_extraction.prompt
   max_prompt_chars: 48000
+  log_full_prompt: true # Added to enable verbose prompt logging
 
 scraping:
   default_sites: ["linkedin"]

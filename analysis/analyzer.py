@@ -1,6 +1,7 @@
 import openai
 import ollama
 import google.generativeai as genai # Corrected import alias
+import google.api_core.exceptions # Added for DeadlineExceeded
 import json
 import os
 import asyncio
@@ -251,8 +252,16 @@ class ResumeAnalyzer:
 
         analysis_cfg = settings.get('analysis', {})
         max_prompt_chars = analysis_cfg.get('max_prompt_chars', 24000)
+        log_full_prompt = analysis_cfg.get('log_full_prompt', False) # New setting
 
         console.log(f"ASYNC: Sending request via provider '{self.provider}' to model '{self.model_name}'. Prompt length: {len(prompt)} chars.")
+        if log_full_prompt:
+            console.log(f"ASYNC: Full prompt:\n{prompt}")
+        elif len(prompt) > 1000: # Log a snippet if not logging full and prompt is long
+            console.log(f"ASYNC: Prompt snippet:\n{prompt[:500]}...\n...{prompt[-500:]}")
+        else:
+            console.log(f"ASYNC: Prompt:\n{prompt}")
+
         if len(prompt) > max_prompt_chars:
             console.log(f"[yellow]Warning: Prompt length ({len(prompt)}) exceeds configured max_prompt_chars ({max_prompt_chars}). Model might truncate or error.[/yellow]")
 
@@ -291,8 +300,8 @@ class ResumeAnalyzer:
                     )
                     response = await self.async_client.generate_content_async(
                         prompt,
-                        generation_config=generation_config
-                        # request_options={'timeout': self.request_timeout} # Timeout for Gemini if needed
+                        generation_config=generation_config,
+                        request_options={'timeout': self.request_timeout} # Timeout for Gemini if needed
                     )
                     # Handle potential blocks by safety filters (though thresholds set to BLOCK_NONE)
                     if not response.candidates:
@@ -304,10 +313,10 @@ class ResumeAnalyzer:
                         console.log(f"[dim]Gemini Usage - Prompt: {usage.prompt_token_count}, Candidates: {usage.candidates_token_count}, Total: {usage.total_token_count} tokens[/dim]")
 
                 # --- Common Response Processing ---
-                console.log(f"ASYNC: LLM raw response content: {content[:500] if content else 'None'}...")
+                console.log(f"ASYNC: LLM raw response content (Attempt {attempt + 1}):\n{content}")
 
                 if content is None:
-                    console.log(f"[yellow]ASYNC LLM response content is None (Attempt {attempt + 1})[/yellow]")
+                    console.log(f"[yellow]ASYNC LLM response content is None (Attempt {attempt + 1}). Provider: {self.provider}[/yellow]")
                     last_exception = ValueError("LLM response content was None.")
                 else:
                     try:
@@ -329,22 +338,39 @@ class ResumeAnalyzer:
 
             # --- Exception Handling (Provider Agnostic where possible) ---
             except (openai.APIConnectionError, ollama.ResponseError, asyncio.TimeoutError, ConnectionError, TimeoutError) as conn_err:
-                console.log(f"[yellow]ASYNC LLM Connection/Timeout Error (Attempt {attempt + 1}): {type(conn_err).__name__} - {conn_err}[/yellow]")
+                error_message = f"ASYNC LLM Connection/Timeout Error (Provider: {self.provider}, Attempt {attempt + 1}): {type(conn_err).__name__} - {conn_err}"
+                console.log(f"[yellow]{error_message}[/yellow]")
+                log_exception(error_message, conn_err) # Log full traceback
                 last_exception = conn_err
-            except (openai.RateLimitError) as rate_err: # Specific OpenAI error
-                console.log(f"[yellow]ASYNC LLM Rate Limit Error (Attempt {attempt + 1}): {rate_err}[/yellow]")
-                last_exception = rate_err # Could implement longer/specific backoff here
-            except (openai.APIStatusError) as status_err: # Specific OpenAI error
-                 console.log(f"[yellow]ASYNC LLM API Status Error (Attempt {attempt + 1}): Status {status_err.status_code}, Response: {status_err.response}[/yellow]")
-                 last_exception = status_err
-            # Add specific Gemini exceptions if needed (e.g., google.api_core.exceptions...)
+            except openai.RateLimitError as rate_err: # Specific OpenAI error
+                error_message = f"ASYNC LLM Rate Limit Error (Provider: openai, Attempt {attempt + 1}): {rate_err}"
+                console.log(f"[yellow]{error_message}[/yellow]")
+                log_exception(error_message, rate_err)
+                last_exception = rate_err
+            except openai.APIStatusError as status_err: # Specific OpenAI error
+                error_message = f"ASYNC LLM API Status Error (Provider: openai, Attempt {attempt + 1}): Status {status_err.status_code}, Response: {status_err.response.text if status_err.response else 'N/A'}"
+                console.log(f"[yellow]{error_message}[/yellow]")
+                log_exception(error_message, status_err)
+                last_exception = status_err
+            except genai.types.generation_types.BlockedPromptException as gemini_block_err: # Specific Gemini error
+                error_message = f"ASYNC Gemini Prompt Blocked (Attempt {attempt + 1}): {gemini_block_err}. Feedback: {gemini_block_err.response.prompt_feedback if hasattr(gemini_block_err, 'response') else 'N/A'}"
+                console.log(f"[red]{error_message}[/red]")
+                log_exception(error_message, gemini_block_err)
+                last_exception = gemini_block_err
+            except google.api_core.exceptions.DeadlineExceeded as deadline_err: # Specific Google API error
+                error_message = f"ASYNC Google API Deadline Exceeded (Provider: gemini, Attempt {attempt + 1}): {deadline_err}"
+                console.log(f"[red]{error_message}[/red]")
+                log_exception(error_message, deadline_err)
+                last_exception = deadline_err
             except Exception as e: # Catch any other unexpected errors
-                log_exception(f"[red]ASYNC Unexpected LLM API Error (Provider: {self.provider}, Attempt {attempt + 1}):[/red] {e}", e)
+                error_message = f"ASYNC Unexpected LLM API Error (Provider: {self.provider}, Attempt {attempt + 1}): {type(e).__name__} - {e}"
+                console.log(f"[red]{error_message}[/red]")
+                log_exception(error_message, e)
                 last_exception = e
 
             if attempt < max_retries:
                 current_delay = retry_delay * (2 ** attempt)
-                console.log(f"[dim]ASYNC: Retrying LLM call in {current_delay:.1f}s...[/dim]")
+                console.log(f"[dim]ASYNC: Retrying LLM call in {current_delay:.1f}s... (Attempt {attempt + 1} of {max_retries})[/dim]")
                 await asyncio.sleep(current_delay)
             else:
                 console.log(f"[bold red]ASYNC: LLM call failed after {max_retries + 1} attempts.[/bold red]")
