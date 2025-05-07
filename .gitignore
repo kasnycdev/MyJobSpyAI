@@ -3,6 +3,8 @@
 .ruff
 */.ruff_cache/
 */.history/*
+.history
+.history/
 */.vscode/*
 # Environments & Dependencies
 .venv/
@@ -129,3 +131,4 @@ myjobspy.commandline.txt
 [0-9]*.[0-9]*.[0-9]*/
 [0-9]*.[0-9]*/
 [0-9]*/
+20221105/
