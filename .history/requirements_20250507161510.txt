@@ -1,0 +1,53 @@
+# requirements.txt
+
+colorama
+
+# Resume/Document Parsing
+python-docx #>= 1.1.0
+PyPDF2 #>= 3.0.0
+pdfminer.six #>= 20221105
+
+# GenAI Integration (Local LLM via Ollama)
+ollama #>= 0.2.0
+pydantic #>= 2.5.0
+
+# Job Scraping (using JobSpy library)
+python-jobspy >= 1.1.80 # Ensures necessary sub-dependencies are pulled
+
+# Geocoding for Advanced Location Filtering
+geopy #>= 2.4.0
+
+# UX / Console Output
+rich #>= 13.0.0
+
+# YAML Configuration Loading
+PyYAML #>= 6.0 # For loading config.yaml
+
+# Prompt Templating
+Jinja2 #>= 3.1.0 # For loading prompt templates
+
+
+# === Important Transitive Dependencies (Usually installed by above) ===
+# Listing pandas explicitly is good practice as it's heavily used after scraping
+pandas #>= 2.0.0
+
+# Explicitly listing key sub-dependencies for clarity and consistency
+httpx # Used by ollama, jobspy
+requests # Used by geopy, potentially jobspy
+beautifulsoup4 # Used by jobspy for parsing
+lxml # Used by python-docx
+python-dateutil # Used by pandas
+pyarrow
+# Note: playwright is installed via 'playwright install' command.
+# Note: beautifulsoup4, httpx, requests etc. are pulled by jobspy/ollama/geopy
+
+#numpy >= 2.2.5 # For pandas and other libraries
+pydocstyle
+pep8
+flake8
+bandit
+pylint
+pylama
+prospector
+mypy
+colorama

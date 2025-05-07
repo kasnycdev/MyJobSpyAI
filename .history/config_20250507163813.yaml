@@ -1,0 +1,46 @@
+# config.yaml - User Configuration (Overrides defaults in config.py)
+
+output:
+  directory: output  # Relative to project root
+  scraped_jobs_file: scraped_jobs.json
+  analysis_output_file: analysis_results.json
+  debug_output_file: debug_info.json
+
+language_model: # Renamed from ollama
+  # For LM Studio, typically http://localhost:1234/v1
+  # The /v1 path is usually required for OpenAI compatibility.
+  base_url: http://localhost:1234/v1
+  # Model identifier will depend on the model loaded in LM Studio.
+  # It might be a path or a name LM Studio uses.
+  # For example, if you loaded "NousResearch/Hermes-2-Pro-Llama-3-8B-GGUF"
+  # the model identifier might be "NousResearch/Hermes-2-Pro-Llama-3-8B-GGUF"
+  # or whatever LM Studio shows as the model ID for API calls.
+  # Check LM Studio server logs or UI for the exact model ID to use.
+  model: "codellama-7b-instruct" # Updated model identifier
+  api_key: "lm-studio" # Placeholder, can be anything if LM Studio doesn't enforce it
+  request_timeout: 900    # Timeout in seconds
+  max_retries: 2
+  retry_delay: 5
+
+analysis:
+  prompts_dir: analysis/prompts
+  resume_prompt_file: resume_extraction.prompt
+  suitability_prompt_file: suitability_analysis.prompt
+  job_extraction_prompt_file: job_extraction.prompt
+  max_prompt_chars: 48000
+
+scraping:
+  default_sites: ["linkedin"]
+  default_results_limit: 10
+  default_days_old: 14  # Use days, not hours
+  default_country_indeed: "usa"
+  linkedin_fetch_description: True
+  linkedin_company_ids: []
+
+geocoding:
+  geopy_user_agent: "MyJobSpyAI/1.0 (kasnycdev@gmail.com)" # Update with your email
+
+logging:
+  level: INFO
+  format: "%(message)s"
+  date_format: "[%X]"
