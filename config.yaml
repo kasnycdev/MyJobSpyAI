@@ -5,6 +5,8 @@ output:
   scraped_jobs_file: scraped_jobs.json
   analysis_output_file: analysis_results.json
   debug_output_file: debug_info.json
+  geocode_cache_file: cache/geocode_cache.json # Path for geocoding cache (relative to project root)
+  resume_cache_dir: cache/resume_cache/ # Directory for structured resume data cache (relative to project root)
 
 # --- LLM Configuration ---
 # Select the provider to use: "openai", "ollama", or "gemini"
