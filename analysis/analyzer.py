@@ -89,6 +89,7 @@ class ResumeAnalyzer:
         self.request_timeout: Optional[int] = None
         self.max_retries: int = 2
         self.retry_delay: int = 5
+        self.ollama_base_url: Optional[str] = None # Store Ollama base URL
 
         self._initialize_llm_client()
         self._load_prompt_templates()
@@ -122,6 +123,7 @@ class ResumeAnalyzer:
         """Initializes the Ollama LLM client."""
         cfg = self._load_common_provider_config("ollama")
         base_url = cfg.get('base_url')
+        self.ollama_base_url = base_url # Store the base URL
 
         if not base_url or not self.model_name:
             raise ValueError("Ollama provider requires 'base_url' and 'model' in config.")
@@ -198,17 +200,20 @@ class ResumeAnalyzer:
         """Checks the connection and model availability for the Ollama provider."""
         if not self.sync_client:
             raise RuntimeError("Ollama sync client not initialized.")
-        # The comment "# Check Ollama connection" is effectively replaced by this method's purpose and docstring.
-        base_url = getattr(self.sync_client, '_client', {})._host # Access host from underlying client
-        console.log(f"Attempting to list models from Ollama server at {base_url}...")
+        if not self.ollama_base_url:
+             raise RuntimeError("Ollama base URL not set during initialization.")
+        # Use the stored base URL for logging
+        console.log(f"Attempting to list models from Ollama server at {self.ollama_base_url}...")
         response = self.sync_client.list()
-        available_models = [m['name'] for m in response.get('models', [])]
+        # Use .get() for safer access and filter out None if 'name' key is missing
+        available_models = [m.get('name') for m in response.get('models', [])]
+        available_models = [name for name in available_models if name is not None] # Filter out None values
         console.log(f"Available Ollama models: {available_models}")
         if self.model_name not in available_models:
             console.log(f"[yellow]Warning: Configured Ollama model '{self.model_name}' not found in available models. Ensure it is pulled.[/yellow]")
         else:
             console.log(f"[green]Configured Ollama model '{self.model_name}' found.[/green]")
-        console.log(f"[green]Successfully connected to Ollama server at {base_url}.[/green]")
+        console.log(f"[green]Successfully connected to Ollama server at {self.ollama_base_url}.[/green]")
 
     def _check_connection_and_model(self):
         """Checks connection and model availability for the selected provider."""
