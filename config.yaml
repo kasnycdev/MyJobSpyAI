@@ -15,7 +15,7 @@ openai: # Settings for OpenAI-compatible APIs (LM Studio, etc.)
   base_url: http://localhost:1234/v1
   # Model identifier depends on the model loaded in LM Studio.
   # Check LM Studio server logs or UI for the exact model ID.
-  model: "codellama-7b-instruct" # Example model identifier
+  model: "codellama-34b-python" # Example model identifier
   api_key: "lm-studio" # Placeholder, often not needed for local LM Studio
   request_timeout: 900    # Timeout in seconds for API calls
   max_retries: 0          # Max number of retries on failure
@@ -24,7 +24,7 @@ openai: # Settings for OpenAI-compatible APIs (LM Studio, etc.)
 ollama: # Settings for local Ollama server
   base_url: http://localhost:11434 # Default Ollama URL
   # Model name as pulled/available in Ollama (e.g., "llama3:instruct")
-  model: "codellama-7b-instruct"
+  model: "codellama-34b-python"
   request_timeout: 900
   max_retries: 2
   retry_delay: 5
@@ -47,7 +47,7 @@ analysis:
   resume_prompt_file: resume_extraction.prompt
   suitability_prompt_file: suitability_analysis.prompt
   job_extraction_prompt_file: job_extraction.prompt
-  max_prompt_chars: 1000
+  max_prompt_chars: 16739 # Max chars for a single prompt (API limit)
   log_full_prompt: true # Added to enable verbose prompt logging
 
 scraping:
