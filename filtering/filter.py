@@ -1,5 +1,7 @@
 import logging
 import time
+import json # Added json import
+import os # Added os import
 from typing import Dict, Optional, List, Any
 from colorama import Fore, Style  # Import colorama
 from rich.console import Console
@@ -29,8 +31,37 @@ if GEOPY_AVAILABLE:
 else:
     console.log("[yellow]Geopy library not installed. Location filtering disabled.[/yellow]")
 
+# Persistent geocode cache file
+GEOCACHE_FILE = "geocode_cache.json"
+
 _geocode_cache = {}
 _geocode_fail_cache = set()
+
+def load_geocode_cache():
+    """Loads the geocode cache from a JSON file."""
+    global _geocode_cache, _geocode_fail_cache
+    if os.path.exists(GEOCACHE_FILE):
+        try:
+            with open(GEOCACHE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                _geocode_cache = data.get('cache', {})
+                _geocode_fail_cache = set(data.get('fail_cache', []))
+            console.log(f"[green]Loaded geocode cache from {GEOCACHE_FILE}[/green]")
+        except (json.JSONDecodeError, IOError) as e:
+            console.log(f"[red]Error loading geocode cache from {GEOCACHE_FILE}: {e}[/red]")
+
+def save_geocode_cache():
+    """Saves the geocode cache to a JSON file."""
+    try:
+        with open(GEOCACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'cache': _geocode_cache, 'fail_cache': list(_geocode_fail_cache)}, f, indent=4)
+        console.log(f"[green]Saved geocode cache to {GEOCACHE_FILE}[/green]")
+    except IOError as e:
+        console.log(f"[red]Error saving geocode cache to {GEOCACHE_FILE}: {e}[/red]")
+
+# Load cache on startup
+load_geocode_cache()
+
 
 def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]:
     """
@@ -79,24 +110,29 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
                 console.log(f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}")
                 result = (lat, lon, country_name)
                 _geocode_cache[normalized_loc] = result
+                save_geocode_cache() # Save cache after successful geocode
                 return result
             else:
                 console.log(
                     f"[yellow]Geocoded '{location_str}' but couldn't extract country name. Address: {address}[/yellow]"
                 )
                 _geocode_fail_cache.add(normalized_loc)
+                save_geocode_cache() # Save cache after failed geocode
                 return None
         else:
             console.log(f"[yellow]Failed to geocode '{location_str}' - No results.[/yellow]")
             _geocode_fail_cache.add(normalized_loc)
+            save_geocode_cache() # Save cache after failed geocode
             return None
     except (GeocoderTimedOut, GeocoderServiceError) as geo_err:
         console.log(f"[red]Geocoding error for '{location_str}': {geo_err}[/red]")
         _geocode_fail_cache.add(normalized_loc)
+        save_geocode_cache() # Save cache after geocoding error
         return None
     except Exception as e:
         console.log(f"[red]Unexpected geocoding error for '{location_str}': {e}[/red]", exc_info=True)
         _geocode_fail_cache.add(normalized_loc)
+        save_geocode_cache() # Save cache after unexpected error
         return None
 
 # --- Main Filter Function ---
@@ -261,4 +297,6 @@ def apply_filters(
 
     final_count = len(filtered_jobs)
     console.log(f"Filtering complete. {final_count} out of {initial_count} jobs passed active filters.")
+    # Save cache at the end of filtering
+    save_geocode_cache()
     return filtered_jobs

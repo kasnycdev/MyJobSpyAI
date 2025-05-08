@@ -2,7 +2,7 @@ import os
 import logging
 import html
 from docx import Document
-from PyPDF2 import PdfReader
+from pypdf import PdfReader # Changed from PyPDF2 to pypdf
 from colorama import Fore, Style, init  # Import colorama
 from rich.console import Console
 from rich.logging import RichHandler
@@ -50,12 +50,14 @@ def _parse_docx(file_path: str) -> str:
 
 
 def _parse_pdf(file_path: str) -> str:
-    """Parses text content from a PDF file using PyPDF2."""
+    """Parses text content from a PDF file using pypdf."""
     text = ""
     try:
         with open(file_path, 'rb') as file:
             reader = PdfReader(file)
-            for page in reader.pages:
+            # Iterate through pages and extract text
+            for page_num in range(len(reader.pages)):
+                page = reader.pages[page_num]
                 if (page_text := page.extract_text()):
                     text += page_text + "\n"
         return _preprocess_text(text)

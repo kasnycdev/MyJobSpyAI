@@ -8,9 +8,13 @@ from rich.console import Console
 # Initialize rich console
 console = Console()
 
+# Module-level cache for job mandates and prompt fields
+_loaded_job_mandates = None
+_extracted_prompt_fields = None
+
 def load_job_mandates(json_file_path: str) -> list[dict]:
     """
-    Loads job mandates from a JSON file.
+    Loads job mandates from a JSON file, using an in-memory cache.
 
     Args:
         json_file_path: Path to the JSON file containing a list of job objects.
@@ -18,6 +22,11 @@ def load_job_mandates(json_file_path: str) -> list[dict]:
     Returns:
         A list of job dictionaries, or an empty list on error.
     """
+    global _loaded_job_mandates
+    if _loaded_job_mandates is not None:
+        console.log("[green]Returning job mandates from cache.[/green]")
+        return _loaded_job_mandates
+
     if not os.path.exists(json_file_path):
         console.log(f"[red]Job mandates file not found: {json_file_path}[/red]")
         return []
@@ -32,6 +41,7 @@ def load_job_mandates(json_file_path: str) -> list[dict]:
             )
             # Basic validation: ensure items are dictionaries
             if all(isinstance(job, dict) for job in data):
+                _loaded_job_mandates = data # Cache the loaded data
                 return data
             else:
                 console.log(
@@ -54,7 +64,8 @@ def load_job_mandates(json_file_path: str) -> list[dict]:
 
 def extract_fields_from_prompt(prompt_path: str) -> list[str]:
     """
-    Extracts field names from the JSON schema in the job_extraction.prompt file.
+    Extracts field names from the JSON schema in the job_extraction.prompt file,
+    using an in-memory cache.
 
     Args:
         prompt_path: Path to the job_extraction.prompt file.
@@ -62,6 +73,11 @@ def extract_fields_from_prompt(prompt_path: str) -> list[str]:
     Returns:
         A list of field names defined in the JSON schema.
     """
+    global _extracted_prompt_fields
+    if _extracted_prompt_fields is not None:
+        console.log("[green]Returning extracted prompt fields from cache.[/green]")
+        return _extracted_prompt_fields
+
     try:
         with open(prompt_path, 'r', encoding='utf-8') as f:
             prompt_content = f.read()
@@ -75,6 +91,7 @@ def extract_fields_from_prompt(prompt_path: str) -> list[str]:
         schema_content = schema_match.group(1)
         # Extract field names from the JSON schema
         field_names = re.findall(r'"(.*?)":', schema_content)
+        _extracted_prompt_fields = field_names # Cache the extracted fields
         return field_names
     except Exception as e:
         console.log(f"[red]Error extracting fields from prompt: {e}[/red]")
@@ -90,6 +107,7 @@ def parse_job_data(job_data: dict) -> dict:
     Returns:
         A dictionary conforming to the schema defined in `job_extraction.prompt`.
     """
+    # This function doesn't directly read files, so no change needed here for I/O reduction
     return {
         "job_title_extracted": job_data.get("title"),
         "key_responsibilities": job_data.get("responsibilities", []),
@@ -136,9 +154,14 @@ def parse_job_data_dynamic(job_data: dict, fields: list[str]) -> dict:
 
 # Example usage
 if __name__ == "__main__":
+    # Example of how to use the caching functions
     prompt_path = os.path.join(os.path.dirname(__file__), '../analysis/prompts/job_extraction.prompt')
-    fields = extract_fields_from_prompt(prompt_path)
+    fields = extract_fields_from_prompt(prompt_path) # First call reads the file and caches
     console.log(f"[green]Extracted fields from prompt: {fields}[/green]")
+
+    fields_cached = extract_fields_from_prompt(prompt_path) # Second call should use the cache
+    console.log(f"[green]Extracted fields from prompt (cached): {fields_cached}[/green]")
+
 
     # Example job data
     job_data = {

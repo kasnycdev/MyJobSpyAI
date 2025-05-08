@@ -2,7 +2,7 @@
 python-jobspy >= 1.1.80 # Job scraping
 geopy >= 2.4.0          # Geocoding for location filtering
 python-docx >= 1.1.0    # Resume parsing (.docx)
-PyPDF2 >= 3.0.0         # Resume parsing (.pdf)
+pypdf >= 3.0.0         # Resume parsing (.pdf) - Changed from PyPDF2
 # pdfminer.six >= 20221105 # Alternative/dependency for PDF parsing if needed
 
 # === LLM / GenAI Integration ===
@@ -18,6 +18,8 @@ Jinja2 >= 3.1.0         # For loading prompt templates
 # === UX / Console Output ===
 rich >= 13.0.0          # Enhanced console output (tables, progress, logging)
 colorama                # Cross-platform colored terminal text (used by rich)
+pytrail                 # For interactive debugging and tracing
+scalene                 # Required by pytrail for profiling
 
 # === Data Handling ===
 pandas >= 2.0.0         # Data manipulation (primarily after scraping)
@@ -26,7 +28,7 @@ numpy >= 1.26.3         # Required by jobspy 1.1.80, also used by pandas
 # === Important Transitive Dependencies (Usually installed by above) ===
 # httpx                 # Used by openai, ollama, jobspy
 # requests              # Used by geopy, potentially jobspy
-# beautifulsoup4        # Used by jobspy for parsing
+# beautifulsoup4       # Used by jobspy for parsing
 # lxml                  # Used by python-docx
 # python-dateutil       # Used by pandas
 # pyarrow               # Used by pandas (optional, for parquet etc.)
