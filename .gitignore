@@ -19,7 +19,9 @@ node_modules/
 
 # Python cache & compiled files
 */__pycache__/*
+__pycache__/
 *.py[cod]
+*.py*
 *$py.class
 *.so
 
