@@ -21,7 +21,6 @@ node_modules/
 */__pycache__/*
 __pycache__/
 *.py[cod]
-*.py*
 *$py.class
 *.so
 

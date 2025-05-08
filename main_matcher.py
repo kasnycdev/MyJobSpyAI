@@ -38,10 +38,41 @@ except ImportError:
 
 # --- ASYNC Resume Loading/Extraction ---
 async def load_and_extract_resume_async(
-    resume_path: str, analyzer: ResumeAnalyzer
+    resume_path: str, analyzer: ResumeAnalyzer, force_reparse: bool = False
 ) -> Optional[ResumeData]:
-    """ASYNC: Loads resume, parses text, and extracts structured data."""
+    """ASYNC: Loads resume, parses text, and extracts structured data with caching."""
     console.log(f"Processing resume file: [cyan]{resume_path}[/cyan]")
+
+    cache_dir = os.path.join(config.settings.get('output', {}).get('directory', 'output'), '.resume_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    # Use file modification time for cache key
+    try:
+        mtime = os.path.getmtime(resume_path)
+        cache_key = f"{os.path.basename(resume_path)}_{mtime}.json"
+        cache_path = os.path.join(cache_dir, cache_key)
+    except Exception as e:
+        console.log(f"[yellow]Could not get resume file modification time for caching: {e}. Skipping cache.[/yellow]")
+        cache_path = None # Disable caching if mtime fails
+
+    if cache_path and os.path.exists(cache_path) and not force_reparse:
+        console.log(f"[blue]Loading structured resume data from cache: {cache_path}[/blue]")
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cached_data = json.load(f)
+            # Validate cached data structure if necessary, for now assume it's correct
+            structured_resume_data = ResumeData(**cached_data)
+            console.log("[green]Successfully loaded structured data from cache.[/green]")
+            return structured_resume_data
+        except Exception as e:
+            console.log(f"[yellow]Error loading from cache {cache_path}: {e}. Reparsing.[/yellow]")
+            # Fall through to parsing if cache loading fails
+
+    if force_reparse:
+         console.log("[yellow]Force reparse requested. Skipping cache.[/yellow]")
+
+    # If cache not found, invalid, or force_reparse is True, parse and extract
+    console.log("[blue]Cache not found or invalid. Parsing and extracting resume data...[/blue]")
     try:
         resume_text = parse_resume(resume_path)
     except Exception as e:
@@ -52,13 +83,36 @@ async def load_and_extract_resume_async(
     if not resume_text:
         console.log("[bold red]Parsed resume text is empty.[/bold red]")
         return None
+
     structured_resume_data = await analyzer.extract_resume_data_async(resume_text)
+
     if not structured_resume_data:
         console.log(
             "[bold red]Failed to extract structured data from resume.[/bold red]"
         )
         return None
+
     console.log("[green]Successfully extracted structured data from resume.[/green]")
+
+    # Save to cache
+    if cache_path:
+        try:
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                json.dump(structured_resume_data.model_dump(), f, indent=4)
+            console.log(f"[green]Successfully saved structured data to cache: {cache_path}[/green]")
+            # Clean up old cache files for this resume name
+            for filename in os.listdir(cache_dir):
+                if filename.startswith(os.path.basename(resume_path) + "_") and filename != cache_key:
+                    try:
+                        os.remove(os.path.join(cache_dir, filename))
+                        console.log(f"[blue]Removed old cache file: {filename}[/blue]")
+                    except Exception as e:
+                        console.log(f"[yellow]Error removing old cache file {filename}: {e}[/yellow]")
+
+        except Exception as e:
+            console.log(f"[yellow]Error saving to cache {cache_path}: {e}.[/yellow]")
+
+
     return structured_resume_data
 
 
