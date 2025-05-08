@@ -8,7 +8,7 @@ output:
 
 # --- LLM Configuration ---
 # Select the provider to use: "openai", "ollama", or "gemini"
-llm_provider: "gemini" # Defaulting to openai (for LM Studio)
+llm_provider: "ollama" # Defaulting to openai (for LM Studio)
 
 openai: # Settings for OpenAI-compatible APIs (LM Studio, etc.)
   # For LM Studio, typically http://localhost:1234/v1
