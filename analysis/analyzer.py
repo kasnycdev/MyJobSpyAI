@@ -1,15 +1,16 @@
 import openai
 import ollama
+# cspell:ignore generativeai, genai, ollama, Jinja2, autoescape, lstrip_blocks, api_core
 import google.generativeai as genai # Corrected import alias
 import google.api_core.exceptions # Added for DeadlineExceeded
 import json
+from contextlib import suppress # Added for Sourcery fix
 import os
 import asyncio
 from typing import Dict, Optional, Any, Union
 from rich.console import Console
 import traceback
 import time
-import datetime # For timing logs
 
 # Import Jinja2 components
 try:
@@ -83,76 +84,85 @@ class ResumeAnalyzer:
         console.log(f"Initializing LLM client for provider: [bold cyan]{self.provider}[/bold cyan]")
 
         self.model_name: Optional[str] = None
-        self.sync_client: Union[openai.OpenAI, ollama.Client, None] = None # Gemini doesn't have separate sync client in lib
+        self.sync_client: Union[openai.OpenAI, ollama.Client, None] = None
         self.async_client: Union[openai.AsyncOpenAI, ollama.AsyncClient, genai.GenerativeModel, None] = None
         self.request_timeout: Optional[int] = None
         self.max_retries: int = 2
         self.retry_delay: int = 5
 
+        self._initialize_llm_client()
+        self._load_prompt_templates()
+        self._check_connection_and_model()
+
+    def _load_common_provider_config(self, provider_key: str) -> Dict[str, Any]:
+        """Loads common configuration for a given LLM provider."""
+        cfg = settings.get(provider_key, {})
+        self.model_name = cfg.get('model')
+        self.request_timeout = cfg.get('request_timeout')
+        # Defaults for max_retries and retry_delay are taken from class attributes
+        # if not specified in the provider's configuration.
+        self.max_retries = cfg.get('max_retries', self.max_retries)
+        self.retry_delay = cfg.get('retry_delay', self.retry_delay)
+        return cfg
+
+    def _initialize_openai_client(self):
+        """Initializes the OpenAI LLM client."""
+        cfg = self._load_common_provider_config("openai")
+        base_url = cfg.get('base_url')
+        api_key = cfg.get('api_key', 'lm-studio')
+
+        if not base_url or not self.model_name:
+            raise ValueError("OpenAI provider requires 'base_url' and 'model' in config.")
+
+        self.sync_client = openai.OpenAI(base_url=base_url, api_key=api_key, timeout=self.request_timeout)
+        self.async_client = openai.AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=self.request_timeout)
+        console.log(f"[green]OpenAI client initialized for model '{self.model_name}' at {base_url}.[/green]")
+
+    def _initialize_ollama_client(self):
+        """Initializes the Ollama LLM client."""
+        cfg = self._load_common_provider_config("ollama")
+        base_url = cfg.get('base_url')
+
+        if not base_url or not self.model_name:
+            raise ValueError("Ollama provider requires 'base_url' and 'model' in config.")
+
+        self.sync_client = ollama.Client(host=base_url, timeout=self.request_timeout)
+        self.async_client = ollama.AsyncClient(host=base_url, timeout=self.request_timeout)
+        console.log(f"[green]Ollama client initialized for model '{self.model_name}' at {base_url} with timeout {self.request_timeout}s.[/green]")
+
+    def _initialize_gemini_client(self):
+        """Initializes the Gemini LLM client."""
+        cfg = self._load_common_provider_config("gemini")
+        api_key = cfg.get('api_key') or os.getenv('GOOGLE_API_KEY')
+
+        if not api_key:
+            raise ValueError("Gemini provider requires 'api_key' in config or GOOGLE_API_KEY env var.")
+        if not self.model_name:
+            raise ValueError("Gemini provider requires 'model' name in config.")
+
+        genai.configure(api_key=api_key)
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        ]
+        self.async_client = genai.GenerativeModel(
+            model_name=self.model_name,
+            safety_settings=safety_settings
+        )
+        self.sync_client = None # No separate sync client needed for basic checks
+        console.log(f"[green]Gemini client initialized for model '{self.model_name}'.[/green]")
+
+    def _initialize_llm_client(self):
+        """Initializes the LLM client based on the configured provider."""
         try:
             if self.provider == "openai":
-                cfg = settings.get('openai', {})
-                self.model_name = cfg.get('model')
-                base_url = cfg.get('base_url')
-                api_key = cfg.get('api_key', 'lm-studio')
-                self.request_timeout = cfg.get('request_timeout')
-                self.max_retries = cfg.get('max_retries', 2)
-                self.retry_delay = cfg.get('retry_delay', 5)
-
-                if not base_url or not self.model_name:
-                    raise ValueError("OpenAI provider requires 'base_url' and 'model' in config.")
-
-                self.sync_client = openai.OpenAI(base_url=base_url, api_key=api_key, timeout=self.request_timeout)
-                self.async_client = openai.AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=self.request_timeout)
-                console.log(f"[green]OpenAI client initialized for model '{self.model_name}' at {base_url}.[/green]")
-
+                self._initialize_openai_client()
             elif self.provider == "ollama":
-                cfg = settings.get('ollama', {})
-                self.model_name = cfg.get('model')
-                base_url = cfg.get('base_url')
-                self.request_timeout = cfg.get('request_timeout')
-                self.max_retries = cfg.get('max_retries', 2)
-                self.retry_delay = cfg.get('retry_delay', 5)
-
-                if not base_url or not self.model_name:
-                    raise ValueError("Ollama provider requires 'base_url' and 'model' in config.")
-
-                # Ollama client timeout is handled differently (per-request option)
-                self.sync_client = ollama.Client(host=base_url)
-                self.async_client = ollama.AsyncClient(host=base_url)
-                console.log(f"[green]Ollama client initialized for model '{self.model_name}' at {base_url}.[/green]")
-
+                self._initialize_ollama_client()
             elif self.provider == "gemini":
-                cfg = settings.get('gemini', {})
-                self.model_name = cfg.get('model')
-                api_key = cfg.get('api_key') or os.getenv('GOOGLE_API_KEY')
-                # Timeout/retries often handled by google client library or need custom logic
-                self.request_timeout = cfg.get('request_timeout') # Store for potential custom logic
-                self.max_retries = cfg.get('max_retries', 2)
-                self.retry_delay = cfg.get('retry_delay', 5)
-
-                if not api_key:
-                    raise ValueError("Gemini provider requires 'api_key' in config or GOOGLE_API_KEY env var.")
-                if not self.model_name:
-                    raise ValueError("Gemini provider requires 'model' name in config.")
-
-                genai.configure(api_key=api_key)
-                # Safety settings to allow potentially sensitive content from resumes/jobs
-                safety_settings = [
-                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-                ]
-                # For Gemini, the client is the model object itself
-                self.async_client = genai.GenerativeModel(
-                    model_name=self.model_name,
-                    safety_settings=safety_settings
-                    # generation_config can be set here if needed, e.g., temperature
-                )
-                self.sync_client = None # No separate sync client needed for basic checks
-                console.log(f"[green]Gemini client initialized for model '{self.model_name}'.[/green]")
-
+                self._initialize_gemini_client()
             else:
                 raise ValueError(f"Unsupported llm_provider: '{self.provider}'. Choose 'openai', 'ollama', or 'gemini'.")
 
@@ -160,16 +170,45 @@ class ResumeAnalyzer:
             log_exception(f"[bold red]Failed to initialize LLM client for provider '{self.provider}':[/bold red] {e}", e)
             raise RuntimeError(f"LLM client initialization failed: {e}") from e
 
-        # --- Load Jinja2 Templates ---
+    def _load_prompt_templates(self):
+        """Loads Jinja2 prompt templates."""
         try:
             self.resume_prompt_template = load_template("resume_prompt_file")
             self.suitability_prompt_template = load_template("suitability_prompt_file")
-            self.job_extraction_prompt_template = load_template("job_extraction_prompt_file") # New
+            self.job_extraction_prompt_template = load_template("job_extraction_prompt_file")
         except (RuntimeError, ValueError, TemplateNotFound, TemplateSyntaxError) as tmpl_err:
             log_exception(f"[bold red]Failed to load necessary prompt templates:[/bold red] {tmpl_err}", tmpl_err)
             raise RuntimeError(f"Prompt template loading failed: {tmpl_err}") from tmpl_err
 
-        self._check_connection_and_model()
+    def _check_openai_connection(self):
+        """Checks the connection and model availability for the OpenAI provider."""
+        if not self.sync_client:
+            raise RuntimeError("OpenAI sync client not initialized.")
+        # Check OpenAI/LM Studio connection
+        base_url = getattr(self.sync_client, 'base_url', 'N/A') # Get base_url if available
+        console.log(f"Attempting to list models from OpenAI-compatible server at {base_url}...")
+        models_response = self.sync_client.models.list()
+        available_model_ids = [model.id for model in models_response.data]
+        console.log(f"Available models reported by API: {available_model_ids}")
+        # Note: LM Studio might only list the loaded model. Check primarily for connection success.
+        console.log(f"[green]Successfully connected to OpenAI-compatible server at {base_url}.[/green]")
+        console.log(f"[cyan]Configured to use model: '{self.model_name}'. Ensure this model is loaded/available.[/cyan]")
+
+    def _check_ollama_connection(self):
+        """Checks the connection and model availability for the Ollama provider."""
+        if not self.sync_client:
+            raise RuntimeError("Ollama sync client not initialized.")
+        # The comment "# Check Ollama connection" is effectively replaced by this method's purpose and docstring.
+        base_url = getattr(self.sync_client, '_client', {})._host # Access host from underlying client
+        console.log(f"Attempting to list models from Ollama server at {base_url}...")
+        response = self.sync_client.list()
+        available_models = [m['name'] for m in response.get('models', [])]
+        console.log(f"Available Ollama models: {available_models}")
+        if self.model_name not in available_models:
+            console.log(f"[yellow]Warning: Configured Ollama model '{self.model_name}' not found in available models. Ensure it is pulled.[/yellow]")
+        else:
+            console.log(f"[green]Configured Ollama model '{self.model_name}' found.[/green]")
+        console.log(f"[green]Successfully connected to Ollama server at {base_url}.[/green]")
 
     def _check_connection_and_model(self):
         """Checks connection and model availability for the selected provider."""
@@ -177,53 +216,29 @@ class ResumeAnalyzer:
 
         try:
             if self.provider == "openai":
-                # Check OpenAI/LM Studio connection
-                if not self.sync_client: raise RuntimeError("OpenAI sync client not initialized.")
-                base_url = getattr(self.sync_client, 'base_url', 'N/A') # Get base_url if available
-                console.log(f"Attempting to list models from OpenAI-compatible server at {base_url}...")
-                models_response = self.sync_client.models.list()
-                available_model_ids = [model.id for model in models_response.data]
-                console.log(f"Available models reported by API: {available_model_ids}")
-                # Note: LM Studio might only list the loaded model. Check primarily for connection success.
-                console.log(f"[green]Successfully connected to OpenAI-compatible server at {base_url}.[/green]")
-                console.log(f"[cyan]Configured to use model: '{self.model_name}'. Ensure this model is loaded/available.[/cyan]")
-
+                self._check_openai_connection()
             elif self.provider == "ollama":
-                # Check Ollama connection
-                if not self.sync_client: raise RuntimeError("Ollama sync client not initialized.")
-                base_url = getattr(self.sync_client, '_client', {})._host # Access host from underlying client
-                console.log(f"Attempting to list models from Ollama server at {base_url}...")
-                response = self.sync_client.list()
-                available_models = [m['name'] for m in response.get('models', [])]
-                console.log(f"Available Ollama models: {available_models}")
-                if self.model_name not in available_models:
-                     console.log(f"[yellow]Warning: Configured Ollama model '{self.model_name}' not found in available models. Ensure it is pulled.[/yellow]")
-                else:
-                     console.log(f"[green]Configured Ollama model '{self.model_name}' found.[/green]")
-                console.log(f"[green]Successfully connected to Ollama server at {base_url}.[/green]")
-
+                self._check_ollama_connection()
             elif self.provider == "gemini":
                 # Check Gemini connection and model existence
-                console.log(f"Attempting to list models from Google AI...")
+                console.log("Attempting to list models from Google AI...")
                 found_model = False
                 for m in genai.list_models():
                     # Check if the model supports generateContent and matches the configured name
                     if 'generateContent' in m.supported_generation_methods and self.model_name in m.name:
-                         console.log(f"Found compatible Gemini model: {m.name}")
-                         found_model = True
-                         break # Found a suitable match
+                        console.log(f"Found compatible Gemini model: {m.name}")
+                        found_model = True
+                        break # Found a suitable match
                 if not found_model:
-                     console.log(f"[red]Error: Configured Gemini model '{self.model_name}' not found or does not support 'generateContent'.[/red]")
-                     console.log("Please check available models in Google AI Studio and your config.yaml.")
-                     # List some available generative models for user convenience
-                     try:
-                         generative_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                         console.log(f"Available generative models: {generative_models[:10]}") # Show first 10
-                     except Exception:
-                         pass # Ignore errors listing models if the initial check failed
-                     raise ValueError(f"Gemini model '{self.model_name}' not suitable.")
+                    console.log(f"[red]Error: Configured Gemini model '{self.model_name}' not found or does not support 'generateContent'.[/red]")
+                    console.log("Please check available models in Google AI Studio and your config.yaml.")
+                    # List some available generative models for user convenience
+                    with suppress(Exception): # Ignore errors listing models if the initial check failed
+                        generative_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                        console.log(f"Available generative models: {generative_models[:10]}") # Show first 10
+                    raise ValueError(f"Gemini model '{self.model_name}' not suitable.")
                 else:
-                     console.log(f"[green]Successfully verified Gemini model '{self.model_name}' is available.[/green]")
+                    console.log(f"[green]Successfully verified Gemini model '{self.model_name}' is available.[/green]")
 
         except (openai.APIConnectionError, ollama.ResponseError, Exception) as e:
             provider_name = self.provider.upper()
@@ -231,10 +246,58 @@ class ResumeAnalyzer:
             log_exception(f"[bold red]{provider_name} API Connection/Setup Error:[/bold red] {error_type} - {e}", e)
             raise ConnectionError(f"Failed to connect to/setup {provider_name} provider: {e}") from e
         except Exception as e: # Catch any other unexpected errors
-             log_exception(f"[bold red]Unexpected error during LLM connection check:[/bold red] {e}", e)
-             raise ConnectionError(f"Unexpected error during LLM connection check: {e}") from e
+            log_exception(f"[bold red]Unexpected error during LLM connection check:[/bold red] {e}", e)
+            raise ConnectionError(f"Unexpected error during LLM connection check: {e}") from e
 
     # Ollama-specific model pulling methods are removed.
+
+    # Helper methods for provider-specific LLM calls
+    async def _call_openai_llm_async(self, prompt: str) -> Optional[str]:
+        if not isinstance(self.async_client, openai.AsyncOpenAI) or not self.model_name:
+            # This check is more for type safety; None check for client/model_name is in the caller.
+            raise TypeError("OpenAI client or model_name not configured correctly for call.")
+        response = await self.async_client.chat.completions.create(
+            model=self.model_name,
+            messages=[{'role': 'user', 'content': prompt}],
+            temperature=0.1
+        )
+        return response.choices[0].message.content
+
+    async def _call_ollama_llm_async(self, prompt: str) -> Optional[str]:
+        if not isinstance(self.async_client, ollama.AsyncClient) or not self.model_name:
+            raise TypeError("Ollama client or model_name not configured correctly for call.")
+        ollama_options = {'temperature': 0.1}
+        # Timeout is handled by client instance after __init__ fix
+        response = await self.async_client.chat(
+            model=self.model_name,
+            messages=[{'role': 'user', 'content': prompt}],
+            format='json',
+            options=ollama_options,
+        )
+        return response['message']['content']
+
+    async def _call_gemini_llm_async(self, prompt: str) -> Optional[str]:
+        if not isinstance(self.async_client, genai.GenerativeModel) or not self.model_name:
+            raise TypeError("Gemini client or model_name not configured correctly for call.")
+        generation_config = genai.types.GenerationConfig(
+            response_mime_type="application/json",
+            temperature=0.1
+        )
+        response = await self.async_client.generate_content_async(
+            prompt,
+            generation_config=generation_config,
+            request_options={'timeout': self.request_timeout} # Uses class member self.request_timeout
+        )
+        if not response.candidates:
+            # Raise specific exception for blocked prompts to be handled by the caller
+            raise genai.types.generation_types.BlockedPromptException(
+                f"Gemini response blocked. Prompt feedback: {response.prompt_feedback}"
+            )
+        content = response.text
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            usage = response.usage_metadata
+            console.log(f"[dim]Gemini Usage - Prompt: {usage.prompt_token_count}, Candidates: {usage.candidates_token_count}, Total: {usage.total_token_count} tokens[/dim]")
+        return content
 
     async def _call_llm_async(self, prompt: str) -> Optional[Dict[str, Any]]: # Renamed
         """
@@ -244,20 +307,20 @@ class ResumeAnalyzer:
         if not self.async_client or not self.model_name:
             raise RuntimeError("LLM client or model name not initialized properly.")
 
-        # Use provider-specific config for retries/delay if available, else use defaults set in __init__
         provider_cfg = settings.get(self.provider, {})
         max_retries = provider_cfg.get('max_retries', self.max_retries)
         retry_delay = provider_cfg.get('retry_delay', self.retry_delay)
-        request_timeout = provider_cfg.get('request_timeout', self.request_timeout) # Used for Ollama
+        # request_timeout local var is still here, might be used if other providers need per-call timeout
+        # request_timeout = provider_cfg.get('request_timeout', self.request_timeout)
 
         analysis_cfg = settings.get('analysis', {})
         max_prompt_chars = analysis_cfg.get('max_prompt_chars', 24000)
-        log_full_prompt = analysis_cfg.get('log_full_prompt', False) # New setting
+        log_full_prompt = analysis_cfg.get('log_full_prompt', False)
 
         console.log(f"ASYNC: Sending request via provider '{self.provider}' to model '{self.model_name}'. Prompt length: {len(prompt)} chars.")
         if log_full_prompt:
             console.log(f"ASYNC: Full prompt:\n{prompt}")
-        elif len(prompt) > 1000: # Log a snippet if not logging full and prompt is long
+        elif len(prompt) > 1000:
             console.log(f"ASYNC: Prompt snippet:\n{prompt[:500]}...\n...{prompt[-500:]}")
         else:
             console.log(f"ASYNC: Prompt:\n{prompt}")
@@ -266,73 +329,39 @@ class ResumeAnalyzer:
             console.log(f"[yellow]Warning: Prompt length ({len(prompt)}) exceeds configured max_prompt_chars ({max_prompt_chars}). Model might truncate or error.[/yellow]")
 
         last_exception = None
-        content = None
+        content_str: Optional[str] = None # Renamed from 'content'
         for attempt in range(max_retries + 1):
             try:
                 if self.provider == "openai":
-                    if not isinstance(self.async_client, openai.AsyncOpenAI): raise TypeError("Invalid client type for OpenAI")
-                    response = await self.async_client.chat.completions.create(
-                        model=self.model_name,
-                        messages=[{'role': 'user', 'content': prompt}],
-                        # response_format={"type": "json_object"}, # Keep removed for LM Studio compatibility for now
-                        temperature=0.1
-                    )
-                    content = response.choices[0].message.content
-
+                    content_str = await self._call_openai_llm_async(prompt)
                 elif self.provider == "ollama":
-                    if not isinstance(self.async_client, ollama.AsyncClient): raise TypeError("Invalid client type for Ollama")
-                    response = await self.async_client.chat(
-                        model=self.model_name,
-                        messages=[{'role': 'user', 'content': prompt}],
-                        format='json', # Ollama's way to request JSON
-                        options={'temperature': 0.1},
-                        # Apply timeout per request if configured
-                        # keep_alive=-1 # Consider keep_alive setting if needed
-                    )
-                    content = response['message']['content']
-
+                    content_str = await self._call_ollama_llm_async(prompt)
                 elif self.provider == "gemini":
-                    if not isinstance(self.async_client, genai.GenerativeModel): raise TypeError("Invalid client type for Gemini")
-                    # Gemini requires specific generation config for JSON
-                    generation_config = genai.types.GenerationConfig(
-                        response_mime_type="application/json",
-                        temperature=0.1
-                    )
-                    response = await self.async_client.generate_content_async(
-                        prompt,
-                        generation_config=generation_config,
-                        request_options={'timeout': self.request_timeout} # Timeout for Gemini if needed
-                    )
-                    # Handle potential blocks by safety filters (though thresholds set to BLOCK_NONE)
-                    if not response.candidates:
-                         raise ValueError(f"Gemini response blocked. Prompt feedback: {response.prompt_feedback}")
-                    content = response.text # Gemini returns JSON directly in .text when mime_type is set
-                    # Log Gemini token usage if available
-                    if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                        usage = response.usage_metadata
-                        console.log(f"[dim]Gemini Usage - Prompt: {usage.prompt_token_count}, Candidates: {usage.candidates_token_count}, Total: {usage.total_token_count} tokens[/dim]")
+                    content_str = await self._call_gemini_llm_async(prompt)
+                else:
+                    # This case should ideally be caught by __init__ validation
+                    raise ValueError(f"Unsupported provider '{self.provider}' encountered in _call_llm_async.")
 
                 # --- Common Response Processing ---
-                console.log(f"ASYNC: LLM raw response content (Attempt {attempt + 1}):\n{content}")
+                console.log(f"ASYNC: LLM raw response content (Attempt {attempt + 1}):\n{content_str}")
 
-                if content is None:
-                    console.log(f"[yellow]ASYNC LLM response content is None (Attempt {attempt + 1}). Provider: {self.provider}[/yellow]")
-                    last_exception = ValueError("LLM response content was None.")
+                if content_str is None:
+                    console.log(f"[yellow]ASYNC LLM response content_str is None (Attempt {attempt + 1}). Provider: {self.provider}[/yellow]")
+                    last_exception = ValueError("LLM response content_str was None from helper or provider.")
                 else:
                     try:
-                        # Strip markdown fences if they appear (might happen if JSON mode fails or isn't used)
-                        content_strip = content.strip()
+                        content_strip = content_str.strip()
                         if content_strip.startswith("```json"):
                             content_strip = content_strip[7:-3].strip() if content_strip.endswith("```") else content_strip[7:].strip()
                         elif content_strip.startswith("```"):
-                             content_strip = content_strip[3:-3].strip() if content_strip.endswith("```") else content_strip[3:].strip()
+                            content_strip = content_strip[3:-3].strip() if content_strip.endswith("```") else content_strip[3:].strip()
 
                         result = json.loads(content_strip)
                         console.log("[green]ASYNC: Parsed JSON response from LLM.[/green]")
                         return result # Success! Exit loop.
                     except json.JSONDecodeError as json_err:
                         console.log(f"[yellow]ASYNC JSON Decode Error (Attempt {attempt + 1}):[/yellow] {json_err}")
-                        console.log(f"Problematic content from LLM: {content}")
+                        console.log(f"Problematic content_str from LLM: {content_str}")
                         last_exception = json_err
                         # Continue to retry logic
 
@@ -340,28 +369,35 @@ class ResumeAnalyzer:
             except (openai.APIConnectionError, ollama.ResponseError, asyncio.TimeoutError, ConnectionError, TimeoutError) as conn_err:
                 error_message = f"ASYNC LLM Connection/Timeout Error (Provider: {self.provider}, Attempt {attempt + 1}): {type(conn_err).__name__} - {conn_err}"
                 console.log(f"[yellow]{error_message}[/yellow]")
-                log_exception(error_message, conn_err) # Log full traceback
+                log_exception(error_message, conn_err)
                 last_exception = conn_err
-            except openai.RateLimitError as rate_err: # Specific OpenAI error
+            except openai.RateLimitError as rate_err:
                 error_message = f"ASYNC LLM Rate Limit Error (Provider: openai, Attempt {attempt + 1}): {rate_err}"
                 console.log(f"[yellow]{error_message}[/yellow]")
                 log_exception(error_message, rate_err)
                 last_exception = rate_err
-            except openai.APIStatusError as status_err: # Specific OpenAI error
+            except openai.APIStatusError as status_err:
                 error_message = f"ASYNC LLM API Status Error (Provider: openai, Attempt {attempt + 1}): Status {status_err.status_code}, Response: {status_err.response.text if status_err.response else 'N/A'}"
                 console.log(f"[yellow]{error_message}[/yellow]")
                 log_exception(error_message, status_err)
                 last_exception = status_err
-            except genai.types.generation_types.BlockedPromptException as gemini_block_err: # Specific Gemini error
+            except genai.types.generation_types.BlockedPromptException as gemini_block_err: # Caught from _call_gemini_llm_async
                 error_message = f"ASYNC Gemini Prompt Blocked (Attempt {attempt + 1}): {gemini_block_err}. Feedback: {gemini_block_err.response.prompt_feedback if hasattr(gemini_block_err, 'response') else 'N/A'}"
                 console.log(f"[red]{error_message}[/red]")
                 log_exception(error_message, gemini_block_err)
-                last_exception = gemini_block_err
-            except google.api_core.exceptions.DeadlineExceeded as deadline_err: # Specific Google API error
+                last_exception = gemini_block_err # This is a terminal error for the call, but retry loop might still proceed if not last attempt.
+            except google.api_core.exceptions.DeadlineExceeded as deadline_err:
                 error_message = f"ASYNC Google API Deadline Exceeded (Provider: gemini, Attempt {attempt + 1}): {deadline_err}"
                 console.log(f"[red]{error_message}[/red]")
                 log_exception(error_message, deadline_err)
                 last_exception = deadline_err
+            except TypeError as type_err: # Catch TypeErrors from helper methods if client types are wrong
+                error_message = f"ASYNC LLM Client Configuration Error (Provider: {self.provider}, Attempt {attempt + 1}): {type_err}"
+                console.log(f"[red]{error_message}[/red]")
+                log_exception(error_message, type_err)
+                last_exception = type_err
+                # This is likely a non-retriable configuration issue, so break after logging.
+                break
             except Exception as e: # Catch any other unexpected errors
                 error_message = f"ASYNC Unexpected LLM API Error (Provider: {self.provider}, Attempt {attempt + 1}): {type(e).__name__} - {e}"
                 console.log(f"[red]{error_message}[/red]")
@@ -480,15 +516,6 @@ class ResumeAnalyzer:
         #     job_description_text_for_prompt = job_description_text[:MAX_JOB_DESC_CHARS_FOR_LLM]
         # else:
         #     job_description_text_for_prompt = job_description_text
-        # For now, let _call_ollama_async handle truncation warning based on overall prompt length
-
-        try:
-            prompt = self.job_extraction_prompt_template.render(job_description=job_description_text)
-        except Exception as render_err:
-            log_exception(f"[bold red]Failed to render job extraction prompt:[/bold red] {render_err}", render_err)
-            return None
-
-        # For now, let _call_llm_async handle truncation warning based on overall prompt length
 
         try:
             prompt = self.job_extraction_prompt_template.render(job_description=job_description_text)
