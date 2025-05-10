@@ -7,53 +7,49 @@ Output *only* a valid JSON object containing the extracted data, adhering strict
 Resume Text:
 {{ resume_text }}
 
-JSON Structure to populate (Ensure all lists contain objects/strings as specified):
-{{ "{{" }} {# Note: Escaping curly braces for literal output #}
- "full_name": "string | null (Extract the candidate's full name, typically at the top)",
+JSON Structure to populate:
+{{ "{{" }}
+ "full_name": "string | null",
  "contact_information": {{ "{{" }}
    "email": "string | null",
    "phone": "string | null",
    "linkedin": "string | null",
-   "address": "string | null (City, State, Zip if available)"
+   "address": "string | null"
  {{ "}}" }},
- "summary": "string | null (Extract the **full and complete text** found under the 'PROFESSIONAL SUMMARY' header.)",
+ "summary": "string | null",
  "technical_skills": [
-     {{ "{{" }} // Structure for each technical skill - Extract from 'TECHNICAL SKILLS' section
-         "name": "string (Name of the skill, e.g., 'Python', 'Kubernetes')",
-         "level": "string | null (Proficiency level if mentioned, e.g., 'Advanced', 'Expert')",
-         "years_experience": "integer | null (Years of experience if mentioned)"
+     {{ "{{" }}
+         "name": "string",
+         "level": "string | null",
+         "years_experience": "integer | null"
      {{ "}}" }}
-     // Include more objects if multiple skills are listed
  ],
- "soft_skills": ["string (Extract **all items listed** under the 'MANAGEMENT SKILLS' header into this list.)"],
+ "soft_skills": ["string"],
  "work_experience": [
-   {{ "{{" }} // Structure for each experience entry - Extract from 'WORK EXPERIENCE' section
-     "job_title": "string (Job title, e.g., 'Director, DevOps/Compute Fabric SRE Services')",
-     "company": "string (Company name, e.g., 'RBC Capital Markets')",
-     "duration": "string | null (Duration string, e.g., '08/2023 – 04/2024')",
-     "responsibilities": ["string (List of bullet points or descriptive sentences detailing responsibilities)"],
-     "quantifiable_achievements": ["string (Extract specific, measurable achievements mentioned within the responsibilities, e.g., 'resulting in a remarkable 30% boost in data processing speed')"]
+   {{ "{{" }}
+     "job_title": "string",
+     "company": "string",
+     "duration": "string | null",
+     "responsibilities": ["string"],
+     "quantifiable_achievements": ["string"]
    {{ "}}" }}
-   // Include more objects for each role found
  ],
   "projects": [
-    {{ "{{" }} // Structure for each project/key achievement - Extract from 'KEY ACHIEVEMENTS' section
-      "name": "string (Title of the achievement block, e.g., 'Data Platform Transformation')",
-      "description": "string (Full description text for that achievement. Include quantifiable results.)",
-      "technologies_used": ["string (List any specific technologies mentioned within the description, e.g., 'Dremio', 'Elastic Stack', 'Kubernetes')"]
+    {{ "{{" }}
+      "name": "string",
+      "description": "string",
+      "technologies_used": ["string"]
     {{ "}}" }}
-    // Include more objects if multiple achievements are found
   ],
  "education": [
-   {{ "{{" }} // Structure for each education entry - Extract from 'EDUCATION' section
-     "degree": "string (Degree/program name, e.g., 'Computer Engineering')",
-     "institution": "string (Institution name, e.g., 'College of Staten Island')",
-     "graduation_year": "string | null (Years attended or graduation year, e.g., '1995 - 1997')"
+   {{ "{{" }}
+     "degree": "string",
+     "institution": "string",
+     "graduation_year": "string | null"
    {{ "}}" }}
-    // Include more objects if multiple degrees are found
  ],
- "certifications": ["string (Extract **all items listed** under the 'CERTIFICATIONS' header, e.g., 'IT Management Specialist 2015 Learning Tree')"],
- "languages": [] {# Assuming no languages section in this specific resume, keep structure #}
-{{ "}}" }} {# Note: Escaping curly braces for literal output #}
+ "certifications": ["string"],
+ "languages": []
+{{ "}}" }}
 
 Extracted JSON:

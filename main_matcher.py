@@ -43,7 +43,7 @@ async def load_and_extract_resume_async(
     """ASYNC: Loads resume, parses text, and extracts structured data with caching."""
     console.log(f"Processing resume file: [cyan]{resume_path}[/cyan]")
 
-    cache_dir = os.path.join(config.settings.get('output', {}).get('directory', 'output'), '.resume_cache')
+    cache_dir = config.get_setting('output.resume_cache_dir', 'cache/resume_cache/')
     os.makedirs(cache_dir, exist_ok=True)
     
     # Use file modification time for cache key

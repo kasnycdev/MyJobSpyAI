@@ -332,17 +332,21 @@ class ResumeAnalyzer:
 
         if len(prompt) > max_prompt_chars:
             console.log(f"[yellow]Warning: Prompt length ({len(prompt)}) exceeds configured max_prompt_chars ({max_prompt_chars}). Model might truncate or error.[/yellow]")
+            # Truncate the prompt
+            prompt_for_llm = prompt[:max_prompt_chars]
+        else:
+            prompt_for_llm = prompt
 
         last_exception = None
         content_str: Optional[str] = None # Renamed from 'content'
         for attempt in range(max_retries + 1):
             try:
                 if self.provider == "openai":
-                    content_str = await self._call_openai_llm_async(prompt)
+                    content_str = await self._call_openai_llm_async(prompt_for_llm)
                 elif self.provider == "ollama":
-                    content_str = await self._call_ollama_llm_async(prompt)
+                    content_str = await self._call_ollama_llm_async(prompt_for_llm)
                 elif self.provider == "gemini":
-                    content_str = await self._call_gemini_llm_async(prompt)
+                    content_str = await self._call_gemini_llm_async(prompt_for_llm)
                 else:
                     # This case should ideally be caught by __init__ validation
                     raise ValueError(f"Unsupported provider '{self.provider}' encountered in _call_llm_async.")
@@ -360,6 +364,9 @@ class ResumeAnalyzer:
                             content_strip = content_strip[7:-3].strip() if content_strip.endswith("```") else content_strip[7:].strip()
                         elif content_strip.startswith("```"):
                             content_strip = content_strip[3:-3].strip() if content_strip.endswith("```") else content_strip[3:].strip()
+
+                        # Replace invalid escape sequences before JSON parsing
+                        content_strip = content_strip.replace(r'\&', '&')
 
                         result = json.loads(content_strip)
                         console.log("[green]ASYNC: Parsed JSON response from LLM.[/green]")
@@ -420,7 +427,11 @@ class ResumeAnalyzer:
         return None
 
     async def extract_resume_data_async(self, resume_text: str) -> Optional[ResumeData]:
-        MAX_RESUME_CHARS_FOR_LLM = settings.get('analysis', {}).get('max_prompt_chars', 15000)
+        # Calculate MAX_RESUME_CHARS_FOR_LLM based on max_prompt_chars and template overhead
+        max_prompt_chars = settings.get('analysis', {}).get('max_prompt_chars', 15000)
+        template_overhead = 1800 # Estimated characters in the resume extraction prompt template without resume_text
+        MAX_RESUME_CHARS_FOR_LLM = max(0, max_prompt_chars - template_overhead) # Ensure it's not negative
+
         if not resume_text or not resume_text.strip():
             console.log("[yellow]Resume text empty.[/yellow]")
             return None

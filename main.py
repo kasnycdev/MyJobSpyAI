@@ -1,3 +1,4 @@
+
 import logging
 import json
 import os
@@ -11,8 +12,8 @@ from analysis.analyzer import ResumeAnalyzer
 from colorama import init  # Import colorama
 import traceback
 
-# Ensure settings is imported from config.py
-from config import settings
+# Ensure config module is imported
+import config
 
 # Initialize colorama
 init(autoreset=True)
@@ -25,9 +26,9 @@ console = Console()
 
 # Update logging configuration to use RichHandler
 logging.basicConfig(
-    level=settings.get('logging', {}).get('level', 'INFO').upper(),
-    format=settings.get('logging', {}).get('format', '%(message)s'),
-    datefmt=settings.get('logging', {}).get('date_format', '[%X]'),
+    level=config.settings.get('logging', {}).get('level', 'INFO').upper(),
+    format=config.settings.get('logging', {}).get('format', '%(message)s'),
+    datefmt=config.settings.get('logging', {}).get('date_format', '[%X]'),
     handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
 )
 
@@ -71,10 +72,25 @@ def log_exception(message, exception):
     console.log(message)
     console.log(traceback.format_exc())
 
-# --- scrape_jobs_with_jobspy function --- CORRECTED SIGNATURE (hours_old) ---
+# --- scrape_jobs_with_jobspy function ---
 async def scrape_jobs_with_jobspy(
-    search_terms: str, location: str, sites: list[str], results_wanted: int, hours_old: int,  # Use hours_old
-    country_indeed: str, proxies: Optional[list[str]] = None, offset: int = 0
+    search_terms: str,
+    location: Optional[str],
+    sites: list[str],
+    results_wanted: int,
+    hours_old: Optional[int],
+    country_indeed: str,
+    proxies: Optional[list[str]] = None,
+    offset: int = 0,
+    google_search_term: Optional[str] = None,
+    distance: Optional[int] = None,
+    is_remote: bool = False,
+    job_type: Optional[str] = None,
+    easy_apply: Optional[bool] = None,
+    ca_cert: Optional[str] = None,
+    linkedin_company_ids: Optional[list[int]] = None,
+    enforce_annual_salary: bool = False,
+    verbose: int = 0,
 ) -> Optional[pd.DataFrame]:
     """Uses the jobspy library to scrape jobs, with better logging."""
     console.log("[blue]Starting job scraping via JobSpy...[/blue]")
@@ -82,22 +98,44 @@ async def scrape_jobs_with_jobspy(
         f"Search: '[cyan]{search_terms}[/cyan]' | Location: '[cyan]{location}[/cyan]' | "
         f"Sites: {sites}"
     )
-    console.log(f"linkedin_fetch_description: {settings.get('scraping', {}).get('linkedin_fetch_description')}")
     console.log(
         f"Params: Results ≈{results_wanted}, Max Age={hours_old}h, "
-        f"Indeed Country='{country_indeed}', Offset={offset}"
+        f"Indeed Country='{country_indeed}', Offset={offset}, "
+        f"Is Remote={is_remote}, Job Type={job_type}, Easy Apply={easy_apply}, "
+        f"Distance={distance}, Enforce Annual Salary={enforce_annual_salary}"
     )
+    if google_search_term:
+        console.log(f"Google Search Term: '{google_search_term}'")
     if proxies:
         console.log(f"Using {len(proxies)} proxies.")
+    if linkedin_company_ids:
+        console.log(f"LinkedIn Company IDs: {linkedin_company_ids}")
+    if ca_cert:
+        console.log(f"Using CA Cert: {ca_cert}")
+
     try:
         # Run the synchronous scrape_jobs in a separate thread
         jobs_df = await asyncio.to_thread(
             scrape_jobs,
-            site_name=sites, search_term=search_terms, location=location, results_wanted=results_wanted,
-            hours_old=hours_old,  # Use hours_old
-            country_indeed=country_indeed, proxies=proxies, offset=offset, verbose=1,
-            description_format="markdown",
-            linkedin_fetch_description=settings.get('scraping', {}).get('linkedin_fetch_description')
+            site_name=sites,
+            search_term=search_terms,
+            google_search_term=google_search_term,
+            location=location,
+            distance=distance,
+            is_remote=is_remote,
+            job_type=job_type,
+            easy_apply=easy_apply,
+            results_wanted=results_wanted,
+            hours_old=hours_old,
+            country_indeed=country_indeed,
+            proxies=proxies,
+            ca_cert=ca_cert,
+            offset=offset,
+            verbose=verbose, # Use the verbose level from args/config
+            description_format="markdown", # Keep markdown as default
+            linkedin_fetch_description=settings.get('scraping', {}).get('linkedin_fetch_description'), # Keep from config
+            linkedin_company_ids=linkedin_company_ids,
+            enforce_annual_salary=enforce_annual_salary,
         )
         if jobs_df is None or jobs_df.empty:
             console.log("[yellow]Jobspy scraping returned no results or failed.[/yellow]")
@@ -213,16 +251,30 @@ async def run_pipeline_async():
 
     scrape_cfg = settings.get('scraping', {})
 
+    parser = argparse.ArgumentParser(
+        description="Run Job Scraping (JobSpy) & LLM Analysis Pipeline (using LM Studio/OpenAI-compatible API).",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
     scrape_group = parser.add_argument_group('Scraping Options (JobSpy)')
     scrape_group.add_argument("--search", required=True, help="Job title, keywords, or company.")
-    scrape_group.add_argument("--location", default=None, help="Primary location for scraping. Overridden if --filter-remote-country.")
+    scrape_group.add_argument("--location", default=scrape_cfg.get('location'), help="Primary location for scraping. Overridden if --filter-remote-country.")
     scrape_group.add_argument("--sites", default=",".join(scrape_cfg.get('default_sites', [])), help="Comma-separated sites.")
     scrape_group.add_argument("--results", type=int, default=scrape_cfg.get('default_results_limit', 20), help="Approx total jobs per site.")
-    scrape_group.add_argument("--hours_old", type=int, default=scrape_cfg.get('default_hours_old', 3), help="Max job age in days (0=disable).")
+    scrape_group.add_argument("--hours_old", type=int, default=scrape_cfg.get('default_hours_old', 3), help="Max job age in hours (0=disable).")
     scrape_group.add_argument("--country-indeed", default=scrape_cfg.get('default_country_indeed', 'usa'), help="Country for Indeed search.")
-    scrape_group.add_argument("--proxies", help="Comma-separated proxies.")
-    scrape_group.add_argument("--offset", type=int, default=0, help="Search results offset.")
+    scrape_group.add_argument("--proxies", default=scrape_cfg.get('proxies'), help="Comma-separated proxies.")
+    scrape_group.add_argument("--offset", type=int, default=scrape_cfg.get('offset', 0), help="Search results offset.")
     scrape_group.add_argument("--scraped-jobs-file", default=settings.get("scraped_jobs_path"), help="Intermediate file for scraped jobs.")
+    scrape_group.add_argument("--google-search-term", default=scrape_cfg.get('google_search_term'), help="Specific Google search term (if using Google scraper).")
+    scrape_group.add_argument("--distance", type=int, default=scrape_cfg.get('distance'), help="Distance from location in miles (for supported sites).")
+    scrape_group.add_argument("--is-remote", type=bool, default=scrape_cfg.get('is_remote', False), help="Filter for remote jobs.")
+    scrape_group.add_argument("--job-type", default=scrape_cfg.get('job_type'), help="Job type (e.g., 'fulltime', 'parttime', 'contract', 'internship').")
+    scrape_group.add_argument("--easy-apply", type=bool, default=scrape_cfg.get('easy_apply'), help="Filter for jobs with easy apply option (for supported sites).")
+    scrape_group.add_argument("--ca-cert", default=scrape_cfg.get('ca_cert'), help="Path to CA certificate file.")
+    scrape_group.add_argument("--linkedin-company-ids", default=scrape_cfg.get('linkedin_company_ids'), help="Comma-separated LinkedIn company IDs.")
+    scrape_group.add_argument("--enforce-annual-salary", type=bool, default=scrape_cfg.get('enforce_annual_salary', False), help="Enforce conversion of salary to annual.")
+
 
     analysis_group = parser.add_argument_group('Analysis Options')
     analysis_group.add_argument("--resume", required=True, help="Path to the resume file.")
@@ -255,15 +307,8 @@ async def run_pipeline_async():
 
     try:
         # Argument validation and location determination (remains the same)
-        if not args.location and not args.filter_remote_country and not args.filter_proximity_location:
-            parser.error("Ambiguous location: Specify --location OR --filter-remote-country OR --filter-proximity-location.")
-        if args.filter_proximity_location and args.filter_remote_country:
-            parser.error("Conflicting filters: Cannot use --filter-proximity-location and --filter-remote-country.")
-        if args.filter_proximity_location and args.filter_proximity_range is None:
-            parser.error("--filter-proximity-range required with --filter-proximity-location.")
-        if args.filter_proximity_range is not None and not args.filter_proximity_location:
-            parser.error("--filter-proximity-location required with --filter-proximity-range.")
-        scrape_location = None
+        # Prioritize command line args over config for location
+        scrape_location = args.location
         if args.filter_remote_country:
             scrape_location = args.filter_remote_country.strip()
             console.log(f"Using country '{scrape_location}' as primary scrape location.")
@@ -271,25 +316,51 @@ async def run_pipeline_async():
             scrape_location = args.filter_proximity_location.strip()
             console.log(f"Using proximity target '{scrape_location}' as primary scrape location.")
         elif args.location:
-            scrape_location = args.location
-            console.log(
+             console.log(
                 f"Using provided --location '{scrape_location}' as primary scrape location."
             )
+        elif scrape_cfg.get('location'):
+             scrape_location = scrape_cfg.get('location')
+             console.log(
+                f"Using config location '{scrape_location}' as primary scrape location."
+            )
+        else:
+             parser.error("Ambiguous location: Specify --location OR --filter-remote-country OR --filter-proximity-location, or set 'location' in config.yaml.")
 
-        # --- Step 1: Scrape Jobs --- CORRECTED CALL (hours_old) ---
-        scraper_sites = [site.strip().lower() for site in args.sites.split(',')]
-        proxy_list = [p.strip() for p in args.proxies.split(',')] if args.proxies else None
+
+        if args.filter_proximity_location and args.filter_remote_country:
+            parser.error("Conflicting filters: Cannot use --filter-proximity-location and --filter-remote-country.")
+        if args.filter_proximity_location and args.filter_proximity_range is None:
+            parser.error("--filter-proximity-range required with --filter-proximity-location.")
+        if args.filter_proximity_range is not None and not args.filter_proximity_location:
+            parser.error("--filter-proximity-location required with --filter-proximity-location.")
+
+
+        # --- Step 1: Scrape Jobs ---
+        scraper_sites = [site.strip().lower() for site in args.sites.split(',')] if args.sites else scrape_cfg.get('default_sites', [])
+        proxy_list = [p.strip() for p in args.proxies.split(',')] if args.proxies else scrape_cfg.get('proxies')
+        linkedin_company_ids_list = [int(id.strip()) for id in args.linkedin_company_ids.split(',')] if args.linkedin_company_ids else scrape_cfg.get('linkedin_company_ids')
+
+
         jobs_df = await scrape_jobs_with_jobspy(
             search_terms=args.search,
             location=scrape_location,
             sites=scraper_sites,
             results_wanted=args.results,
-            hours_old=args.hours_old,  # Use hours_old
+            hours_old=args.hours_old,
             country_indeed=args.country_indeed,
             proxies=proxy_list,
-            offset=args.offset
+            offset=args.offset,
+            google_search_term=args.google_search_term,
+            distance=args.distance,
+            is_remote=args.is_remote,
+            job_type=args.job_type,
+            easy_apply=args.easy_apply,
+            ca_cert=args.ca_cert,
+            linkedin_company_ids=linkedin_company_ids_list,
+            enforce_annual_salary=args.enforce_annual_salary,
+            verbose=args.verbose # Pass verbose from args
         )
-        # --- END CORRECTION ---
 
         if jobs_df is None or jobs_df.empty:
             console.log("[yellow]Scraping yielded no results. Pipeline cannot continue.[/yellow]")
@@ -354,6 +425,8 @@ async def run_pipeline_async():
 
 # --- Update entry point to run the async function ---
 if __name__ == "__main__":
+    # Ensure configuration is loaded before running the pipeline
+    config.settings = config.load_config()
     try:
         asyncio.run(run_pipeline_async())
     except KeyboardInterrupt:

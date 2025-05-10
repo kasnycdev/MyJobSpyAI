@@ -31,33 +31,39 @@ if GEOPY_AVAILABLE:
 else:
     console.log("[yellow]Geopy library not installed. Location filtering disabled.[/yellow]")
 
-# Persistent geocode cache file
-GEOCACHE_FILE = "geocode_cache.json"
-
 _geocode_cache = {}
 _geocode_fail_cache = set()
+
+def get_geocode_cache_path():
+    """Gets the geocode cache file path from settings with a default."""
+    return settings.get('output', {}).get('geocode_cache_file', 'cache/geocode_cache.json')
 
 def load_geocode_cache():
     """Loads the geocode cache from a JSON file."""
     global _geocode_cache, _geocode_fail_cache
-    if os.path.exists(GEOCACHE_FILE):
+    cache_file_path = get_geocode_cache_path()
+    if os.path.exists(cache_file_path):
         try:
-            with open(GEOCACHE_FILE, 'r', encoding='utf-8') as f:
+            with open(cache_file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 _geocode_cache = data.get('cache', {})
                 _geocode_fail_cache = set(data.get('fail_cache', []))
-            console.log(f"[green]Loaded geocode cache from {GEOCACHE_FILE}[/green]")
+            console.log(f"[green]Loaded geocode cache from {cache_file_path}[/green]")
         except (json.JSONDecodeError, IOError) as e:
-            console.log(f"[red]Error loading geocode cache from {GEOCACHE_FILE}: {e}[/red]")
+            console.log(f"[red]Error loading geocode cache from {cache_file_path}: {e}[/red]")
 
 def save_geocode_cache():
     """Saves the geocode cache to a JSON file."""
+    cache_file_path = get_geocode_cache_path()
+    cache_dir = os.path.dirname(cache_file_path)
+    if cache_dir: # Ensure directory exists if path includes one
+        os.makedirs(cache_dir, exist_ok=True)
     try:
-        with open(GEOCACHE_FILE, 'w', encoding='utf-8') as f:
+        with open(cache_file_path, 'w', encoding='utf-8') as f:
             json.dump({'cache': _geocode_cache, 'fail_cache': list(_geocode_fail_cache)}, f, indent=4)
-        console.log(f"[green]Saved geocode cache to {GEOCACHE_FILE}[/green]")
+        console.log(f"[green]Saved geocode cache to {cache_file_path}[/green]")
     except IOError as e:
-        console.log(f"[red]Error saving geocode cache to {GEOCACHE_FILE}: {e}[/red]")
+        console.log(f"[red]Error saving geocode cache to {cache_file_path}: {e}[/red]")
 
 # Load cache on startup
 load_geocode_cache()

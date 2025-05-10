@@ -1,4 +1,4 @@
-# MyJobSpy Analyst: Scrape, Analyze, and Filter Jobs with GenAI
+    # MyJobSpy Analyst: Scrape, Analyze, and Filter Jobs with GenAI
 
 This project enhances job searching by combining the scraping power of **[JobSpy](https://github.com/speedyapply/JobSpy)** with Generative AI analysis via **multiple LLM backends (Ollama, OpenAI-compatible APIs like LM Studio, Google Gemini)** and advanced filtering, including location awareness.
 
@@ -36,6 +36,16 @@ This project enhances job searching by combining the scraping power of **[JobSpy
     *   Remote jobs within a specific country (uses Geopy).
     *   Hybrid/On-site jobs within a specific mileage range of a location (uses Geopy).
     *   Minimum Suitability Score (0-100).
+*   **JobSpy Native Filter Configuration:** Exposes and allows configuration of several native JobSpy scraping filters via `config.yaml` and command-line arguments, including:
+    *   Google search term
+    *   Distance from location
+    *   Is remote flag
+    *   Job type(s)
+    *   Easy apply flag
+    *   CA certificate path
+    *   LinkedIn company IDs
+    *   Enforce annual salary conversion
+    Command-line arguments override `config.yaml` settings for these filters.
 *   **Caching:**
     *   **Resume Analysis:** Caches structured resume data based on file hash to speed up subsequent runs with the same resume (`output/.resume_cache/`). Use `--force-resume-reparse` to override.
     *   **Geocoding:** Caches geocoding results to disk (`output/.geocode_cache.json` - **Note: Implementation pending**) to minimize API calls to Nominatim and improve speed on repeated runs or similar locations.

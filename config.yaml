@@ -17,11 +17,11 @@ openai: # Settings for OpenAI-compatible APIs (LM Studio, etc.)
   base_url: http://localhost:1234/v1
   # Model identifier depends on the model loaded in LM Studio.
   # Check LM Studio server logs or UI for the exact model ID.
-  model: "codellama-34b-python" # Example model identifier
+  model: "codellama-7b-instruct" # Example model identifier
   api_key: "lm-studio" # Placeholder, often not needed for local LM Studio
-  request_timeout: 900    # Timeout in seconds for API calls
-  max_retries: 0          # Max number of retries on failure
-  retry_delay: 5          # Initial delay in seconds before first retry (exponential backoff)
+  request_timeout: 900   # Timeout in seconds for API calls
+  max_retries: 1         # Max number of retries on failure
+  retry_delay: 5         # Initial delay in seconds before first retry (exponential backoff)
 
 ollama: # Settings for local Ollama server
   base_url: http://localhost:11434 # Default Ollama URL
@@ -59,6 +59,14 @@ scraping:
   default_country_indeed: "usa"
   linkedin_fetch_description: True
   linkedin_company_ids: []
+  google_search_term: null # Specific Google search term (if using Google scraper)
+  distance: 50 # Distance from location in miles (for supported sites)
+  is_remote: false # Filter for remote jobs
+  job_type: null # Job type (e.g., 'fulltime', 'parttime', 'contract', 'internship')
+  easy_apply: null # Filter for jobs with easy apply option (for supported sites)
+  ca_cert: null # Path to CA certificate file
+  proxies: null # Comma-separated proxies
+  enforce_annual_salary: false # Enforce conversion of salary to annual
 
 geocoding:
   geopy_user_agent: "MyJobSpyAI/1.0 (kasnycdev@gmail.com)" # Update with your email
