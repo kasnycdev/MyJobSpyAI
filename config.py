@@ -68,10 +68,19 @@ DEFAULT_SETTINGS = {
         )
     },
     "logging": {
-        "level": "INFO",
-        # --- Use minimal format - RichHandler adds timestamp, level etc. ---
-        "format": "%(message)s",
-        "date_format": "[%X]",  # RichHandler uses this
+        "level": "INFO",  # Overall minimum level for the root logger if not overridden by handlers
+        "format": "%(message)s", # Basic format for RichHandler, file handlers will use more detail
+        "date_format": "[%X]",  # RichHandler uses this for its timestamp
+        "log_dir": "logs",      # Directory for log files, relative to project root
+        "info_log_file": "info.log",
+        "debug_log_file": "debug.log",
+        "error_log_file": "error.log",
+        "log_to_console": True,
+        "console_log_level": "INFO", # Level for console output via RichHandler
+        "file_log_level_debug": "DEBUG", # Level for the debug log file
+        "file_log_level_info": "INFO",   # Level for the info log file
+        "file_log_level_error": "ERROR",  # Level for the error log file
+        "model_output_log_file": "model_output.log" # New setting for model responses
     }
 }
 
@@ -147,8 +156,29 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
             f"Could not create output directory "
             f"'{settings['output_dir']}': {e}"
         )
+    
+    # --- Ensure log dir exists and make log paths absolute ---
+    log_cfg = settings.get("logging", {})
+    log_dir_path_str = log_cfg.get("log_dir", "logs")
+    log_dir_path = Path(log_dir_path_str)
+    if not log_dir_path.is_absolute():
+        log_dir_path = PROJECT_ROOT / log_dir_path
+    
+    settings["logging"]["log_dir_abs"] = str(log_dir_path) # Store absolute log dir path
+    
+    try:
+        os.makedirs(log_dir_path, exist_ok=True)
+        log.info(f"Ensured log directory exists: {log_dir_path}")
+    except OSError as e:
+        logging.error(f"Could not create log directory '{log_dir_path}': {e}")
 
-    # --- Add derived absolute paths ---
+    settings["logging"]["info_log_path"] = str(log_dir_path / log_cfg.get("info_log_file", "info.log"))
+    settings["logging"]["debug_log_path"] = str(log_dir_path / log_cfg.get("debug_log_file", "debug.log"))
+    settings["logging"]["error_log_path"] = str(log_dir_path / log_cfg.get("error_log_file", "error.log"))
+    settings["logging"]["model_output_log_path"] = str(log_dir_path / log_cfg.get("model_output_log_file", "model_output.log")) # New path
+
+
+    # --- Add derived absolute paths for other outputs ---
     settings["scraped_jobs_path"] = os.path.join(
         settings["output_dir"],
         settings.get("scraped_jobs_filename", "scraped_jobs.json")
