@@ -1,13 +1,14 @@
 import logging
 import time
-import json # Added json import
-import os # Added os import
+import json
+import os
+import logging # Added for standard logging
 from typing import Dict, Optional, List, Any
-from colorama import Fore, Style  # Import colorama
-from rich.console import Console
+# from colorama import Fore, Style # Likely no longer needed
+# from rich.console import Console # Replaced by logger
 
-# Initialize rich console
-console = Console()
+# Get a logger for this module
+logger = logging.getLogger(__name__)
 
 # Import geopy and specific exceptions
 try:
@@ -26,13 +27,13 @@ GEOCODER = None
 if GEOPY_AVAILABLE:
     user_agent = settings.get('geocoding', {}).get('geopy_user_agent', 'MyJobSpyAI/1.0 (DEFAULT)')
     if not user_agent or 'PLEASE_UPDATE' in user_agent or 'example.com' in user_agent:
-        console.log("[yellow]GEOPY_USER_AGENT not set/default in config.yaml. Geocoding may fail.[/yellow]")
+        logger.warning("GEOPY_USER_AGENT not set/default in config.yaml. Geocoding may fail.")
     GEOCODER = Nominatim(user_agent=user_agent, timeout=10)
 else:
-    console.log("[yellow]Geopy library not installed. Location filtering disabled.[/yellow]")
+    logger.warning("Geopy library not installed. Location filtering disabled.")
 
 _geocode_cache = {}
-_geocode_fail_cache = set()
+_geocode_fail_cache = set() # type: ignore
 
 def get_geocode_cache_path():
     """Gets the geocode cache file path from settings with a default."""
@@ -47,10 +48,10 @@ def load_geocode_cache():
             with open(cache_file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 _geocode_cache = data.get('cache', {})
-                _geocode_fail_cache = set(data.get('fail_cache', []))
-            console.log(f"[green]Loaded geocode cache from {cache_file_path}[/green]")
+                _geocode_fail_cache = set(data.get('fail_cache', [])) # type: ignore
+            logger.info(f"Loaded geocode cache from {cache_file_path}")
         except (json.JSONDecodeError, IOError) as e:
-            console.log(f"[red]Error loading geocode cache from {cache_file_path}: {e}[/red]")
+            logger.error(f"Error loading geocode cache from {cache_file_path}: {e}")
 
 def save_geocode_cache():
     """Saves the geocode cache to a JSON file."""
@@ -61,9 +62,9 @@ def save_geocode_cache():
     try:
         with open(cache_file_path, 'w', encoding='utf-8') as f:
             json.dump({'cache': _geocode_cache, 'fail_cache': list(_geocode_fail_cache)}, f, indent=4)
-        console.log(f"[green]Saved geocode cache to {cache_file_path}[/green]")
+        logger.info(f"Saved geocode cache to {cache_file_path}")
     except IOError as e:
-        console.log(f"[red]Error saving geocode cache to {cache_file_path}: {e}[/red]")
+        logger.error(f"Error saving geocode cache to {cache_file_path}: {e}")
 
 # Load cache on startup
 load_geocode_cache()
@@ -84,10 +85,10 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
         return _geocode_cache[normalized_loc]
 
     if normalized_loc in _geocode_fail_cache:
-        console.log(f"Skipping geocode for previously failed: '{location_str}'")
+        logger.debug(f"Skipping geocode for previously failed: '{location_str}'")
         return None
 
-    console.log(f"Geocoding location: '{location_str}'")
+    logger.info(f"Geocoding location: '{location_str}'")
     try:
         time.sleep(1.0)  # Rate limit
         location_data = GEOCODER.geocode(normalized_loc, addressdetails=True, language='en')
@@ -110,34 +111,34 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
                 }
                 country_name = cc_map.get(country_code.lower())
                 if country_name:
-                    console.log(f"Inferred country name '{country_name}' from code '{country_code}'")
+                    logger.debug(f"Inferred country name '{country_name}' from code '{country_code}'")
 
             if country_name:
-                console.log(f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}")
+                logger.info(f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}")
                 result = (lat, lon, country_name)
                 _geocode_cache[normalized_loc] = result
                 save_geocode_cache() # Save cache after successful geocode
                 return result
             else:
-                console.log(
-                    f"[yellow]Geocoded '{location_str}' but couldn't extract country name. Address: {address}[/yellow]"
+                logger.warning(
+                    f"Geocoded '{location_str}' but couldn't extract country name. Address: {address}"
                 )
-                _geocode_fail_cache.add(normalized_loc)
+                _geocode_fail_cache.add(normalized_loc) # type: ignore
                 save_geocode_cache() # Save cache after failed geocode
                 return None
         else:
-            console.log(f"[yellow]Failed to geocode '{location_str}' - No results.[/yellow]")
-            _geocode_fail_cache.add(normalized_loc)
+            logger.warning(f"Failed to geocode '{location_str}' - No results.")
+            _geocode_fail_cache.add(normalized_loc) # type: ignore
             save_geocode_cache() # Save cache after failed geocode
             return None
     except (GeocoderTimedOut, GeocoderServiceError) as geo_err:
-        console.log(f"[red]Geocoding error for '{location_str}': {geo_err}[/red]")
-        _geocode_fail_cache.add(normalized_loc)
+        logger.error(f"Geocoding error for '{location_str}': {geo_err}")
+        _geocode_fail_cache.add(normalized_loc) # type: ignore
         save_geocode_cache() # Save cache after geocoding error
         return None
     except Exception as e:
-        console.log(f"[red]Unexpected geocoding error for '{location_str}': {e}[/red]", exc_info=True)
-        _geocode_fail_cache.add(normalized_loc)
+        logger.error(f"Unexpected geocoding error for '{location_str}': {e}", exc_info=True)
+        _geocode_fail_cache.add(normalized_loc) # type: ignore
         save_geocode_cache() # Save cache after unexpected error
         return None
 
@@ -165,19 +166,19 @@ def apply_filters(
 
     target_lat_lon = None
     if filter_proximity_location and filter_proximity_range is not None:
-        console.log(f"Attempting to geocode target proximity location: '{filter_proximity_location}'")
+        logger.info(f"Attempting to geocode target proximity location: '{filter_proximity_location}'")
         if (target_geo_result := get_lat_lon_country(filter_proximity_location)):
             target_lat_lon = (target_geo_result[0], target_geo_result[1])
-            console.log(f"Target proximity location geocoded to: {target_lat_lon}")
+            logger.info(f"Target proximity location geocoded to: {target_lat_lon}")
         else:
-            console.log(
-                f"[red]Could not geocode target proximity location "
-                f"'{filter_proximity_location}'. Proximity filter disabled.[/red]"
+            logger.error(
+                f"Could not geocode target proximity location "
+                f"'{filter_proximity_location}'. Proximity filter disabled."
             )
-            filter_proximity_location = None
-            filter_proximity_range = None
+            filter_proximity_location = None # type: ignore
+            filter_proximity_range = None # type: ignore
 
-    console.log("Applying filters to job list...")
+    logger.info("Applying filters to job list...")
     initial_count = len(jobs)
     jobs_processed_count = 0
 
@@ -186,7 +187,7 @@ def apply_filters(
         job_title = job.get('title', 'N/A')
         passes_all_filters = True
 
-        console.log(f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---")
+        logger.debug(f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---")
 
         # Salary
         salary_text = job.get('salary_text')
@@ -253,11 +254,12 @@ def apply_filters(
                     job_country = job_geo_result[2]
                     if not job_country or normalize_string(job_country) != normalized_remote_country:
                         passes_all_filters = False
-                else:
-                    console.log(
-                        f"[yellow]Geocoding failed for '{job_location_str}'. Assuming it matches the remote country filter.[/yellow]"
+                else: # If geocoding fails for the job, we can't confirm its country
+                    logger.warning(
+                        f"Geocoding failed for '{job_location_str}'. Cannot confirm country for remote filter. Job will likely fail this filter."
                     )
-            else:
+                    passes_all_filters = False # Default to fail if country cannot be confirmed
+            else: # Not a remote job, so it fails the "remote in specific country" filter
                 passes_all_filters = False
 
             if not passes_all_filters:
@@ -290,11 +292,11 @@ def apply_filters(
                     job_lat_lon = (job_geo_result[0], job_geo_result[1])
                     try:
                         distance_miles = geodesic(target_lat_lon, job_lat_lon).miles
-                        if distance_miles > filter_proximity_range:
+                        if distance_miles > filter_proximity_range: # type: ignore
                             passes_all_filters = False
                     except Exception as dist_err:
-                        console.log(
-                            f"[yellow]Could not calculate distance for '{job_title}': {dist_err}[/yellow]"
+                        logger.warning(
+                            f"Could not calculate distance for '{job_title}': {dist_err}"
                         )
                         passes_all_filters = False
 
@@ -302,7 +304,7 @@ def apply_filters(
             filtered_jobs.append(job)
 
     final_count = len(filtered_jobs)
-    console.log(f"Filtering complete. {final_count} out of {initial_count} jobs passed active filters.")
+    logger.info(f"Filtering complete. {final_count} out of {initial_count} jobs passed active filters.")
     # Save cache at the end of filtering
     save_geocode_cache()
     return filtered_jobs

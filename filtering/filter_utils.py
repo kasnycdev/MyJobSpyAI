@@ -1,9 +1,18 @@
 import re
 import logging
 from typing import Optional, Tuple
+import json # Added for DateEncoder
+from datetime import date # Added for DateEncoder
 
 # Use root logger
 log = logging.getLogger(__name__)
+
+# Custom JSON encoder to handle date objects
+class DateEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, date):
+            return obj.isoformat()
+        return super().default(obj)
 
 def parse_salary(salary_text: Optional[str], target_currency: str = "USD") -> Tuple[Optional[int], Optional[int]]:
     """
@@ -79,3 +88,15 @@ def normalize_string(text: Optional[str]) -> str:
         return str(text).lower().strip()
     else:
         return str(text).strip()
+
+def remove_duplicate_sentences(sentences: list[str]) -> list[str]:
+    """Removes duplicate sentences from a list while preserving order."""
+    seen = set()
+    result = []
+    for sentence in sentences:
+        # Normalize sentence for comparison (e.g., remove leading/trailing whitespace)
+        normalized_sentence = sentence.strip()
+        if normalized_sentence and normalized_sentence not in seen:
+            seen.add(normalized_sentence)
+            result.append(sentence) # Append original sentence to preserve formatting
+    return result

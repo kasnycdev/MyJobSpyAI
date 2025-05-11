@@ -7,10 +7,11 @@ import json
 from contextlib import suppress # Added for Sourcery fix
 import os
 import asyncio
-from typing import Dict, Optional, Any, Union
-from rich.console import Console
-import traceback
+from typing import Dict, Optional, Any, Union, List # Added List
+# from rich.console import Console # No longer needed directly here
+import traceback # Keep for log_exception if it were still here, but it's moved
 import time
+from collections import defaultdict # Added for stats
 
 # Import Jinja2 components
 try:
@@ -19,16 +20,21 @@ try:
 except ImportError:
     JINJA2_AVAILABLE = False
 
-from analysis.models import ResumeData, JobAnalysisResult, ParsedJobData # Added ParsedJobData
-# Import the loaded settings dictionary from config.py
+from analysis.models import ResumeData, JobAnalysisResult, ParsedJobData
+from filtering.filter_utils import DateEncoder
 from config import settings
+import logging
+from logging_utils import MODEL_OUTPUT_LOGGER_NAME # Import the constant for model output logger
 
-console = Console()
+# Get a logger for this module
+logger = logging.getLogger(__name__)
+# Get the specific logger for model outputs
+model_output_logger = logging.getLogger(MODEL_OUTPUT_LOGGER_NAME)
 
-# Helper function for logging exceptions
+# Helper function for logging exceptions (now uses standard logger)
 def log_exception(message, exception):
-    console.log(message)
-    console.log(traceback.format_exc())
+    logger.error(message, exc_info=True)
+
 
 # --- Jinja2 Environment Setup ---
 PROMPT_TEMPLATE_LOADER = None
@@ -36,531 +42,513 @@ if JINJA2_AVAILABLE:
     try:
         prompts_dir = settings.get('analysis', {}).get('prompts_dir')
         if prompts_dir and os.path.isdir(prompts_dir):
-            console.log(f"Initializing Jinja2 environment for prompts in: {prompts_dir}")
+            logger.info(f"Initializing Jinja2 environment for prompts in: {prompts_dir}")
             PROMPT_TEMPLATE_LOADER = Environment(
                 loader=FileSystemLoader(prompts_dir),
-                autoescape=select_autoescape(['html', 'xml']),  # Basic autoescape, adjust if needed
-                trim_blocks=True,  # Helps clean up whitespace
+                autoescape=select_autoescape(['html', 'xml']),
+                trim_blocks=True,
                 lstrip_blocks=True
             )
         else:
-            console.log(f"[bold red]Jinja2 prompts directory not found or invalid in config:[/bold red] {prompts_dir}")
-            JINJA2_AVAILABLE = False  # Disable Jinja2 usage
+            logger.error(f"Jinja2 prompts directory not found or invalid in config: {prompts_dir}")
+            JINJA2_AVAILABLE = False
     except Exception as jinja_err:
-        log_exception(f"[bold red]Failed to initialize Jinja2 environment:[/bold red] {jinja_err}", jinja_err)
+        log_exception(f"Failed to initialize Jinja2 environment: {jinja_err}", jinja_err)
         JINJA2_AVAILABLE = False
 else:
-    console.log("[bold red]Jinja2 library not installed. Prompts cannot be loaded.[/bold red]")
-    # Consider exiting or falling back to basic .format() if needed, but requires different prompt files
+    logger.error("Jinja2 library not installed. Prompts cannot be loaded.")
 
-# --- Load Templates (Now using Jinja2) ---
 def load_template(template_name_key: str):
-    """Loads a Jinja2 template object based on filename key in settings."""
     if not JINJA2_AVAILABLE or not PROMPT_TEMPLATE_LOADER:
         raise RuntimeError("Jinja2 environment not available for loading prompt templates.")
-
     template_filename = settings.get('analysis', {}).get(template_name_key)
     if not template_filename:
         raise ValueError(f"Missing template filename configuration for key '{template_name_key}'")
-
     try:
         template = PROMPT_TEMPLATE_LOADER.get_template(template_filename)
-        console.log(f"Successfully loaded Jinja2 template: {template_filename}")
+        logger.info(f"Successfully loaded Jinja2 template: {template_filename}")
         return template
     except TemplateNotFound:
-        console.log(f"[bold red]Jinja2 template file not found:[/bold red] {template_filename} in {settings.get('analysis', {}).get('prompts_dir')}")
+        logger.error(f"Jinja2 template file not found: {template_filename} in {settings.get('analysis', {}).get('prompts_dir')}")
         raise
     except TemplateSyntaxError as syn_err:
-        console.log(f"[bold red]Syntax error in Jinja2 template {template_filename}:[/bold red] {syn_err}")
+        logger.error(f"Syntax error in Jinja2 template {template_filename}: {syn_err}")
         raise
     except Exception as e:
-        log_exception(f"[bold red]Error loading Jinja2 template {template_filename}:[/bold red] {e}", e)
+        log_exception(f"Error loading Jinja2 template {template_filename}: {e}", e)
         raise
 
-
-class ResumeAnalyzer:
-    def __init__(self):
+class BaseAnalyzer:
+    def __init__(self, provider_config_key: str):
         self.provider = settings.get('llm_provider', 'openai').lower()
-        console.log(f"Initializing LLM client for provider: [bold cyan]{self.provider}[/bold cyan]")
+        logger.info(f"Initializing LLM client for provider: {self.provider} using config key '{provider_config_key}'")
 
         self.model_name: Optional[str] = None
         self.sync_client: Union[openai.OpenAI, ollama.Client, None] = None
         self.async_client: Union[openai.AsyncOpenAI, ollama.AsyncClient, genai.GenerativeModel, None] = None
-        self.request_timeout: Optional[int] = None
+        self.request_timeout: Optional[float] = None # Changed to float
         self.max_retries: int = 2
         self.retry_delay: int = 5
-        self.ollama_base_url: Optional[str] = None # Store Ollama base URL
+        self.ollama_base_url: Optional[str] = None
 
-        self._initialize_llm_client()
-        self._load_prompt_templates()
+        self._initialize_llm_client(provider_config_key)
         self._check_connection_and_model()
 
+    _llm_call_stats: Dict[str, Any] = {
+        "total_calls": 0,
+        "successful_calls": 0,
+        "failed_calls": 0,
+        "total_prompt_chars": 0,
+        "total_response_chars": 0,
+        "total_duration_seconds": 0.0,
+        "errors_by_type": defaultdict(int),
+        "calls_by_task": defaultdict(lambda: defaultdict(int))
+    }
+
+    @classmethod
+    def log_llm_call_summary(cls):
+        if cls._llm_call_stats['total_calls'] == 0:
+            logger.info("No LLM calls were made in this session.")
+            return
+
+        logger.info("--- LLM Call Statistics Summary ---")
+        logger.info(f"Total LLM Calls Attempted: {cls._llm_call_stats['total_calls']}")
+        logger.info(f"  Successful Calls: {cls._llm_call_stats['successful_calls']}")
+        logger.info(f"  Failed Calls (after retries): {cls._llm_call_stats['failed_calls']}")
+        
+        successful_calls_count = cls._llm_call_stats['successful_calls']
+        if successful_calls_count > 0:
+            avg_duration = (cls._llm_call_stats['total_duration_seconds'] / successful_calls_count)
+            logger.info(f"Average Call Duration (per successful call): {avg_duration:.2f}s")
+        else:
+            logger.info("Average Call Duration (per successful call): N/A (no successful calls)")
+
+        logger.info(f"Total Prompt Characters Sent: {cls._llm_call_stats['total_prompt_chars']:,}")
+        logger.info(f"Total Response Characters Received: {cls._llm_call_stats['total_response_chars']:,}")
+
+        if cls._llm_call_stats['errors_by_type']:
+            logger.info("\nErrors by Type (across all attempts):")
+            for err_type, count in sorted(cls._llm_call_stats['errors_by_type'].items()):
+                logger.info(f"  - {err_type}: {count}")
+        
+        if cls._llm_call_stats['calls_by_task']:
+            logger.info("\nCalls by Task:")
+            for task, stats in sorted(cls._llm_call_stats['calls_by_task'].items()):
+                logger.info(f"  - Task: '{task}'")
+                logger.info(f"    Successful: {stats.get('success', 0)}, Failed: {stats.get('fail', 0)}")
+        logger.info("--- End LLM Call Statistics Summary ---")
+
     def _load_common_provider_config(self, provider_key: str) -> Dict[str, Any]:
-        """Loads common configuration for a given LLM provider."""
         cfg = settings.get(provider_key, {})
         self.model_name = cfg.get('model')
         self.request_timeout = cfg.get('request_timeout')
-        # Defaults for max_retries and retry_delay are taken from class attributes
-        # if not specified in the provider's configuration.
+        if self.request_timeout is None:
+            self.request_timeout = 120.0 
+            logger.warning(f"No request_timeout in config for '{provider_key}', defaulting to {self.request_timeout}s.")
+        elif not isinstance(self.request_timeout, (int, float)):
+            try:
+                self.request_timeout = float(self.request_timeout)
+                logger.warning(f"Converted request_timeout for '{provider_key}' to float: {self.request_timeout}s.")
+            except ValueError:
+                logger.error(f"Invalid request_timeout value '{self.request_timeout}' for '{provider_key}'. Using default 120.0s.")
+                self.request_timeout = 120.0
         self.max_retries = cfg.get('max_retries', self.max_retries)
         self.retry_delay = cfg.get('retry_delay', self.retry_delay)
         return cfg
 
-    def _initialize_openai_client(self):
-        """Initializes the OpenAI LLM client."""
-        cfg = self._load_common_provider_config("openai")
+    def _initialize_openai_client(self, provider_config_key: str):
+        cfg = self._load_common_provider_config(provider_config_key)
         base_url = cfg.get('base_url')
         api_key = cfg.get('api_key', 'lm-studio')
-
         if not base_url or not self.model_name:
-            raise ValueError("OpenAI provider requires 'base_url' and 'model' in config.")
-
+            raise ValueError(f"OpenAI provider ('{provider_config_key}') requires 'base_url' and 'model' in config.")
         self.sync_client = openai.OpenAI(base_url=base_url, api_key=api_key, timeout=self.request_timeout)
         self.async_client = openai.AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=self.request_timeout)
-        console.log(f"[green]OpenAI client initialized for model '{self.model_name}' at {base_url}.[/green]")
+        logger.info(f"OpenAI client initialized for model '{self.model_name}' at {base_url}.")
 
-    def _initialize_ollama_client(self):
-        """Initializes the Ollama LLM client."""
-        cfg = self._load_common_provider_config("ollama")
+    def _initialize_ollama_client(self, provider_config_key: str):
+        cfg = self._load_common_provider_config(provider_config_key)
         base_url = cfg.get('base_url')
-        self.ollama_base_url = base_url # Store the base URL
-
+        self.ollama_base_url = base_url
         if not base_url or not self.model_name:
-            raise ValueError("Ollama provider requires 'base_url' and 'model' in config.")
+            raise ValueError(f"Ollama provider ('{provider_config_key}') requires 'base_url' and 'model' in config.")
+        self.sync_client = ollama.Client(host=base_url, timeout=self.request_timeout) # type: ignore
+        self.async_client = ollama.AsyncClient(host=base_url, timeout=self.request_timeout) # type: ignore
+        logger.info(f"Ollama client initialized for model '{self.model_name}' at {base_url} with timeout {self.request_timeout}s.")
 
-        self.sync_client = ollama.Client(host=base_url, timeout=self.request_timeout)
-        self.async_client = ollama.AsyncClient(host=base_url, timeout=self.request_timeout)
-        console.log(f"[green]Ollama client initialized for model '{self.model_name}' at {base_url} with timeout {self.request_timeout}s.[/green]")
-
-    def _initialize_gemini_client(self):
-        """Initializes the Gemini LLM client."""
-        cfg = self._load_common_provider_config("gemini")
+    def _initialize_gemini_client(self, provider_config_key: str):
+        cfg = self._load_common_provider_config(provider_config_key)
         api_key = cfg.get('api_key') or os.getenv('GOOGLE_API_KEY')
-
         if not api_key:
-            raise ValueError("Gemini provider requires 'api_key' in config or GOOGLE_API_KEY env var.")
+            raise ValueError(f"Gemini provider ('{provider_config_key}') requires 'api_key' in config or GOOGLE_API_KEY env var.")
         if not self.model_name:
-            raise ValueError("Gemini provider requires 'model' name in config.")
-
+            raise ValueError(f"Gemini provider ('{provider_config_key}') requires 'model' name in config.")
         genai.configure(api_key=api_key)
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-        ]
-        self.async_client = genai.GenerativeModel(
-            model_name=self.model_name,
-            safety_settings=safety_settings
-        )
-        self.sync_client = None # No separate sync client needed for basic checks
-        console.log(f"[green]Gemini client initialized for model '{self.model_name}'.[/green]")
+        safety_settings = [{"category": c, "threshold": "BLOCK_NONE"} for c in ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT"]]
+        self.async_client = genai.GenerativeModel(model_name=self.model_name, safety_settings=safety_settings)
+        self.sync_client = None
+        logger.info(f"Gemini client initialized for model '{self.model_name}'.")
 
-    def _initialize_llm_client(self):
-        """Initializes the LLM client based on the configured provider."""
+    def _initialize_llm_client(self, provider_config_key: str):
         try:
-            if self.provider == "openai":
-                self._initialize_openai_client()
-            elif self.provider == "ollama":
-                self._initialize_ollama_client()
-            elif self.provider == "gemini":
-                self._initialize_gemini_client()
-            else:
-                raise ValueError(f"Unsupported llm_provider: '{self.provider}'. Choose 'openai', 'ollama', or 'gemini'.")
-
+            if self.provider == "openai": self._initialize_openai_client(provider_config_key)
+            elif self.provider == "ollama": self._initialize_ollama_client(provider_config_key)
+            elif self.provider == "gemini": self._initialize_gemini_client(provider_config_key)
+            else: raise ValueError(f"Unsupported llm_provider: '{self.provider}'. Choose 'openai', 'ollama', or 'gemini'.")
         except Exception as e:
-            log_exception(f"[bold red]Failed to initialize LLM client for provider '{self.provider}':[/bold red] {e}", e)
+            log_exception(f"Failed to initialize LLM client for provider '{self.provider}': {e}", e)
             raise RuntimeError(f"LLM client initialization failed: {e}") from e
 
-    def _load_prompt_templates(self):
-        """Loads Jinja2 prompt templates."""
-        try:
-            self.resume_prompt_template = load_template("resume_prompt_file")
-            self.suitability_prompt_template = load_template("suitability_prompt_file")
-            self.job_extraction_prompt_template = load_template("job_extraction_prompt_file")
-        except (RuntimeError, ValueError, TemplateNotFound, TemplateSyntaxError) as tmpl_err:
-            log_exception(f"[bold red]Failed to load necessary prompt templates:[/bold red] {tmpl_err}", tmpl_err)
-            raise RuntimeError(f"Prompt template loading failed: {tmpl_err}") from tmpl_err
-
     def _check_openai_connection(self):
-        """Checks the connection and model availability for the OpenAI provider."""
-        if not self.sync_client:
-            raise RuntimeError("OpenAI sync client not initialized.")
-        # Check OpenAI/LM Studio connection
-        base_url = getattr(self.sync_client, 'base_url', 'N/A') # Get base_url if available
-        console.log(f"Attempting to list models from OpenAI-compatible server at {base_url}...")
+        if not self.sync_client: raise RuntimeError("OpenAI sync client not initialized.")
+        base_url = str(getattr(self.sync_client, 'base_url', 'N/A'))
+        logger.info(f"Attempting to list models from OpenAI-compatible server at {base_url}...")
         models_response = self.sync_client.models.list()
         available_model_ids = [model.id for model in models_response.data]
-        console.log(f"Available models reported by API: {available_model_ids}")
-        # Note: LM Studio might only list the loaded model. Check primarily for connection success.
-        console.log(f"[green]Successfully connected to OpenAI-compatible server at {base_url}.[/green]")
-        console.log(f"[cyan]Configured to use model: '{self.model_name}'. Ensure this model is loaded/available.[/cyan]")
+        logger.info(f"Available models reported by API: {available_model_ids}")
+        logger.info(f"Successfully connected to OpenAI-compatible server at {base_url}.")
+        logger.info(f"Configured to use model: '{self.model_name}'. Ensure this model is loaded/available.")
 
     def _check_ollama_connection(self):
-        """Checks the connection and model availability for the Ollama provider."""
-        if not self.sync_client:
-            raise RuntimeError("Ollama sync client not initialized.")
-        if not self.ollama_base_url:
-             raise RuntimeError("Ollama base URL not set during initialization.")
-        # Use the stored base URL for logging
-        console.log(f"Attempting to list models from Ollama server at {self.ollama_base_url}...")
-        response = self.sync_client.list()
-        # Use .get() for safer access and filter out None if 'name' key is missing
-        available_models = [m.get('name') for m in response.get('models', [])]
-        available_models = [name for name in available_models if name is not None] # Filter out None values
-        console.log(f"Available Ollama models: {available_models}")
+        if not self.sync_client: raise RuntimeError("Ollama sync client not initialized.")
+        if not self.ollama_base_url: raise RuntimeError("Ollama base URL not set.")
+        logger.info(f"Attempting to list models from Ollama server at {self.ollama_base_url}...")
+        response = self.sync_client.list() # type: ignore
+        available_models = [m.get('name') for m in response.get('models', []) if m.get('name')]
+        logger.info(f"Available Ollama models: {available_models}")
         if self.model_name not in available_models:
-            console.log(f"[yellow]Warning: Configured Ollama model '{self.model_name}' not found in available models. Ensure it is pulled.[/yellow]")
-        else:
-            console.log(f"[green]Configured Ollama model '{self.model_name}' found.[/green]")
-        console.log(f"[green]Successfully connected to Ollama server at {self.ollama_base_url}.[/green]")
+            logger.warning(f"Configured Ollama model '{self.model_name}' not found. Ensure it is pulled.")
+        else: logger.info(f"Configured Ollama model '{self.model_name}' found.")
+        logger.info(f"Successfully connected to Ollama server at {self.ollama_base_url}.")
 
     def _check_connection_and_model(self):
-        """Checks connection and model availability for the selected provider."""
-        console.log(f"Checking connection for provider '{self.provider}' and model '{self.model_name}'...")
-
+        logger.info(f"Checking connection for provider '{self.provider}' and model '{self.model_name}'...")
         try:
-            if self.provider == "openai":
-                self._check_openai_connection()
-            elif self.provider == "ollama":
-                self._check_ollama_connection()
+            if self.provider == "openai": self._check_openai_connection()
+            elif self.provider == "ollama": self._check_ollama_connection()
             elif self.provider == "gemini":
-                # Check Gemini connection and model existence
-                console.log("Attempting to list models from Google AI...")
-                found_model = False
-                for m in genai.list_models():
-                    # Check if the model supports generateContent and matches the configured name
-                    if 'generateContent' in m.supported_generation_methods and self.model_name in m.name:
-                        console.log(f"Found compatible Gemini model: {m.name}")
-                        found_model = True
-                        break # Found a suitable match
+                logger.info("Attempting to list models from Google AI...")
+                found_model = any('generateContent' in m.supported_generation_methods and self.model_name in m.name for m in genai.list_models())
                 if not found_model:
-                    console.log(f"[red]Error: Configured Gemini model '{self.model_name}' not found or does not support 'generateContent'.[/red]")
-                    console.log("Please check available models in Google AI Studio and your config.yaml.")
-                    # List some available generative models for user convenience
-                    with suppress(Exception): # Ignore errors listing models if the initial check failed
+                    logger.error(f"Error: Configured Gemini model '{self.model_name}' not found or unsuitable.")
+                    with suppress(Exception):
                         generative_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                        console.log(f"Available generative models: {generative_models[:10]}") # Show first 10
+                        logger.info(f"Available generative models: {generative_models[:10]}")
                     raise ValueError(f"Gemini model '{self.model_name}' not suitable.")
-                else:
-                    console.log(f"[green]Successfully verified Gemini model '{self.model_name}' is available.[/green]")
-
+                else: logger.info(f"Successfully verified Gemini model '{self.model_name}'.")
         except (openai.APIConnectionError, ollama.ResponseError, Exception) as e:
-            provider_name = self.provider.upper()
-            error_type = type(e).__name__
-            log_exception(f"[bold red]{provider_name} API Connection/Setup Error:[/bold red] {error_type} - {e}", e)
-            raise ConnectionError(f"Failed to connect to/setup {provider_name} provider: {e}") from e
-        except Exception as e: # Catch any other unexpected errors
-            log_exception(f"[bold red]Unexpected error during LLM connection check:[/bold red] {e}", e)
+            log_exception(f"{self.provider.upper()} API Connection/Setup Error: {type(e).__name__} - {e}", e)
+            raise ConnectionError(f"Failed to connect/setup {self.provider.upper()} provider: {e}") from e
+        except Exception as e:
+            log_exception(f"Unexpected error during LLM connection check: {e}", e)
             raise ConnectionError(f"Unexpected error during LLM connection check: {e}") from e
 
-    # Ollama-specific model pulling methods are removed.
-
-    # Helper methods for provider-specific LLM calls
     async def _call_openai_llm_async(self, prompt: str) -> Optional[str]:
         if not isinstance(self.async_client, openai.AsyncOpenAI) or not self.model_name:
-            # This check is more for type safety; None check for client/model_name is in the caller.
-            raise TypeError("OpenAI client or model_name not configured correctly for call.")
-        response = await self.async_client.chat.completions.create(
-            model=self.model_name,
-            messages=[{'role': 'user', 'content': prompt}],
-            temperature=0.1
-        )
+            raise TypeError("OpenAI client or model_name not configured correctly.")
+        response = await self.async_client.chat.completions.create(model=self.model_name, messages=[{'role': 'user', 'content': prompt}], temperature=0.1)
         return response.choices[0].message.content
 
     async def _call_ollama_llm_async(self, prompt: str) -> Optional[str]:
         if not isinstance(self.async_client, ollama.AsyncClient) or not self.model_name:
-            raise TypeError("Ollama client or model_name not configured correctly for call.")
-        ollama_options = {'temperature': 0.1}
-        # Timeout is handled by client instance after __init__ fix
-        response = await self.async_client.chat(
-            model=self.model_name,
-            messages=[{'role': 'user', 'content': prompt}],
-            format='json',
-            options=ollama_options,
-        )
-        return response['message']['content']
+            raise TypeError("Ollama client or model_name not configured correctly.")
+        response = await self.async_client.chat(model=self.model_name, messages=[{'role': 'user', 'content': prompt}], format='json', options={'temperature': 0.1}) # type: ignore
+        return response['message']['content'] # type: ignore
 
     async def _call_gemini_llm_async(self, prompt: str) -> Optional[str]:
         if not isinstance(self.async_client, genai.GenerativeModel) or not self.model_name:
-            raise TypeError("Gemini client or model_name not configured correctly for call.")
-        generation_config = genai.types.GenerationConfig(
-            response_mime_type="application/json",
-            temperature=0.1
-        )
-        response = await self.async_client.generate_content_async(
-            prompt,
-            generation_config=generation_config,
-            request_options={'timeout': self.request_timeout} # Uses class member self.request_timeout
-        )
+            raise TypeError("Gemini client or model_name not configured correctly.")
+        generation_config = genai.types.GenerationConfig(response_mime_type="application/json", temperature=0.1)
+        response = await self.async_client.generate_content_async(prompt, generation_config=generation_config, request_options={'timeout': self.request_timeout})
         if not response.candidates:
-            # Raise specific exception for blocked prompts to be handled by the caller
-            raise genai.types.generation_types.BlockedPromptException(
-                f"Gemini response blocked. Prompt feedback: {response.prompt_feedback}"
-            )
-        content = response.text
+            raise genai.types.generation_types.BlockedPromptException(f"Gemini response blocked. Prompt feedback: {response.prompt_feedback}")
         if hasattr(response, 'usage_metadata') and response.usage_metadata:
             usage = response.usage_metadata
-            console.log(f"[dim]Gemini Usage - Prompt: {usage.prompt_token_count}, Candidates: {usage.candidates_token_count}, Total: {usage.total_token_count} tokens[/dim]")
-        return content
+            logger.debug(f"Gemini Usage - Prompt: {usage.prompt_token_count}, Candidates: {usage.candidates_token_count}, Total: {usage.total_token_count} tokens")
+        return response.text
 
-    async def _call_llm_async(self, prompt: str) -> Optional[Dict[str, Any]]: # Renamed
-        """
-        Calls the configured LLM provider (OpenAI, Ollama, Gemini) with the given prompt,
-        handles retries, and attempts to parse a JSON response.
-        """
+    async def _call_llm_async(self, prompt: str, task_name: str) -> Optional[Dict[str, Any]]:
         if not self.async_client or not self.model_name:
+            logger.error("LLM client or model name not initialized properly for _call_llm_async.")
             raise RuntimeError("LLM client or model name not initialized properly.")
 
+        BaseAnalyzer._llm_call_stats["total_calls"] += 1
+        BaseAnalyzer._llm_call_stats["total_prompt_chars"] += len(prompt)
+        task_stats = BaseAnalyzer._llm_call_stats["calls_by_task"][task_name]
+        
         provider_cfg = settings.get(self.provider, {})
         max_retries = provider_cfg.get('max_retries', self.max_retries)
         retry_delay = provider_cfg.get('retry_delay', self.retry_delay)
-        # request_timeout local var is still here, might be used if other providers need per-call timeout
-        # request_timeout = provider_cfg.get('request_timeout', self.request_timeout)
-
         analysis_cfg = settings.get('analysis', {})
         max_prompt_chars = analysis_cfg.get('max_prompt_chars', 24000)
         log_full_prompt = analysis_cfg.get('log_full_prompt', False)
 
-        console.log(f"ASYNC: Sending request via provider '{self.provider}' to model '{self.model_name}'. Prompt length: {len(prompt)} chars.")
-        if log_full_prompt:
-            console.log(f"ASYNC: Full prompt:\n{prompt}")
-        elif len(prompt) > 1000:
-            console.log(f"ASYNC: Prompt snippet:\n{prompt[:500]}...\n...{prompt[-500:]}")
-        else:
-            console.log(f"ASYNC: Prompt:\n{prompt}")
+        logger.info(f"ASYNC LLM Call ({task_name}): Provider='{self.provider}', Model='{self.model_name}', Prompt Chars={len(prompt)}")
+        if log_full_prompt: logger.debug(f"Full prompt for '{task_name}':\n{prompt}")
+        elif len(prompt) > 1000: logger.debug(f"Prompt snippet for '{task_name}':\n{prompt[:500]}...\n...{prompt[-500:]}")
+        else: logger.debug(f"Prompt for '{task_name}':\n{prompt}")
 
         if len(prompt) > max_prompt_chars:
-            console.log(f"[yellow]Warning: Prompt length ({len(prompt)}) exceeds configured max_prompt_chars ({max_prompt_chars}). Model might truncate or error.[/yellow]")
-            # Truncate the prompt
-            prompt_for_llm = prompt[:max_prompt_chars]
-        else:
-            prompt_for_llm = prompt
+            logger.warning(f"Warning ({task_name}): Prompt length ({len(prompt)}) exceeds configured max ({max_prompt_chars}).")
 
         last_exception = None
-        content_str: Optional[str] = None # Renamed from 'content'
-        for attempt in range(max_retries + 1):
-            try:
-                if self.provider == "openai":
-                    content_str = await self._call_openai_llm_async(prompt_for_llm)
-                elif self.provider == "ollama":
-                    content_str = await self._call_ollama_llm_async(prompt_for_llm)
-                elif self.provider == "gemini":
-                    content_str = await self._call_gemini_llm_async(prompt_for_llm)
-                else:
-                    # This case should ideally be caught by __init__ validation
-                    raise ValueError(f"Unsupported provider '{self.provider}' encountered in _call_llm_async.")
+        content_str: Optional[str] = None
 
-                # --- Common Response Processing ---
-                console.log(f"ASYNC: LLM raw response content (Attempt {attempt + 1}):\n{content_str}")
+        for attempt in range(max_retries + 1):
+            logger.info(f"ASYNC LLM Call ({task_name}): Attempt {attempt + 1}/{max_retries + 1} starting...")
+            attempt_start_time = time.monotonic()
+            error_type_str = "UnknownError" 
+            try:
+                if self.provider == "openai": content_str = await self._call_openai_llm_async(prompt)
+                elif self.provider == "ollama": content_str = await self._call_ollama_llm_async(prompt)
+                elif self.provider == "gemini": content_str = await self._call_gemini_llm_async(prompt)
+                else: raise ValueError(f"Unsupported provider '{self.provider}'.")
+                
+                attempt_duration = time.monotonic() - attempt_start_time
+                BaseAnalyzer._llm_call_stats["total_duration_seconds"] += attempt_duration
+                response_length = len(content_str) if content_str else 0
+                BaseAnalyzer._llm_call_stats["total_response_chars"] += response_length
+                
+                logger.info(f"ASYNC LLM Call ({task_name}): Attempt {attempt + 1} completed in {attempt_duration:.2f}s. Response Chars: {response_length}")
+                
+                if content_str is not None:
+                    model_output_logger.info(f"TASK: {task_name} | ATTEMPT: {attempt + 1}\nPROMPT:\n{prompt}\n---\nRESPONSE:\n{content_str}\n==========\n")
+                else:
+                    model_output_logger.info(f"TASK: {task_name} | ATTEMPT: {attempt + 1}\nPROMPT:\n{prompt}\n---\nRESPONSE: None\n==========\n")
 
                 if content_str is None:
-                    console.log(f"[yellow]ASYNC LLM response content_str is None (Attempt {attempt + 1}). Provider: {self.provider}[/yellow]")
-                    last_exception = ValueError("LLM response content_str was None from helper or provider.")
+                    last_exception = ValueError("LLM response content was None.")
+                    error_type_str = type(last_exception).__name__
+                    logger.warning(f"ASYNC ({task_name}) LLM Response None (Attempt {attempt + 1})")
                 else:
                     try:
                         content_strip = content_str.strip()
-                        if content_strip.startswith("```json"):
-                            content_strip = content_strip[7:-3].strip() if content_strip.endswith("```") else content_strip[7:].strip()
-                        elif content_strip.startswith("```"):
-                            content_strip = content_strip[3:-3].strip() if content_strip.endswith("```") else content_strip[3:].strip()
-
-                        # Replace invalid escape sequences before JSON parsing
-                        content_strip = content_strip.replace(r'\&', '&')
-
+                        if content_strip.startswith("```json"): content_strip = content_strip[7:-3].strip() if content_strip.endswith("```") else content_strip[7:].strip()
+                        elif content_strip.startswith("```"): content_strip = content_strip[3:-3].strip() if content_strip.endswith("```") else content_strip[3:].strip()
                         result = json.loads(content_strip)
-                        console.log("[green]ASYNC: Parsed JSON response from LLM.[/green]")
-                        return result # Success! Exit loop.
+                        
+                        BaseAnalyzer._llm_call_stats["successful_calls"] += 1
+                        task_stats["success"] += 1
+                        logger.info(f"ASYNC ({task_name}): Attempt {attempt + 1} successful. Parsed JSON response.")
+                        return result
                     except json.JSONDecodeError as json_err:
-                        console.log(f"[yellow]ASYNC JSON Decode Error (Attempt {attempt + 1}):[/yellow] {json_err}")
-                        console.log(f"Problematic content_str from LLM: {content_str}")
                         last_exception = json_err
-                        # Continue to retry logic
-
-            # --- Exception Handling (Provider Agnostic where possible) ---
-            except (openai.APIConnectionError, ollama.ResponseError, asyncio.TimeoutError, ConnectionError, TimeoutError) as conn_err:
-                error_message = f"ASYNC LLM Connection/Timeout Error (Provider: {self.provider}, Attempt {attempt + 1}): {type(conn_err).__name__} - {conn_err}"
-                console.log(f"[yellow]{error_message}[/yellow]")
-                log_exception(error_message, conn_err)
-                last_exception = conn_err
+                        error_type_str = type(json_err).__name__
+                        logger.warning(f"ASYNC ({task_name}) JSON Decode Error (Attempt {attempt + 1}): {json_err}")
+                        logger.debug(f"Problematic content from LLM for '{task_name}': {content_str}")
+            
+            except (openai.APIConnectionError, ollama.ResponseError, asyncio.TimeoutError, ConnectionError, TimeoutError) as conn_err: # type: ignore
+                last_exception = conn_err; error_type_str = type(conn_err).__name__
+                logger.warning(f"ASYNC ({task_name}) LLM Connection/Timeout (Attempt {attempt + 1}): {error_type_str} - {conn_err}")
             except openai.RateLimitError as rate_err:
-                error_message = f"ASYNC LLM Rate Limit Error (Provider: openai, Attempt {attempt + 1}): {rate_err}"
-                console.log(f"[yellow]{error_message}[/yellow]")
-                log_exception(error_message, rate_err)
-                last_exception = rate_err
+                last_exception = rate_err; error_type_str = type(rate_err).__name__
+                logger.warning(f"ASYNC ({task_name}) OpenAI Rate Limit (Attempt {attempt + 1}): {rate_err}")
             except openai.APIStatusError as status_err:
-                error_message = f"ASYNC LLM API Status Error (Provider: openai, Attempt {attempt + 1}): Status {status_err.status_code}, Response: {status_err.response.text if status_err.response else 'N/A'}"
-                console.log(f"[yellow]{error_message}[/yellow]")
-                log_exception(error_message, status_err)
-                last_exception = status_err
-            except genai.types.generation_types.BlockedPromptException as gemini_block_err: # Caught from _call_gemini_llm_async
-                error_message = f"ASYNC Gemini Prompt Blocked (Attempt {attempt + 1}): {gemini_block_err}. Feedback: {gemini_block_err.response.prompt_feedback if hasattr(gemini_block_err, 'response') else 'N/A'}"
-                console.log(f"[red]{error_message}[/red]")
-                log_exception(error_message, gemini_block_err)
-                last_exception = gemini_block_err # This is a terminal error for the call, but retry loop might still proceed if not last attempt.
-            except google.api_core.exceptions.DeadlineExceeded as deadline_err:
-                error_message = f"ASYNC Google API Deadline Exceeded (Provider: gemini, Attempt {attempt + 1}): {deadline_err}"
-                console.log(f"[red]{error_message}[/red]")
-                log_exception(error_message, deadline_err)
-                last_exception = deadline_err
-            except TypeError as type_err: # Catch TypeErrors from helper methods if client types are wrong
-                error_message = f"ASYNC LLM Client Configuration Error (Provider: {self.provider}, Attempt {attempt + 1}): {type_err}"
-                console.log(f"[red]{error_message}[/red]")
-                log_exception(error_message, type_err)
-                last_exception = type_err
-                # This is likely a non-retriable configuration issue, so break after logging.
-                break
-            except Exception as e: # Catch any other unexpected errors
-                error_message = f"ASYNC Unexpected LLM API Error (Provider: {self.provider}, Attempt {attempt + 1}): {type(e).__name__} - {e}"
-                console.log(f"[red]{error_message}[/red]")
-                log_exception(error_message, e)
-                last_exception = e
+                last_exception = status_err; error_type_str = type(status_err).__name__
+                logger.warning(f"ASYNC ({task_name}) OpenAI API Status {status_err.status_code} (Attempt {attempt + 1}): {status_err.response.text if status_err.response else 'N/A'}")
+            except genai.types.generation_types.BlockedPromptException as gemini_block_err: # type: ignore
+                last_exception = gemini_block_err; error_type_str = type(gemini_block_err).__name__
+                logger.error(f"ASYNC ({task_name}) Gemini Prompt Blocked (Attempt {attempt + 1}): {gemini_block_err}")
+            except google.api_core.exceptions.DeadlineExceeded as deadline_err: # type: ignore
+                last_exception = deadline_err; error_type_str = type(deadline_err).__name__
+                logger.error(f"ASYNC ({task_name}) Google API Deadline Exceeded (Attempt {attempt + 1}): {deadline_err}")
+            except TypeError as type_err: 
+                last_exception = type_err; error_type_str = type(type_err).__name__
+                logger.error(f"ASYNC ({task_name}) LLM Client Config Error (Attempt {attempt + 1}): {type_err}", exc_info=True);
+                BaseAnalyzer._llm_call_stats["errors_by_type"][error_type_str] += 1
+                break 
+            except Exception as e:
+                last_exception = e; error_type_str = type(e).__name__
+                logger.error(f"ASYNC ({task_name}) Unexpected LLM API Error (Attempt {attempt + 1}): {error_type_str} - {e}", exc_info=True)
+            
+            BaseAnalyzer._llm_call_stats["errors_by_type"][error_type_str] += 1
 
             if attempt < max_retries:
                 current_delay = retry_delay * (2 ** attempt)
-                console.log(f"[dim]ASYNC: Retrying LLM call in {current_delay:.1f}s... (Attempt {attempt + 1} of {max_retries})[/dim]")
+                logger.info(f"ASYNC ({task_name}): Retrying in {current_delay:.1f}s...")
                 await asyncio.sleep(current_delay)
-            else:
-                console.log(f"[bold red]ASYNC: LLM call failed after {max_retries + 1} attempts.[/bold red]")
+            else: 
+                BaseAnalyzer._llm_call_stats["failed_calls"] += 1
+                task_stats["fail"] += 1
+                logger.error(f"ASYNC ({task_name}): All {max_retries + 1} attempts failed for LLM call.")
                 if last_exception:
-                    console.log(f"ASYNC: Last error: {type(last_exception).__name__} - {last_exception}")
+                    logger.error(f"ASYNC ({task_name}): Final error details: {type(last_exception).__name__} - {last_exception}")
         return None
 
-    async def extract_resume_data_async(self, resume_text: str) -> Optional[ResumeData]:
-        # Calculate MAX_RESUME_CHARS_FOR_LLM based on max_prompt_chars and template overhead
-        max_prompt_chars = settings.get('analysis', {}).get('max_prompt_chars', 15000)
-        template_overhead = 1800 # Estimated characters in the resume extraction prompt template without resume_text
-        MAX_RESUME_CHARS_FOR_LLM = max(0, max_prompt_chars - template_overhead) # Ensure it's not negative
+class ResumeAnalyzer(BaseAnalyzer):
+    def __init__(self):
+        super().__init__(provider_config_key=settings.get('llm_provider', 'openai'))
+        # Templates are now loaded dynamically in each method call
+        # self._load_prompt_templates() # Removed
 
+    # def _load_prompt_templates(self): # Removed
+    #     try:
+    #         self.resume_prompt_template = load_template("resume_prompt_file")
+    #     except (RuntimeError, ValueError, TemplateNotFound, TemplateSyntaxError) as tmpl_err:
+    #         log_exception(f"ResumeAnalyzer: Failed to load resume prompt template: {tmpl_err}", tmpl_err)
+    #         raise RuntimeError(f"ResumeAnalyzer prompt template loading failed: {tmpl_err}") from tmpl_err
+
+    async def extract_resume_data_async(self, resume_text: str) -> Optional[ResumeData]:
+        MAX_RESUME_CHARS_FOR_LLM = settings.get('analysis', {}).get('max_prompt_chars', 15000) 
         if not resume_text or not resume_text.strip():
-            console.log("[yellow]Resume text empty.[/yellow]")
+            logger.warning("Resume text empty for extraction.")
             return None
+        
         resume_text_for_prompt = resume_text
         if len(resume_text) > MAX_RESUME_CHARS_FOR_LLM:
-            console.log(f"[yellow]Truncating resume text ({len(resume_text)} > {MAX_RESUME_CHARS_FOR_LLM}).[/yellow]")
+            logger.warning(f"Truncating resume text ({len(resume_text)} > {MAX_RESUME_CHARS_FOR_LLM}) for LLM.")
             resume_text_for_prompt = resume_text[:MAX_RESUME_CHARS_FOR_LLM]
 
         try:
-            prompt = self.resume_prompt_template.render(resume_text=resume_text_for_prompt)
+            resume_prompt_template = load_template("resume_prompt_file") # Load dynamically
+            prompt = resume_prompt_template.render(resume_text=resume_text_for_prompt)
         except Exception as render_err:
-            log_exception(f"[bold red]Failed to render resume extraction prompt:[/bold red] {render_err}", render_err)
+            log_exception(f"ResumeAnalyzer: Failed to load or render resume extraction prompt: {render_err}", render_err)
             return None
 
-        task_name = "Resume Extraction"
-        console.log(f"ASYNC: Starting LLM call for: {task_name}")
-        start_time = time.monotonic()
-        extracted_json = await self._call_llm_async(prompt) # Use unified method
-        duration = time.monotonic() - start_time
-        console.log(f"ASYNC: Finished LLM call for: {task_name}. Duration: {duration:.2f}s")
-
+        extracted_json = await self._call_llm_async(prompt, task_name="Resume Extraction")
         if extracted_json:
             try:
                 if isinstance(extracted_json, dict):
+                    if 'contact_information' not in extracted_json or not isinstance(extracted_json['contact_information'], dict):
+                        extracted_json['contact_information'] = {} 
+                    
                     resume_data = ResumeData(**extracted_json)
-                    console.log("[green]ASYNC: Parsed extracted resume data.[/green]")
+                    logger.info("ResumeAnalyzer: Parsed extracted resume data.")
                     return resume_data
                 else:
-                    console.log(f"[red]ASYNC Resume extract response not dict:[/red] {type(extracted_json)}")
+                    logger.error(f"ResumeAnalyzer: Resume extract response not dict: {type(extracted_json)}")
                     return None
             except Exception as e:
-                log_exception(f"[bold red]ASYNC: Failed validate extracted resume:[/bold red] {e}", e)
-                console.log(f"Invalid JSON: {extracted_json}")
+                log_exception(f"ResumeAnalyzer: Failed to validate extracted resume data: {e}", e)
+                logger.debug(f"Invalid JSON from LLM for ResumeData: {extracted_json}")
                 return None
         else:
-            console.log("[bold red]ASYNC: Failed get response for resume extract.[/bold red]")
+            logger.error("ResumeAnalyzer: Failed to get response for resume extraction.")
             return None
 
-    async def analyze_suitability_async(self, resume_data: ResumeData, job_data: Dict[str, Any]) -> Optional[JobAnalysisResult]:
-        job_title = job_data.get('title', 'N/A')
-        if not resume_data:
-            console.log(f"[yellow]Missing structured resume data for '{job_title}'.[/yellow]")
+class JobAnalyzer(BaseAnalyzer):
+    def __init__(self):
+        super().__init__(provider_config_key=settings.get('llm_provider', 'openai'))
+        # Templates are now loaded dynamically in each method call
+        # self._load_prompt_templates() # Removed
+
+    # def _load_prompt_templates(self): # Removed
+    #     try:
+    #         self.suitability_prompt_template = load_template("suitability_prompt_file")
+    #         self.job_extraction_prompt_template = load_template("job_extraction_prompt_file")
+    #     except (RuntimeError, ValueError, TemplateNotFound, TemplateSyntaxError) as tmpl_err:
+    #         log_exception(f"JobAnalyzer: Failed to load necessary prompt templates: {tmpl_err}", tmpl_err)
+    #         raise RuntimeError(f"JobAnalyzer prompt template loading failed: {tmpl_err}") from tmpl_err
+
+    async def extract_job_details_async(self, job_description_text: str, job_title: str = "N/A") -> Optional[ParsedJobData]:
+        if not job_description_text or not job_description_text.strip():
+            logger.warning(f"Job description for '{job_title}' is empty. Skipping extraction.")
             return None
-        if not job_data or not job_data.get("description"):
-            console.log(f"[yellow]Missing job description for '{job_title}'. Skipping analysis.[/yellow]")
+        
+        try:
+            job_extraction_prompt_template = load_template("job_extraction_prompt_file") # Load dynamically
+            prompt = job_extraction_prompt_template.render(job_description=job_description_text)
+        except Exception as render_err:
+            log_exception(f"JobAnalyzer: Failed to load or render job extraction prompt for '{job_title}': {render_err}", render_err)
+            return None
+
+        extracted_json = await self._call_llm_async(prompt, task_name=f"Job Details Extraction for '{job_title}'")
+        if extracted_json:
+            try:
+                if isinstance(extracted_json, dict):
+                    job_details = ParsedJobData(**extracted_json)
+                    logger.info(f"JobAnalyzer: Parsed extracted job details for '{job_title}'.")
+                    return job_details
+                else:
+                    logger.error(f"JobAnalyzer: Job details extraction response not a dict for '{job_title}': {type(extracted_json)}")
+                    return None
+            except Exception as e:
+                log_exception(f"JobAnalyzer: Failed to validate extracted job details for '{job_title}': {e}", e)
+                logger.debug(f"Invalid JSON for ParsedJobData ('{job_title}'): {extracted_json}")
+                return None
+        else:
+            logger.error(f"JobAnalyzer: Failed to get response for job details extraction for '{job_title}'.")
+            return None
+
+    async def analyze_resume_suitability(self, resume_data: ResumeData, job_data: Dict[str, Any]) -> Optional[JobAnalysisResult]:
+        job_title = job_data.get('title', 'N/A')
+        job_description = job_data.get('description')
+
+        if not resume_data or not resume_data.summary: 
+            logger.warning(f"Missing or incomplete structured resume data for '{job_title}'. Skipping suitability.")
+            return None
+        if not job_description:
+            logger.warning(f"Missing job description for '{job_title}'. Skipping suitability analysis.")
             return None
 
         try:
             resume_data_json_str = resume_data.model_dump_json(indent=2)
+            job_data_serializable_str = json.dumps(job_data, cls=DateEncoder) 
+            job_data_serializable = json.loads(job_data_serializable_str) 
+
             context = {
                 "resume_data_json": resume_data_json_str,
-                "job_data_json": job_data
+                "job_data_json": job_data_serializable 
             }
-            prompt = self.suitability_prompt_template.render(context)
+            suitability_prompt_template = load_template("suitability_prompt_file") # Load dynamically
+            prompt = suitability_prompt_template.render(context)
         except Exception as e:
-            log_exception(f"[red]Error preparing/rendering suitability prompt for '{job_title}':[/red] {e}", e)
+            log_exception(f"JobAnalyzer: Error preparing/rendering suitability prompt for '{job_title}': {e}", e)
             return None
 
-        task_name = f"Suitability Analysis for '{job_title}'"
-        console.log(f"ASYNC: Starting LLM call for: {task_name}")
-        start_time = time.monotonic()
-        combined_json_response = await self._call_llm_async(prompt) # Use unified method
-        duration = time.monotonic() - start_time
-        console.log(f"ASYNC: Finished LLM call for: {task_name}. Duration: {duration:.2f}s")
-
+        combined_json_response = await self._call_llm_async(prompt, task_name=f"Suitability Analysis for '{job_title}'")
         if not combined_json_response or not isinstance(combined_json_response, dict):
-            console.log(f"[red]ASYNC: Failed get valid JSON dict for suitability: {job_title}.[/red]")
-            console.log(f"Raw response: {combined_json_response}")
+            logger.error(f"JobAnalyzer: Failed to get valid JSON dict for suitability ('{job_title}').")
+            logger.debug(f"Raw response for '{job_title}': {combined_json_response}")
             return None
 
-        analysis_data = combined_json_response.get("analysis")
+        analysis_data = combined_json_response.get("analysis") 
         if not analysis_data or not isinstance(analysis_data, dict):
-            console.log(f"[red]ASYNC: Response JSON missing valid 'analysis' dict for: {job_title}.[/red]")
-            console.log(f"Full response: {combined_json_response}")  # Log the full response for debugging
+            logger.error(f"JobAnalyzer: Response JSON missing valid 'analysis' dict for '{job_title}'.")
+            logger.debug(f"Full response for '{job_title}': {combined_json_response}")
             return None
-
+        
         try:
             analysis_result = JobAnalysisResult(**analysis_data)
-            console.log(f"[cyan]ASYNC: Suitability score for '{job_title}': {analysis_result.suitability_score}%[/cyan]")
+            logger.info(f"JobAnalyzer: Suitability score for '{job_title}': {analysis_result.suitability_score}%")
             return analysis_result
         except Exception as e:
-            log_exception(f"[red]ASYNC: Failed validate analysis result for '{job_title}':[/red] {e}", e)
-            console.log(f"Invalid 'analysis' structure: {analysis_data}")
+            log_exception(f"JobAnalyzer: Failed to validate analysis result for '{job_title}': {e}", e)
+            logger.debug(f"Invalid 'analysis' structure for '{job_title}': {analysis_data}")
             return None
 
-    async def extract_job_details_async(self, job_description_text: str, job_title: str = "N/A") -> Optional[ParsedJobData]: # Added job_title for logging
-        """
-        Asynchronously extracts structured data from a job description string using an LLM.
-        """
-        if not job_description_text or not job_description_text.strip():
-            console.log("[yellow]Job description text is empty. Skipping extraction.[/yellow]")
-            return None
+# --- Standalone functions (current structure, to be refactored or removed if class methods are preferred everywhere) ---
+# The following functions are from the current analyzer.py and might be deprecated or integrated into classes.
+# For now, keeping them to see how they fit into the refactor.
 
-        # Truncate if necessary (using a general prompt char limit for now)
-        # MAX_JOB_DESC_CHARS_FOR_LLM = settings.get('analysis', {}).get('max_prompt_chars', 15000) # Or a specific setting
-        # if len(job_description_text) > MAX_JOB_DESC_CHARS_FOR_LLM:
-        #     console.log(f"[yellow]Truncating job description text ({len(job_description_text)} > {MAX_JOB_DESC_CHARS_FOR_LLM}).[/yellow]")
-        #     job_description_text_for_prompt = job_description_text[:MAX_JOB_DESC_CHARS_FOR_LLM]
-        # else:
-        #     job_description_text_for_prompt = job_description_text
+async def original_extract_job_details_async(job_description_text: str, job_title: str = "N/A") -> Optional[ParsedJobData]: 
+    logger.warning(f"Calling DEPRECATED original_extract_job_details_async for '{job_title}'")
+    schema = {
+        "properties": {
+            "job_title_extracted": {"type": "string"},
+            "key_responsibilities": {"type": "array", "items": {"type": "string"}},
+            "required_skills": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "level": {"type": "string"}, "years_experience": {"type": "integer"}}}},
+            "preferred_skills": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "level": {"type": "string"}, "years_experience": {"type": "integer"}}}},
+            "required_experience_years": {"type": "integer"},
+            "preferred_experience_years": {"type": "integer"},
+            "required_education": {"type": "string"},
+            "preferred_education": {"type": "string"},
+            "salary_range_extracted": {"type": "string"},
+            "work_model_extracted": {"type": "string"},
+            "company_culture_hints": {"type": "array", "items": {"type": "string"}},
+            "tools_technologies": {"type": "array", "items": {"type": "string"}},
+            "job_type": {"type": "string"},
+            "industry": {"type": "string"},
+            "required_certifications": {"type": "array", "items": {"type": "string"}},
+            "preferred_certifications": {"type": "array", "items": {"type": "string"}},
+            "security_clearance": {"type": "string"},
+            "travel_requirements": {"type": "string"},
+        },
+        "required": ["job_title_extracted", "key_responsibilities", "required_skills"],
+    }
+    return None 
 
-        try:
-            prompt = self.job_extraction_prompt_template.render(job_description=job_description_text)
-        except Exception as render_err:
-            log_exception(f"[bold red]Failed to render job extraction prompt:[/bold red] {render_err}", render_err)
-            return None
-
-        task_name = f"Job Details Extraction for '{job_title}'"
-        console.log(f"ASYNC: Starting LLM call for: {task_name}")
-        start_time = time.monotonic()
-        extracted_json = await self._call_llm_async(prompt) # Use unified method
-        duration = time.monotonic() - start_time
-        console.log(f"ASYNC: Finished LLM call for: {task_name}. Duration: {duration:.2f}s")
-
-        if extracted_json:
-            try:
-                if isinstance(extracted_json, dict):
-                    # Ensure all list fields are present even if empty, as per Pydantic model defaults
-                    # Pydantic handles default empty lists, so direct instantiation is fine.
-                    job_details = ParsedJobData(**extracted_json)
-                    console.log("[green]ASYNC: Parsed extracted job details.[/green]")
-                    return job_details
-                else:
-                    console.log(f"[red]ASYNC Job details extraction response not a dict:[/red] {type(extracted_json)}")
-                    return None
-            except Exception as e: # Catch Pydantic validation errors specifically if possible
-                log_exception(f"[bold red]ASYNC: Failed to validate extracted job details:[/bold red] {e}", e)
-                console.log(f"Invalid JSON for ParsedJobData: {extracted_json}")
-                return None
-        else:
-            console.log("[bold red]ASYNC: Failed to get response for job details extraction.[/bold red]")
-            return None
+async def original_analyze_resume_suitability(resume_text: str, job_description_text: str, job_title: str = "N/A") -> Optional[JobAnalysisResult]:
+    logger.warning(f"Calling DEPRECATED original_analyze_resume_suitability for '{job_title}'")
+    return None

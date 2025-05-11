@@ -2,11 +2,12 @@ import json
 import os
 import html
 import re
-from colorama import Fore, Style  # Import colorama
-from rich.console import Console
+import logging # Added for standard logging
+# from colorama import Fore, Style # Likely no longer needed
+# from rich.console import Console # Replaced by logger
 
-# Initialize rich console
-console = Console()
+# Get a logger for this module
+logger = logging.getLogger(__name__)
 
 # Module-level cache for job mandates and prompt fields
 _loaded_job_mandates = None
@@ -24,11 +25,11 @@ def load_job_mandates(json_file_path: str) -> list[dict]:
     """
     global _loaded_job_mandates
     if _loaded_job_mandates is not None:
-        console.log("[green]Returning job mandates from cache.[/green]")
+        logger.info("Returning job mandates from cache.")
         return _loaded_job_mandates
 
     if not os.path.exists(json_file_path):
-        console.log(f"[red]Job mandates file not found: {json_file_path}[/red]")
+        logger.error(f"Job mandates file not found: {json_file_path}")
         return []
 
     try:
@@ -36,29 +37,30 @@ def load_job_mandates(json_file_path: str) -> list[dict]:
             data = json.load(f)
 
         if isinstance(data, list):
-            console.log(
-                f"[green]Successfully loaded {len(data)} job mandates from {html.escape(json_file_path)}[/green]"
+            logger.info(
+                f"Successfully loaded {len(data)} job mandates from {html.escape(json_file_path)}"
             )
             # Basic validation: ensure items are dictionaries
             if all(isinstance(job, dict) for job in data):
                 _loaded_job_mandates = data # Cache the loaded data
                 return data
             else:
-                console.log(
-                    "[red]JSON file does not contain a list of job objects (dictionaries).[/red]"
+                logger.error(
+                    "JSON file does not contain a list of job objects (dictionaries)."
                 )
                 return []
         else:
-            console.log("[red]JSON file root is not a list.[/red]")
+            logger.error("JSON file root is not a list.")
             return []
     except json.JSONDecodeError as e:
-        console.log(
-            f"[red]Error decoding JSON file {html.escape(json_file_path)}: {str(e)}[/red]"
+        logger.error(
+            f"Error decoding JSON file {html.escape(json_file_path)}: {str(e)}"
         )
         return []
     except Exception as e:
-        console.log(
-            f"[red]An unexpected error occurred while loading {html.escape(json_file_path)}: {str(e)}[/red]"
+        logger.error(
+            f"An unexpected error occurred while loading {html.escape(json_file_path)}: {str(e)}",
+            exc_info=True
         )
         return []
 
@@ -75,7 +77,7 @@ def extract_fields_from_prompt(prompt_path: str) -> list[str]:
     """
     global _extracted_prompt_fields
     if _extracted_prompt_fields is not None:
-        console.log("[green]Returning extracted prompt fields from cache.[/green]")
+        logger.info("Returning extracted prompt fields from cache.")
         return _extracted_prompt_fields
 
     try:
@@ -85,7 +87,7 @@ def extract_fields_from_prompt(prompt_path: str) -> list[str]:
         # Extract JSON schema block
         schema_match = re.search(r'```json\n({.*?})\n```', prompt_content, re.DOTALL)
         if not schema_match:
-            console.log("[red]Failed to extract JSON schema from prompt.[/red]")
+            logger.error("Failed to extract JSON schema from prompt.")
             return []
 
         schema_content = schema_match.group(1)
@@ -94,7 +96,7 @@ def extract_fields_from_prompt(prompt_path: str) -> list[str]:
         _extracted_prompt_fields = field_names # Cache the extracted fields
         return field_names
     except Exception as e:
-        console.log(f"[red]Error extracting fields from prompt: {e}[/red]")
+        logger.error(f"Error extracting fields from prompt: {e}", exc_info=True)
         return []
 
 def parse_job_data(job_data: dict) -> dict:
@@ -155,12 +157,16 @@ def parse_job_data_dynamic(job_data: dict, fields: list[str]) -> dict:
 # Example usage
 if __name__ == "__main__":
     # Example of how to use the caching functions
+    # Setup basic logging if run standalone for example to work
+    if not logging.getLogger().hasHandlers():
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
     prompt_path = os.path.join(os.path.dirname(__file__), '../analysis/prompts/job_extraction.prompt')
     fields = extract_fields_from_prompt(prompt_path) # First call reads the file and caches
-    console.log(f"[green]Extracted fields from prompt: {fields}[/green]")
+    logger.info(f"Extracted fields from prompt: {fields}")
 
     fields_cached = extract_fields_from_prompt(prompt_path) # Second call should use the cache
-    console.log(f"[green]Extracted fields from prompt (cached): {fields_cached}[/green]")
+    logger.info(f"Extracted fields from prompt (cached): {fields_cached}")
 
 
     # Example job data
@@ -173,4 +179,4 @@ if __name__ == "__main__":
     }
 
     parsed_job = parse_job_data_dynamic(job_data, fields)
-    console.log(f"[blue]Parsed job data: {parsed_job}[/blue]")
+    logger.info(f"Parsed job data: {parsed_job}")
