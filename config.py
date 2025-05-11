@@ -5,7 +5,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Any
-from opentelemetry.sdk.trace.sampling import ALWAYS_ON # Added for OTEL config
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON, TraceIdRatioBasedSampler # Updated for OTEL config
 
 log = logging.getLogger(__name__)
 
@@ -86,11 +86,14 @@ DEFAULT_SETTINGS = {
     # --- OpenTelemetry Settings ---
     "opentelemetry": {
         "OTEL_SERVICE_NAME": "MyJobSpyAI",
-        "OTEL_EXPORTER_OTLP_ENDPOINT": os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"), # Or use a default
-        "OTEL_TRACES_SAMPLER": ALWAYS_ON, # Or use a percentage
+        "OTEL_EXPORTER_OTLP_ENDPOINT": os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
+        "OTEL_TRACES_SAMPLER": "always_on", # Default to string
+        "OTEL_TRACES_SAMPLER_CONFIG": { # Config for samplers like traceidratio
+             "ratio": 0.5 # Default ratio if traceidratio is chosen
+        },
         "OTEL_RESOURCE_ATTRIBUTES": {
             "environment": os.environ.get("ENVIRONMENT", "development"),
-            "version": "0.1.0", # Or get from package
+            "version": "0.1.0",
         },
     }
 }
@@ -262,6 +265,30 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
             f"Could not create output directory "
             f"'{settings['output_dir']}': {e}"
         )
+    
+    # --- Process OpenTelemetry Sampler ---
+    otel_settings = settings.get("opentelemetry", {})
+    sampler_str = otel_settings.get("OTEL_TRACES_SAMPLER", "always_on").lower()
+    sampler_config = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {})
+    
+    if sampler_str == "always_on":
+        otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+    elif sampler_str == "traceidratio":
+        ratio = sampler_config.get("ratio", 0.5)
+        try:
+            ratio = float(ratio)
+            if not (0.0 <= ratio <= 1.0):
+                logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Must be between 0.0 and 1.0. Defaulting to ALWAYS_ON.")
+                otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+            else:
+                otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = TraceIdRatioBasedSampler(ratio)
+                logging.info(f"Using TraceIdRatioBasedSampler with ratio: {ratio}")
+        except ValueError:
+            logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Not a float. Defaulting to ALWAYS_ON.")
+            otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+    else:
+        logging.warning(f"Unsupported OTEL_TRACES_SAMPLER '{sampler_str}'. Defaulting to ALWAYS_ON.")
+        otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
     
     # --- Ensure log dir exists and make log paths absolute ---
     log_cfg = settings.get("logging", {})
