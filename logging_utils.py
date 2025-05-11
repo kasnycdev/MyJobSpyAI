@@ -9,6 +9,7 @@ from opentelemetry import trace, metrics
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON # Moved here
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.logs import LoggerProvider, set_logger_provider
 from opentelemetry.sdk.logs.export import BatchLogRecordProcessor
@@ -46,9 +47,9 @@ def configure_opentelemetry():
     service_name = otel_cfg.get("OTEL_SERVICE_NAME", "MyJobSpyAI-Default")
     otlp_endpoint = otel_cfg.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
     # Retrieve the processed sampler INSTANCE from settings
-    sampler = otel_cfg.get("OTEL_TRACES_SAMPLER_INSTANCE") 
+    sampler = otel_cfg.get("OTEL_TRACES_SAMPLER_INSTANCE")
     if sampler is None: # Fallback if instance wasn't set (e.g. error in config.py processing)
-        from opentelemetry.sdk.trace.sampling import ALWAYS_ON
+        # from opentelemetry.sdk.trace.sampling import ALWAYS_ON # Removed from here
         logging.getLogger(__name__).warning("OTEL_TRACES_SAMPLER_INSTANCE not found in otel_cfg, defaulting to ALWAYS_ON.")
         sampler = ALWAYS_ON
     resource_attributes = otel_cfg.get("OTEL_RESOURCE_ATTRIBUTES", {})

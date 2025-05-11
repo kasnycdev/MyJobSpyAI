@@ -246,7 +246,7 @@ def apply_filters(
 
             # Salary
             salary_text = job.get('salary_text')
-            if isinstance(salary_text, str) and salary_text: # Indented
+            if isinstance(salary_text, str) and salary_text:
                 job_min_salary, job_max_salary = parse_salary(salary_text)
             else:
                 job_min_salary, job_max_salary = None, None
