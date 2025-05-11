@@ -58,6 +58,54 @@ This project enhances job searching by combining the scraping power of **[JobSpy
 *   **Configuration:** Centralized settings via `config.yaml` with environment variable overrides for key parameters.
 *   **Rich Output:** Provides detailed JSON output and a configurable summary table in the console.
 
+## Observability (OpenTelemetry)
+
+This project integrates OpenTelemetry to provide insights into its execution through logs, traces, and metrics.
+
+**Setup & Configuration:**
+
+1.  **Install Dependencies:**
+    Ensure you have installed the necessary OpenTelemetry packages by running:
+    ```bash
+    pip install -r requirements.txt
+    ```
+    This will install `opentelemetry-api`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp-proto-grpc`, and `opentelemetry-instrumentation-logging`.
+
+2.  **Local Collector:**
+    You need a local OpenTelemetry collector (e.g., Jaeger, Grafana Agent, OpenTelemetry Collector) capable of receiving OTLP gRPC data.
+    *   **Example (Jaeger with Docker):**
+        ```bash
+        docker run -d --name jaeger \
+          -e COLLECTOR_OTLP_ENABLED=true \
+          -p 16686:16686 \
+          -p 4317:4317 \
+          jaegertracing/all-in-one:latest
+        ```
+        The Jaeger UI will be accessible at `http://localhost:16686`.
+
+3.  **Configuration (`config.yaml`):**
+    OpenTelemetry settings can be configured in your `config.yaml` under the `opentelemetry` section:
+    ```yaml
+    opentelemetry:
+      OTEL_SERVICE_NAME: "MyJobSpyAI"  # Name of your service
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317" # Collector endpoint (can be overridden by env var)
+      OTEL_TRACES_SAMPLER: "always_on"  # "always_on" or "traceidratio"
+      OTEL_TRACES_SAMPLER_CONFIG:
+        ratio: 0.5  # Sampling ratio if "traceidratio" is used (0.0 to 1.0)
+      OTEL_RESOURCE_ATTRIBUTES:
+        environment: "development"
+        version: "0.1.0" # Or your application version
+        # Add any other custom resource attributes here
+    ```
+    *   `OTEL_EXPORTER_OTLP_ENDPOINT` can also be set via an environment variable.
+    *   The application code converts the `OTEL_TRACES_SAMPLER` string to the appropriate OpenTelemetry Sampler instance.
+
+**Viewing Telemetry:**
+Once your application runs with a collector active, you can view:
+*   **Traces:** In Jaeger (or your chosen backend) to see distributed traces of operations.
+*   **Logs:** Standard Python logs are automatically enriched with trace context and exported via OTLP.
+*   **Metrics:** Initial metrics for LLM calls (counts, duration, errors) are collected and can be visualized in backends like Prometheus/Grafana if your collector is configured to export them.
+
 **❗ Disclaimer:** Web scraping is inherently fragile. Job boards change frequently, implement anti-scraping measures (CAPTCHAs, blocks), and may forbid automated scraping in their Terms of Service. Scraping success (especially for sites like Glassdoor or non-cookied LinkedIn) is **NOT guaranteed.** This tool relies heavily on the `JobSpy` library; its effectiveness depends on `JobSpy`'s maintenance state and the current behavior of target websites. Geocoding relies on the Nominatim service, which has usage limits. Use responsibly and ethically.
 
 ## Prerequisites
