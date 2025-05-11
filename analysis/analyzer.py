@@ -7,9 +7,9 @@ import json
 from contextlib import suppress # Added for Sourcery fix
 import os
 import asyncio
-from typing import Dict, Optional, Any, Union, List # Added List
+from typing import Dict, Optional, Any, Union # Removed List
 # from rich.console import Console # No longer needed directly here
-import traceback # Keep for log_exception if it were still here, but it's moved
+# import traceback # Unused
 import time
 from collections import defaultdict # Added for stats
 
@@ -648,29 +648,7 @@ class JobAnalyzer(BaseAnalyzer):
 
 async def original_extract_job_details_async(job_description_text: str, job_title: str = "N/A") -> Optional[ParsedJobData]: 
     logger.warning(f"Calling DEPRECATED original_extract_job_details_async for '{job_title}'")
-    schema = {
-        "properties": {
-            "job_title_extracted": {"type": "string"},
-            "key_responsibilities": {"type": "array", "items": {"type": "string"}},
-            "required_skills": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "level": {"type": "string"}, "years_experience": {"type": "integer"}}}},
-            "preferred_skills": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "level": {"type": "string"}, "years_experience": {"type": "integer"}}}},
-            "required_experience_years": {"type": "integer"},
-            "preferred_experience_years": {"type": "integer"},
-            "required_education": {"type": "string"},
-            "preferred_education": {"type": "string"},
-            "salary_range_extracted": {"type": "string"},
-            "work_model_extracted": {"type": "string"},
-            "company_culture_hints": {"type": "array", "items": {"type": "string"}},
-            "tools_technologies": {"type": "array", "items": {"type": "string"}},
-            "job_type": {"type": "string"},
-            "industry": {"type": "string"},
-            "required_certifications": {"type": "array", "items": {"type": "string"}},
-            "preferred_certifications": {"type": "array", "items": {"type": "string"}},
-            "security_clearance": {"type": "string"},
-            "travel_requirements": {"type": "string"},
-        },
-        "required": ["job_title_extracted", "key_responsibilities", "required_skills"],
-    }
+    # The multi-line schema dictionary that was here has been removed as it was unused.
     return None 
 
 async def original_analyze_resume_suitability(resume_text: str, job_description_text: str, job_title: str = "N/A") -> Optional[JobAnalysisResult]:
