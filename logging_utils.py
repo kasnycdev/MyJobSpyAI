@@ -1,11 +1,72 @@
 import logging
 from logging.handlers import RotatingFileHandler
 from rich.logging import RichHandler
-from rich.console import Console as RichConsole # Avoid conflict with logging.console
+from rich.console import Console as RichConsole
 from config import settings # Import the globally loaded settings
+
+# OpenTelemetry Imports
+from opentelemetry import trace, metrics
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.logs import LoggerProvider, set_logger_provider
+from opentelemetry.sdk.logs.export import BatchLogRecordProcessor
+from opentelemetry.exporter.otlp.proto.grpc.log_exporter import OTLPLogExporter
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
 # Create a specific console instance for RichHandler to avoid conflicts if logging.console is used elsewhere
 rich_console_for_handler = RichConsole(stderr=True)
+
+# Global tracer and meter for use in other modules
+tracer = None
+meter = None
+
+def configure_opentelemetry():
+    """Configures OpenTelemetry for logs, traces, and metrics."""
+    global tracer, meter
+    otel_cfg = settings.get("opentelemetry", {})
+    if not otel_cfg:
+        logging.getLogger(__name__).warning("OpenTelemetry configuration not found in settings. Skipping OTEL setup.")
+        return
+
+    service_name = otel_cfg.get("OTEL_SERVICE_NAME", "MyJobSpyAI-Default")
+    otlp_endpoint = otel_cfg.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+    # OTEL_TRACES_SAMPLER is already a sampler instance in config.py
+    sampler = otel_cfg.get("OTEL_TRACES_SAMPLER") # Get the sampler instance
+    resource_attributes = otel_cfg.get("OTEL_RESOURCE_ATTRIBUTES", {})
+    
+    resource = Resource.create({"service.name": service_name, **resource_attributes})
+
+    # --- Trace Provider Setup ---
+    tracer_provider = TracerProvider(resource=resource, sampler=sampler)
+    span_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+    tracer_provider.add_span_processor(BatchSpanProcessor(span_exporter))
+    trace.set_tracer_provider(tracer_provider)
+    tracer = trace.get_tracer(__name__)
+    logging.getLogger(__name__).info(f"OpenTelemetry Tracer configured for service '{service_name}' sending to '{otlp_endpoint}'.")
+
+    # --- Logger Provider Setup ---
+    logger_provider = LoggerProvider(resource=resource)
+    log_exporter = OTLPLogExporter(endpoint=otlp_endpoint)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+    set_logger_provider(logger_provider)
+    # Instrument Python's logging to automatically capture logs as OpenTelemetry LogRecords
+    LoggingInstrumentor().instrument(logger_provider=logger_provider, set_logging_format=True)
+    logging.getLogger(__name__).info(f"OpenTelemetry Logger configured for service '{service_name}' sending to '{otlp_endpoint}'.")
+    
+    # --- Meter Provider Setup ---
+    metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=otlp_endpoint))
+    meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+    metrics.set_meter_provider(meter_provider)
+    meter = metrics.get_meter(__name__)
+    logging.getLogger(__name__).info(f"OpenTelemetry Meter configured for service '{service_name}' sending to '{otlp_endpoint}'.")
+
+# Call configuration at import time
+configure_opentelemetry()
 
 # Specific logger for model outputs
 MODEL_OUTPUT_LOGGER_NAME = "model_output"

@@ -14,11 +14,13 @@ from colorama import init  # Import colorama
 # import config # Unused, settings is imported directly
 
 # Import and setup logging *after* config is loaded
-from logging_utils import setup_logging
+from logging_utils import setup_logging, tracer as global_tracer # Import tracer
 setup_logging() # Configure logging based on settings from config.py
 
 # Now get a logger for this module
 logger = logging.getLogger(__name__)
+# Use the global tracer instance from logging_utils
+tracer = global_tracer
 
 
 # Initialize colorama (if still needed, Rich handles most console color)
@@ -76,6 +78,7 @@ def log_exception(message, exception):
 from filtering.filter_utils import DateEncoder # Import DateEncoder
 
 # --- Utility functions (basic implementations) ---
+@tracer.start_as_current_span("convert_and_save_scraped")
 def convert_and_save_scraped(jobs_df: Optional[pd.DataFrame], output_path: str) -> List[Dict[str, Any]]:
     """Converts DataFrame to list of dicts and saves to JSON."""
     if jobs_df is None or jobs_df.empty:
@@ -105,6 +108,7 @@ def convert_and_save_scraped(jobs_df: Optional[pd.DataFrame], output_path: str) 
         # Still return jobs_list even if saving fails, so pipeline can continue if desired
     return jobs_list
 
+@tracer.start_as_current_span("print_summary_table")
 def print_summary_table(analyzed_jobs_list: List[Dict[str, Any]], top_n: int = 10):
     """Prints a basic summary of the top N analyzed jobs."""
     if not analyzed_jobs_list:
@@ -174,6 +178,7 @@ def print_summary_table(analyzed_jobs_list: List[Dict[str, Any]], top_n: int = 1
 
 
 # --- scrape_jobs_with_jobspy function ---
+@tracer.start_as_current_span("scrape_jobs_with_jobspy")
 async def scrape_jobs_with_jobspy(
     sites: list[str], # Renamed from site_name to match caller
     search_terms: str,
@@ -217,10 +222,11 @@ async def scrape_jobs_with_jobspy(
         logger.info(f"Using CA Cert: {ca_cert}")
 
     try:
-        # Run the synchronous scrape_jobs in a separate thread
-        jobs_df = await asyncio.to_thread(
-            scrape_jobs,
-            site_name=sites, # Pass the sites list as site_name
+        with tracer.start_as_current_span("jobspy.scrape_jobs_call"):
+            # Run the synchronous scrape_jobs in a separate thread
+            jobs_df = await asyncio.to_thread(
+                scrape_jobs,
+                site_name=sites, # Pass the sites list as site_name
             search_term=search_terms, # Pass search_terms as search_term
             # google_search_term=google_search_term, # Removed
             location=location,
@@ -239,34 +245,36 @@ async def scrape_jobs_with_jobspy(
             linkedin_fetch_description=linkedin_fetch_description, # Use passed parameter
             linkedin_company_ids=linkedin_company_ids,
             enforce_annual_salary=enforce_annual_salary,
-        )
+            )
         if jobs_df is None or jobs_df.empty:
             logger.warning("Scraping yielded no results. Pipeline cannot continue.")
-            try:
-                # Use cli_args for file paths if available, otherwise fallback to settings
-                scraped_jobs_target_path = cli_args.scraped_jobs_file if cli_args and hasattr(cli_args, 'scraped_jobs_file') else settings.get('output', {}).get('scraped_jobs_file')
-                analysis_output_target_path = cli_args.analysis_output if cli_args and hasattr(cli_args, 'analysis_output') else settings.get('output', {}).get('analysis_output_file')
+            with tracer.start_as_current_span("save_empty_scrape_results"):
+                try: # Correctly indented
+                    # Use cli_args for file paths if available, otherwise fallback to settings
+                    scraped_jobs_target_path = cli_args.scraped_jobs_file if cli_args and hasattr(cli_args, 'scraped_jobs_file') else settings.get('output', {}).get('scraped_jobs_file')
+                    analysis_output_target_path = cli_args.analysis_output if cli_args and hasattr(cli_args, 'analysis_output') else settings.get('output', {}).get('analysis_output_file')
 
-                if scraped_jobs_target_path:
-                    if scraped_jobs_dir := os.path.dirname(scraped_jobs_target_path):
-                        os.makedirs(scraped_jobs_dir, exist_ok=True)
-                    pd.DataFrame().to_json(scraped_jobs_target_path, orient='records', indent=4)
-                    logger.info(f"Empty scraped jobs file created at {scraped_jobs_target_path}")
+                    if scraped_jobs_target_path: # Now inside TRY
+                        if scraped_jobs_dir := os.path.dirname(scraped_jobs_target_path):
+                            os.makedirs(scraped_jobs_dir, exist_ok=True)
+                        pd.DataFrame().to_json(scraped_jobs_target_path, orient='records', indent=4)
+                        logger.info(f"Empty scraped jobs file created at {scraped_jobs_target_path}")
 
-                if analysis_output_target_path: # Also save an empty analysis results file
-                    if analysis_output_dir := os.path.dirname(analysis_output_target_path):
-                        os.makedirs(analysis_output_dir, exist_ok=True)
-                    with open(analysis_output_target_path, 'w', encoding='utf-8') as f:
-                        json.dump([], f, indent=4)
-                    logger.info(f"Empty analysis results file created at {analysis_output_target_path}")
+                    if analysis_output_target_path: # Also save an empty analysis results file, now inside TRY
+                        if analysis_output_dir := os.path.dirname(analysis_output_target_path):
+                            os.makedirs(analysis_output_dir, exist_ok=True)
+                        with open(analysis_output_target_path, 'w', encoding='utf-8') as f:
+                            json.dump([], f, indent=4)
+                        logger.info(f"Empty analysis results file created at {analysis_output_target_path}")
                 
-                sys.exit(0)  # Exit after creating empty file(s)
-            except Exception as e:
-                log_exception(f"Error saving empty results files: {e}", e)
-                sys.exit(1)  # Exit with error code
+                    sys.exit(0)  # Exit after creating empty file(s), now inside TRY
+                except Exception as e: # Correctly indented
+                        log_exception(f"Error saving empty results files: {e}", e)
+                        sys.exit(1)  # Exit with error code
 
         # --- Steps 2-6 remain unchanged ---
-        convert_and_save_scraped(jobs_df, cli_args.scraped_jobs_file if cli_args and hasattr(cli_args, 'scraped_jobs_file') else settings.get('output', {}).get('scraped_jobs_file')) # Use cli_args, assignment to jobs_list removed as it's unused here
+        with tracer.start_as_current_span("internal_convert_and_save_scraped"):
+            convert_and_save_scraped(jobs_df, cli_args.scraped_jobs_file if cli_args and hasattr(cli_args, 'scraped_jobs_file') else settings.get('output', {}).get('scraped_jobs_file')) # Use cli_args, assignment to jobs_list removed as it's unused here
         return jobs_df # Ensure jobs_df is returned
 
     except KeyboardInterrupt:
@@ -279,6 +287,7 @@ async def scrape_jobs_with_jobspy(
 
 
 # --- Main ASYNC Execution Function ---
+@tracer.start_as_current_span("run_pipeline_async")
 async def run_pipeline_async():
     parser = argparse.ArgumentParser(
         description="Run Job Scraping (JobSpy) & LLM Analysis Pipeline (using LM Studio/OpenAI-compatible API).", # Updated description

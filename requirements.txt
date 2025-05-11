@@ -25,6 +25,12 @@ scalene                 # Required by pytrail for profiling
 pandas >= 2.0.0         # Data manipulation (primarily after scraping)
 numpy >= 1.26.3         # Required by jobspy 1.1.80, also used by pandas
 
+# === Observability / Telemetry ===
+opentelemetry-api ~= 1.22 # Core API for OpenTelemetry
+opentelemetry-sdk ~= 1.22 # Core SDK for OpenTelemetry
+opentelemetry-exporter-otlp-proto-grpc ~= 1.22 # OTLP exporter using gRPC
+opentelemetry-instrumentation-logging ~= 0.43b0 # Logging instrumentation
+
 # === Important Transitive Dependencies (Usually installed by above) ===
 # httpx                 # Used by openai, ollama, jobspy
 # requests              # Used by geopy, potentially jobspy

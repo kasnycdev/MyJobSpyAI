@@ -31,8 +31,30 @@ logger = logging.getLogger(__name__)
 # Get the specific logger for model outputs
 model_output_logger = logging.getLogger(MODEL_OUTPUT_LOGGER_NAME)
 
+# Import tracer and meter from logging_utils
+try:
+    from logging_utils import tracer as global_tracer, meter as global_meter
+    if global_tracer is None: # Check if OTEL was disabled in logging_utils
+        from opentelemetry import trace
+        tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
+        logger.warning("OpenTelemetry not configured in logging_utils, using NoOpTracer for analyzer.")
+    else:
+        tracer = global_tracer
+    if global_meter is None:
+        from opentelemetry import metrics
+        meter = metrics.get_meter(__name__, meter_provider=metrics.NoOpMeterProvider())
+        logger.warning("OpenTelemetry Meter not configured, using NoOpMeter for analyzer.")
+    else:
+        meter = global_meter
+except ImportError:
+    from opentelemetry import trace, metrics
+    tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
+    meter = metrics.get_meter(__name__, meter_provider=metrics.NoOpMeterProvider())
+    logger.error("Could not import global_tracer/meter from logging_utils. Using NoOp versions.", exc_info=True)
+
+
 # Helper function for logging exceptions (now uses standard logger)
-def log_exception(message, exception):
+def log_exception(message, exception): # This could also be traced if it becomes complex
     logger.error(message, exc_info=True)
 
 
@@ -91,11 +113,45 @@ class BaseAnalyzer:
         self.retry_delay: int = 5
         self.ollama_base_url: Optional[str] = None
 
-        self._initialize_llm_client(provider_config_key)
-        self._check_connection_and_model()
+        with tracer.start_as_current_span("analyzer_init") as span:
+            span.set_attribute("provider_config_key", provider_config_key)
+            self._initialize_llm_client(provider_config_key)
+            self._check_connection_and_model()
 
-    _llm_call_stats: Dict[str, Any] = {
-        "total_calls": 0,
+    # LLM Call Metrics (can be moved to a separate metrics module if it grows)
+    llm_calls_counter = meter.create_counter(
+        name="llm.calls.total",
+        description="Total number of LLM calls.",
+        unit="1"
+    )
+    llm_successful_calls_counter = meter.create_counter(
+        name="llm.calls.successful",
+        description="Number of successful LLM calls.",
+        unit="1"
+    )
+    llm_failed_calls_counter = meter.create_counter(
+        name="llm.calls.failed",
+        description="Number of failed LLM calls (after retries).",
+        unit="1"
+    )
+    llm_call_duration_histogram = meter.create_histogram(
+        name="llm.call.duration",
+        description="Duration of LLM calls.",
+        unit="s"
+    )
+    llm_prompt_chars_histogram = meter.create_histogram(
+        name="llm.prompt.chars",
+        description="Number of characters in LLM prompts.",
+        unit="char"
+    )
+    llm_response_chars_histogram = meter.create_histogram(
+        name="llm.response.chars",
+        description="Number of characters in LLM responses.",
+        unit="char"
+    )
+    # Legacy stats, can be phased out or kept for internal logging
+    _llm_call_stats: Dict[str, Any] = { # TODO: Review if this is still needed with OTEL metrics
+        "total_calls": 0, # Covered by llm_calls_counter
         "successful_calls": 0,
         "failed_calls": 0,
         "total_prompt_chars": 0,
@@ -267,14 +323,34 @@ class BaseAnalyzer:
             logger.debug(f"Gemini Usage - Prompt: {usage.prompt_token_count}, Candidates: {usage.candidates_token_count}, Total: {usage.total_token_count} tokens")
         return response.text
 
+    @tracer.start_as_current_span("call_llm_async")
     async def _call_llm_async(self, prompt: str, task_name: str) -> Optional[Dict[str, Any]]:
-        if not self.async_client or not self.model_name:
-            logger.error("LLM client or model name not initialized properly for _call_llm_async.")
-            raise RuntimeError("LLM client or model name not initialized properly.")
+        current_span = trace.get_current_span()
+        current_span.set_attribute("llm.task_name", task_name)
+        current_span.set_attribute("llm.provider", self.provider)
+        current_span.set_attribute("llm.model_name", self.model_name or "N/A")
+        current_span.set_attribute("llm.prompt_length_chars", len(prompt))
 
+        if not self.async_client or not self.model_name:
+            logger.error(f"LLM client or model name not initialized properly for _call_llm_async (Task: {task_name}).")
+            current_span.set_status(trace.Status(trace.StatusCode.ERROR, "LLM client/model not initialized"))
+            # Increment legacy stats for failure before error
+            BaseAnalyzer._llm_call_stats["total_calls"] += 1
+            BaseAnalyzer._llm_call_stats["calls_by_task"][task_name]["fail"] = BaseAnalyzer._llm_call_stats["calls_by_task"][task_name].get("fail", 0) + 1
+            BaseAnalyzer._llm_call_stats["failed_calls"] +=1
+            # OTEL Metrics
+            self.llm_calls_counter.add(1, {"task": task_name, "provider": self.provider, "model": self.model_name or "N/A"})
+            self.llm_failed_calls_counter.add(1, {"task": task_name, "provider": self.provider, "model": self.model_name or "N/A", "error_type": "InitializationError"})
+            raise RuntimeError(f"LLM client or model name not initialized properly (Task: {task_name}).")
+
+        # Legacy stats update (can be removed if fully relying on OTEL metrics)
         BaseAnalyzer._llm_call_stats["total_calls"] += 1
         BaseAnalyzer._llm_call_stats["total_prompt_chars"] += len(prompt)
         task_stats = BaseAnalyzer._llm_call_stats["calls_by_task"][task_name]
+        
+        # OTEL Metrics
+        self.llm_calls_counter.add(1, {"task": task_name, "provider": self.provider, "model": self.model_name or "N/A"})
+        self.llm_prompt_chars_histogram.record(len(prompt), {"task": task_name, "provider": self.provider, "model": self.model_name or "N/A"})
         
         provider_cfg = settings.get(self.provider, {})
         max_retries = provider_cfg.get('max_retries', self.max_retries)
@@ -299,17 +375,23 @@ class BaseAnalyzer:
             attempt_start_time = time.monotonic()
             error_type_str = "UnknownError" 
             try:
-                if self.provider == "openai": content_str = await self._call_openai_llm_async(prompt)
-                elif self.provider == "ollama": content_str = await self._call_ollama_llm_async(prompt)
-                elif self.provider == "gemini": content_str = await self._call_gemini_llm_async(prompt)
-                else: raise ValueError(f"Unsupported provider '{self.provider}'.")
+                with tracer.start_as_current_span(f"llm_api_call_attempt_{attempt+1}") as attempt_span:
+                    attempt_span.set_attribute("llm.attempt_number", attempt + 1)
+                    if self.provider == "openai": content_str = await self._call_openai_llm_async(prompt)
+                    elif self.provider == "ollama": content_str = await self._call_ollama_llm_async(prompt)
+                    elif self.provider == "gemini": content_str = await self._call_gemini_llm_async(prompt)
+                    else: raise ValueError(f"Unsupported provider '{self.provider}'.")
                 
                 attempt_duration = time.monotonic() - attempt_start_time
-                BaseAnalyzer._llm_call_stats["total_duration_seconds"] += attempt_duration
+                self.llm_call_duration_histogram.record(attempt_duration, {"task": task_name, "provider": self.provider, "model": self.model_name, "status": "success" if content_str else "failure_content_none"})
+                BaseAnalyzer._llm_call_stats["total_duration_seconds"] += attempt_duration # Legacy
                 response_length = len(content_str) if content_str else 0
-                BaseAnalyzer._llm_call_stats["total_response_chars"] += response_length
+                self.llm_response_chars_histogram.record(response_length, {"task": task_name, "provider": self.provider, "model": self.model_name})
+                BaseAnalyzer._llm_call_stats["total_response_chars"] += response_length # Legacy
                 
                 logger.info(f"ASYNC LLM Call ({task_name}): Attempt {attempt + 1} completed in {attempt_duration:.2f}s. Response Chars: {response_length}")
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.duration_s", attempt_duration)
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.response_length_chars", response_length)
                 
                 if content_str is not None:
                     model_output_logger.info(f"TASK: {task_name} | ATTEMPT: {attempt + 1}\nPROMPT:\n{prompt}\n---\nRESPONSE:\n{content_str}\n==========\n")
@@ -327,50 +409,74 @@ class BaseAnalyzer:
                         elif content_strip.startswith("```"): content_strip = content_strip[3:-3].strip() if content_strip.endswith("```") else content_strip[3:].strip()
                         result = json.loads(content_strip)
                         
-                        BaseAnalyzer._llm_call_stats["successful_calls"] += 1
-                        task_stats["success"] += 1
+                        BaseAnalyzer._llm_call_stats["successful_calls"] += 1 # Legacy
+                        task_stats["success"] += 1 # Legacy
+                        self.llm_successful_calls_counter.add(1, {"task": task_name, "provider": self.provider, "model": self.model_name})
                         logger.info(f"ASYNC ({task_name}): Attempt {attempt + 1} successful. Parsed JSON response.")
+                        current_span.set_status(trace.StatusCode.OK)
                         return result
                     except json.JSONDecodeError as json_err:
                         last_exception = json_err
                         error_type_str = type(json_err).__name__
                         logger.warning(f"ASYNC ({task_name}) JSON Decode Error (Attempt {attempt + 1}): {json_err}")
                         logger.debug(f"Problematic content from LLM for '{task_name}': {content_str}")
+                        current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
+                        current_span.record_exception(json_err)
             
             except (openai.APIConnectionError, ollama.ResponseError, asyncio.TimeoutError, ConnectionError, TimeoutError) as conn_err: # type: ignore
                 last_exception = conn_err; error_type_str = type(conn_err).__name__
                 logger.warning(f"ASYNC ({task_name}) LLM Connection/Timeout (Attempt {attempt + 1}): {error_type_str} - {conn_err}")
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
+                current_span.record_exception(conn_err)
             except openai.RateLimitError as rate_err:
                 last_exception = rate_err; error_type_str = type(rate_err).__name__
                 logger.warning(f"ASYNC ({task_name}) OpenAI Rate Limit (Attempt {attempt + 1}): {rate_err}")
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
+                current_span.record_exception(rate_err)
             except openai.APIStatusError as status_err:
                 last_exception = status_err; error_type_str = type(status_err).__name__
                 logger.warning(f"ASYNC ({task_name}) OpenAI API Status {status_err.status_code} (Attempt {attempt + 1}): {status_err.response.text if status_err.response else 'N/A'}")
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.status_code", status_err.status_code)
+                current_span.record_exception(status_err)
             except genai.types.generation_types.BlockedPromptException as gemini_block_err: # type: ignore
                 last_exception = gemini_block_err; error_type_str = type(gemini_block_err).__name__
                 logger.error(f"ASYNC ({task_name}) Gemini Prompt Blocked (Attempt {attempt + 1}): {gemini_block_err}")
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
+                current_span.record_exception(gemini_block_err)
             except google.api_core.exceptions.DeadlineExceeded as deadline_err: # type: ignore
                 last_exception = deadline_err; error_type_str = type(deadline_err).__name__
                 logger.error(f"ASYNC ({task_name}) Google API Deadline Exceeded (Attempt {attempt + 1}): {deadline_err}")
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
+                current_span.record_exception(deadline_err)
             except TypeError as type_err: 
                 last_exception = type_err; error_type_str = type(type_err).__name__
                 logger.error(f"ASYNC ({task_name}) LLM Client Config Error (Attempt {attempt + 1}): {type_err}", exc_info=True);
-                BaseAnalyzer._llm_call_stats["errors_by_type"][error_type_str] += 1
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, f"LLM Client Config Error: {type_err}"))
+                current_span.record_exception(type_err)
+                BaseAnalyzer._llm_call_stats["errors_by_type"][error_type_str] += 1 # Legacy
+                self.llm_failed_calls_counter.add(1, {"task": task_name, "provider": self.provider, "model": self.model_name, "error_type": error_type_str})
                 break 
             except Exception as e:
                 last_exception = e; error_type_str = type(e).__name__
                 logger.error(f"ASYNC ({task_name}) Unexpected LLM API Error (Attempt {attempt + 1}): {error_type_str} - {e}", exc_info=True)
+                current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
+                current_span.record_exception(e)
             
-            BaseAnalyzer._llm_call_stats["errors_by_type"][error_type_str] += 1
+            BaseAnalyzer._llm_call_stats["errors_by_type"][error_type_str] += 1 # Legacy
+            self.llm_call_duration_histogram.record(time.monotonic() - attempt_start_time, {"task": task_name, "provider": self.provider, "model": self.model_name, "status": "failure", "error_type": error_type_str})
+
 
             if attempt < max_retries:
                 current_delay = retry_delay * (2 ** attempt)
                 logger.info(f"ASYNC ({task_name}): Retrying in {current_delay:.1f}s...")
                 await asyncio.sleep(current_delay)
             else: 
-                BaseAnalyzer._llm_call_stats["failed_calls"] += 1
-                task_stats["fail"] += 1
+                BaseAnalyzer._llm_call_stats["failed_calls"] += 1 # Legacy
+                task_stats["fail"] += 1 # Legacy
+                self.llm_failed_calls_counter.add(1, {"task": task_name, "provider": self.provider, "model": self.model_name, "error_type": error_type_str})
                 logger.error(f"ASYNC ({task_name}): All {max_retries + 1} attempts failed for LLM call.")
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, f"All LLM attempts failed. Last error: {error_type_str}"))
                 if last_exception:
                     logger.error(f"ASYNC ({task_name}): Final error details: {type(last_exception).__name__} - {last_exception}")
         return None
@@ -388,7 +494,10 @@ class ResumeAnalyzer(BaseAnalyzer):
     #         log_exception(f"ResumeAnalyzer: Failed to load resume prompt template: {tmpl_err}", tmpl_err)
     #         raise RuntimeError(f"ResumeAnalyzer prompt template loading failed: {tmpl_err}") from tmpl_err
 
+    @tracer.start_as_current_span("extract_resume_data_async")
     async def extract_resume_data_async(self, resume_text: str) -> Optional[ResumeData]:
+        current_span = trace.get_current_span()
+        current_span.set_attribute("resume_text_length", len(resume_text))
         MAX_RESUME_CHARS_FOR_LLM = settings.get('analysis', {}).get('max_prompt_chars', 15000) 
         if not resume_text or not resume_text.strip():
             logger.warning("Resume text empty for extraction.")
@@ -441,7 +550,12 @@ class JobAnalyzer(BaseAnalyzer):
     #         log_exception(f"JobAnalyzer: Failed to load necessary prompt templates: {tmpl_err}", tmpl_err)
     #         raise RuntimeError(f"JobAnalyzer prompt template loading failed: {tmpl_err}") from tmpl_err
 
+    @tracer.start_as_current_span("extract_job_details_async")
     async def extract_job_details_async(self, job_description_text: str, job_title: str = "N/A") -> Optional[ParsedJobData]:
+        current_span = trace.get_current_span()
+        current_span.set_attribute("job_title_param", job_title)
+        current_span.set_attribute("job_description_length", len(job_description_text))
+
         if not job_description_text or not job_description_text.strip():
             logger.warning(f"Job description for '{job_title}' is empty. Skipping extraction.")
             return None
@@ -451,9 +565,11 @@ class JobAnalyzer(BaseAnalyzer):
             prompt = job_extraction_prompt_template.render(job_description=job_description_text)
         except Exception as render_err:
             log_exception(f"JobAnalyzer: Failed to load or render job extraction prompt for '{job_title}': {render_err}", render_err)
+            current_span.record_exception(render_err)
+            current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Prompt rendering failed"))
             return None
 
-        extracted_json = await self._call_llm_async(prompt, task_name=f"Job Details Extraction for '{job_title}'")
+        extracted_json = await self._call_llm_async(prompt, task_name=f"Job Details Extraction for '{job_title}'") # This is already traced
         if extracted_json:
             try:
                 if isinstance(extracted_json, dict):
@@ -471,33 +587,41 @@ class JobAnalyzer(BaseAnalyzer):
             logger.error(f"JobAnalyzer: Failed to get response for job details extraction for '{job_title}'.")
             return None
 
+    @tracer.start_as_current_span("analyze_resume_suitability")
     async def analyze_resume_suitability(self, resume_data: ResumeData, job_data: Dict[str, Any]) -> Optional[JobAnalysisResult]:
+        current_span = trace.get_current_span()
         job_title = job_data.get('title', 'N/A')
         job_description = job_data.get('description')
+        current_span.set_attribute("job_title_param", job_title)
 
         if not resume_data or not resume_data.summary: 
             logger.warning(f"Missing or incomplete structured resume data for '{job_title}'. Skipping suitability.")
+            current_span.set_attribute("suitability_skipped_reason", "incomplete_resume_data")
             return None
         if not job_description:
             logger.warning(f"Missing job description for '{job_title}'. Skipping suitability analysis.")
+            current_span.set_attribute("suitability_skipped_reason", "missing_job_description")
             return None
 
         try:
-            resume_data_json_str = resume_data.model_dump_json(indent=2)
-            job_data_serializable_str = json.dumps(job_data, cls=DateEncoder) 
-            job_data_serializable = json.loads(job_data_serializable_str) 
+            with tracer.start_as_current_span("prepare_suitability_prompt"):
+                resume_data_json_str = resume_data.model_dump_json(indent=2)
+                job_data_serializable_str = json.dumps(job_data, cls=DateEncoder) 
+                job_data_serializable = json.loads(job_data_serializable_str) 
 
-            context = {
-                "resume_data_json": resume_data_json_str,
-                "job_data_json": job_data_serializable 
-            }
-            suitability_prompt_template = load_template("suitability_prompt_file") # Load dynamically
-            prompt = suitability_prompt_template.render(context)
+                context = {
+                    "resume_data_json": resume_data_json_str,
+                    "job_data_json": job_data_serializable 
+                }
+                suitability_prompt_template = load_template("suitability_prompt_file") # Load dynamically
+                prompt = suitability_prompt_template.render(context)
         except Exception as e:
             log_exception(f"JobAnalyzer: Error preparing/rendering suitability prompt for '{job_title}': {e}", e)
+            current_span.record_exception(e)
+            current_span.set_status(trace.Status(trace.StatusCode.ERROR, "Suitability prompt preparation failed"))
             return None
 
-        combined_json_response = await self._call_llm_async(prompt, task_name=f"Suitability Analysis for '{job_title}'")
+        combined_json_response = await self._call_llm_async(prompt, task_name=f"Suitability Analysis for '{job_title}'") # This is already traced
         if not combined_json_response or not isinstance(combined_json_response, dict):
             logger.error(f"JobAnalyzer: Failed to get valid JSON dict for suitability ('{job_title}').")
             logger.debug(f"Raw response for '{job_title}': {combined_json_response}")

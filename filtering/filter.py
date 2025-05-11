@@ -10,6 +10,20 @@ from typing import Dict, Optional, List, Any
 # Get a logger for this module
 logger = logging.getLogger(__name__)
 
+# Import tracer from logging_utils
+try:
+    from logging_utils import tracer as global_tracer
+    if global_tracer is None: # Check if OTEL was disabled in logging_utils
+        from opentelemetry import trace
+        tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
+        logger.warning("OpenTelemetry not configured in logging_utils, using NoOpTracer for filtering/filter.")
+    else:
+        tracer = global_tracer
+except ImportError:
+    from opentelemetry import trace
+    tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
+    logger.error("Could not import global_tracer from logging_utils. Using NoOpTracer for filtering/filter.", exc_info=True)
+
 # Import geopy and specific exceptions
 try:
     from geopy.geocoders import Nominatim
@@ -84,31 +98,46 @@ def save_geocode_cache():
 load_geocode_cache()
 
 
+@tracer.start_as_current_span("get_lat_lon_country")
 def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]:
     """
     Geocodes a location string using Nominatim with caching and rate limiting.
     """
+    current_span = trace.get_current_span()
+    current_span.set_attribute("location_input", location_str)
+
     if not GEOPY_AVAILABLE or not GEOCODER or not location_str:
+        current_span.set_attribute("geocoding_skipped_reason", "geopy_unavailable_or_no_location")
         return None
 
     normalized_loc = location_str.lower().strip()
+    current_span.set_attribute("normalized_location", normalized_loc)
     if not normalized_loc:
+        current_span.set_attribute("geocoding_skipped_reason", "empty_normalized_location")
         return None
 
     if normalized_loc in _geocode_cache:
+        current_span.set_attribute("geocoding_result_source", "cache_success")
         return _geocode_cache[normalized_loc]
 
     if normalized_loc in _geocode_fail_cache:
         logger.debug(f"Skipping geocode for previously failed: '{location_str}'")
+        current_span.set_attribute("geocoding_result_source", "cache_fail_skip")
         return None
 
     logger.info(f"Geocoding location: '{location_str}'")
     try:
-        time.sleep(1.0)  # Rate limit
-        location_data = GEOCODER.geocode(normalized_loc, addressdetails=True, language='en')
+        with tracer.start_as_current_span("nominatim_geocode_call") as geocode_span:
+            geocode_span.set_attribute("location_to_geocode", normalized_loc)
+            time.sleep(1.0)  # Rate limit
+            location_data = GEOCODER.geocode(normalized_loc, addressdetails=True, language='en')
+            geocode_span.set_attribute("geocode_api_returned_data", bool(location_data))
+
         if location_data and location_data.latitude and location_data.longitude:
             lat, lon = location_data.latitude, location_data.longitude
             address = location_data.raw.get('address', {})
+            current_span.set_attribute("geocoded_lat", lat)
+            current_span.set_attribute("geocoded_lon", lon)
             country_code = address.get('country_code')
             country_name = address.get('country')
 
@@ -129,34 +158,43 @@ def get_lat_lon_country(location_str: str) -> Optional[tuple[float, float, str]]
 
             if country_name:
                 logger.info(f"Geocoded '{location_str}' to ({lat:.4f}, {lon:.4f}), Country: {country_name}")
+                current_span.set_attribute("geocoded_country", country_name)
                 result = (lat, lon, country_name)
                 _geocode_cache[normalized_loc] = result
                 save_geocode_cache() # Save cache after successful geocode
+                current_span.set_attribute("geocoding_result_source", "api_success")
                 return result
             else:
                 logger.warning(
                     f"Geocoded '{location_str}' but couldn't extract country name. Address: {address}"
                 )
+                current_span.set_attribute("geocoding_error", "country_extraction_failed")
                 _geocode_fail_cache.add(normalized_loc) # type: ignore
                 save_geocode_cache() # Save cache after failed geocode
                 return None
         else:
             logger.warning(f"Failed to geocode '{location_str}' - No results.")
+            current_span.set_attribute("geocoding_error", "no_results_from_api")
             _geocode_fail_cache.add(normalized_loc) # type: ignore
             save_geocode_cache() # Save cache after failed geocode
             return None
     except (GeocoderTimedOut, GeocoderServiceError) as geo_err:
         logger.error(f"Geocoding error for '{location_str}': {geo_err}")
+        current_span.record_exception(geo_err)
+        current_span.set_attribute("geocoding_error", str(geo_err))
         _geocode_fail_cache.add(normalized_loc) # type: ignore
         save_geocode_cache() # Save cache after geocoding error
         return None
     except Exception as e:
         logger.error(f"Unexpected geocoding error for '{location_str}': {e}", exc_info=True)
+        current_span.record_exception(e)
+        current_span.set_attribute("geocoding_error", "unexpected_exception")
         _geocode_fail_cache.add(normalized_loc) # type: ignore
         save_geocode_cache() # Save cache after unexpected error
         return None
 
 # --- Main Filter Function ---
+@tracer.start_as_current_span("apply_filters")
 def apply_filters(
     jobs: List[Dict[str, Any]],
     salary_min: Optional[int] = None,
@@ -194,128 +232,139 @@ def apply_filters(
 
     logger.info("Applying filters to job list...")
     initial_count = len(jobs)
+    trace.get_current_span().set_attribute("initial_job_count", initial_count)
     jobs_processed_count = 0
 
-    for job in jobs:
-        jobs_processed_count += 1
-        job_title = job.get('title', 'N/A')
-        passes_all_filters = True
+    for job_idx, job in enumerate(jobs):
+        with tracer.start_as_current_span(f"filter_job_{job_idx}") as job_span:
+            jobs_processed_count += 1
+            job_title = job.get('title', 'N/A')
+            job_span.set_attribute("job_title", job_title)
+            passes_all_filters = True
 
-        logger.debug(f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---")
+            logger.debug(f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---")
 
-        # Salary
-        salary_text = job.get('salary_text')
-        if isinstance(salary_text, str) and salary_text:
-            job_min_salary, job_max_salary = parse_salary(salary_text)
-        else:
-            job_min_salary, job_max_salary = None, None
-
-        salary_passes_check = True
-        if salary_min is not None and (
-            (job_max_salary is not None and job_max_salary < salary_min) or
-            (job_min_salary is not None and job_min_salary < salary_min)
-        ):
-            salary_passes_check = False
-
-        if salary_passes_check and salary_max is not None and (
-            (job_min_salary is not None and job_min_salary > salary_max) or
-            (job_max_salary is not None and job_max_salary > salary_max)
-        ):
-            salary_passes_check = False
-
-        if not salary_passes_check:
-            passes_all_filters = False
-            continue
-
-        # Work Model (Standard)
-        if normalized_work_models:
-            job_model = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
-            if not job_model:
-                job_loc_wm = normalize_string(job.get('location'))
-                if 'remote' in job_loc_wm:
-                    job_model = 'remote'
-                elif 'hybrid' in job_loc_wm:
-                    job_model = 'hybrid'
-                elif 'on-site' in job_loc_wm or 'office' in job_loc_wm:
-                    job_model = 'on-site'
-                else:
-                    job_model = None
-            if not job_model or job_model not in normalized_work_models:
-                passes_all_filters = False
-                continue
-
-        # Job Type
-        if passes_all_filters and normalized_job_types:
-            job_type_text = normalize_string(job.get('employment_type'))
-            if all(jt_filter not in job_type_text for jt_filter in normalized_job_types if job_type_text):
-                passes_all_filters = False
-                continue
-
-        # Advanced Location Filters
-        job_location_str = job.get('location', '')
-        job_geo_result = None
-        # Filter 1: Remote Job in Specific Country
-        if passes_all_filters and normalized_remote_country:
-            job_model_rc = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
-            loc_text_rc = normalize_string(job_location_str)
-            is_remote = job_model_rc == 'remote' or 'remote' in loc_text_rc
-
-            if is_remote:
-                if not job_geo_result:
-                    job_geo_result = get_lat_lon_country(job_location_str)
-
-                if job_geo_result:
-                    job_country = job_geo_result[2]
-                    if not job_country or normalize_string(job_country) != normalized_remote_country:
-                        passes_all_filters = False
-                else: # If geocoding fails for the job, we can't confirm its country
-                    logger.warning(
-                        f"Geocoding failed for '{job_location_str}'. Cannot confirm country for remote filter. Job will likely fail this filter."
-                    )
-                    passes_all_filters = False # Default to fail if country cannot be confirmed
-            else: # Not a remote job, so it fails the "remote in specific country" filter
-                passes_all_filters = False
-
-            if not passes_all_filters:
-                continue
-
-        # Filter 2: Proximity
-        if passes_all_filters and filter_proximity_location and target_lat_lon:
-            job_model_prox = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
-            loc_text_prox = normalize_string(job_location_str)
-
-            if not job_model_prox:
-                if 'remote' in loc_text_prox:
-                    job_model_prox = 'remote'
-                elif 'hybrid' in loc_text_prox:
-                    job_model_prox = 'hybrid'
-                elif 'on-site' in loc_text_prox or 'office' in loc_text_prox:
-                    job_model_prox = 'on-site'
-                else:
-                    job_model_prox = None
-
-            if not job_model_prox or job_model_prox not in normalized_proximity_models:
-                passes_all_filters = False
+            # Salary
+            salary_text = job.get('salary_text')
+            if isinstance(salary_text, str) and salary_text: # Indented
+                job_min_salary, job_max_salary = parse_salary(salary_text)
             else:
-                if not job_geo_result:
-                    job_geo_result = get_lat_lon_country(job_location_str)
+                job_min_salary, job_max_salary = None, None
 
-                if not job_geo_result:
+            salary_passes_check = True
+            if salary_min is not None and (
+                (job_max_salary is not None and job_max_salary < salary_min) or
+                (job_min_salary is not None and job_min_salary < salary_min)
+            ):
+                salary_passes_check = False
+
+            if salary_passes_check and salary_max is not None and (
+                (job_min_salary is not None and job_min_salary > salary_max) or
+                (job_max_salary is not None and job_max_salary > salary_max)
+            ):
+                salary_passes_check = False
+
+            if not salary_passes_check:
+                job_span.set_attribute("filter_failed_reason", "salary")
+                passes_all_filters = False
+                # continue # This continue should be outside the 'with job_span' if we want the span to end.
+                         # However, it's more natural for the span to cover the whole attempt for this job.
+                         # So, if it fails a filter, the span will end, and the loop continues.
+
+            # Work Model (Standard)
+            if passes_all_filters and normalized_work_models: # Check passes_all_filters before continuing
+                job_model = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
+                if not job_model:
+                    job_loc_wm = normalize_string(job.get('location'))
+                    if 'remote' in job_loc_wm:
+                        job_model = 'remote'
+                    elif 'hybrid' in job_loc_wm:
+                        job_model = 'hybrid'
+                    elif 'on-site' in job_loc_wm or 'office' in job_loc_wm:
+                        job_model = 'on-site'
+                    else:
+                        job_model = None
+                if not job_model or job_model not in normalized_work_models:
+                    job_span.set_attribute("filter_failed_reason", "work_model")
                     passes_all_filters = False
-                else:
-                    job_lat_lon = (job_geo_result[0], job_geo_result[1])
-                    try:
-                        distance_miles = geodesic(target_lat_lon, job_lat_lon).miles
-                        if distance_miles > filter_proximity_range: # type: ignore
-                            passes_all_filters = False
-                    except Exception as dist_err:
-                        logger.warning(
-                            f"Could not calculate distance for '{job_title}': {dist_err}"
-                        )
-                        passes_all_filters = False
 
-        if passes_all_filters:
-            filtered_jobs.append(job)
+            # Job Type
+            if passes_all_filters and normalized_job_types:
+                job_type_text = normalize_string(job.get('employment_type'))
+                if all(jt_filter not in job_type_text for jt_filter in normalized_job_types if job_type_text):
+                    job_span.set_attribute("filter_failed_reason", "job_type")
+                    passes_all_filters = False
+
+            # Advanced Location Filters
+            job_location_str = job.get('location', '')
+            job_geo_result = None # Reset for each job inside the loop
+            
+            # Filter 1: Remote Job in Specific Country
+            if passes_all_filters and normalized_remote_country:
+                job_model_rc = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
+                loc_text_rc = normalize_string(job_location_str)
+                is_remote = job_model_rc == 'remote' or 'remote' in loc_text_rc
+
+                if is_remote:
+                    if not job_geo_result: # Geocode only if needed
+                        job_geo_result = get_lat_lon_country(job_location_str)
+
+                    if job_geo_result:
+                        job_country = job_geo_result[2]
+                        if not job_country or normalize_string(job_country) != normalized_remote_country:
+                            passes_all_filters = False
+                            job_span.set_attribute("filter_failed_reason", "remote_country_mismatch")
+                    else: 
+                        logger.warning(
+                            f"Geocoding failed for '{job_location_str}'. Cannot confirm country for remote filter. Job will likely fail this filter."
+                        )
+                        passes_all_filters = False 
+                        job_span.set_attribute("filter_failed_reason", "remote_country_geocode_fail")
+                else: 
+                    passes_all_filters = False
+                    job_span.set_attribute("filter_failed_reason", "not_remote_for_country_filter")
+            
+            # Filter 2: Proximity
+            if passes_all_filters and filter_proximity_location and target_lat_lon:
+                job_model_prox = normalize_string(job.get('work_model')) or normalize_string(job.get('remote'))
+                loc_text_prox = normalize_string(job_location_str)
+
+                if not job_model_prox: # Infer model if not explicit
+                    if 'remote' in loc_text_prox: job_model_prox = 'remote'
+                    elif 'hybrid' in loc_text_prox: job_model_prox = 'hybrid'
+                    elif 'on-site' in loc_text_prox or 'office' in loc_text_prox: job_model_prox = 'on-site'
+                    else: job_model_prox = None
+
+                if not job_model_prox or job_model_prox not in normalized_proximity_models:
+                    passes_all_filters = False
+                    job_span.set_attribute("filter_failed_reason", "proximity_work_model_mismatch")
+                else: # Work model matches for proximity, now check distance
+                    if not job_geo_result: # Geocode only if needed
+                        job_geo_result = get_lat_lon_country(job_location_str)
+
+                    if not job_geo_result:
+                        passes_all_filters = False
+                        job_span.set_attribute("filter_failed_reason", "proximity_geocode_fail")
+                    else:
+                        job_lat_lon = (job_geo_result[0], job_geo_result[1])
+                        try:
+                            distance_miles = geodesic(target_lat_lon, job_lat_lon).miles
+                            job_span.set_attribute("proximity_calculated_distance_miles", distance_miles)
+                            if distance_miles > filter_proximity_range: # type: ignore
+                                passes_all_filters = False
+                                job_span.set_attribute("filter_failed_reason", "proximity_too_far")
+                        except Exception as dist_err:
+                            logger.warning(
+                                f"Could not calculate distance for '{job_title}': {dist_err}"
+                            )
+                            passes_all_filters = False
+                            job_span.set_attribute("filter_failed_reason", "proximity_distance_calc_error")
+                            job_span.record_exception(dist_err)
+
+            job_span.set_attribute("passes_all_filters", passes_all_filters)
+            if passes_all_filters:
+                filtered_jobs.append(job)
+            # End of 'with job_span'
 
     final_count = len(filtered_jobs)
     logger.info(f"Filtering complete. {final_count} out of {initial_count} jobs passed active filters.")
