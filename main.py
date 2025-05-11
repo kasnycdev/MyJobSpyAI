@@ -1,4 +1,3 @@
-
 import logging
 import json
 import os
@@ -7,33 +6,31 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 import argparse
 import asyncio
-from datetime import datetime
-from analysis.analyzer import ResumeAnalyzer
+from datetime import datetime, date # Added date
 from colorama import init  # Import colorama
 import traceback
 
-# Ensure config module is imported
-import config
+# Ensure config module is imported first to load settings
+import config 
 
-# Initialize colorama
+# Import and setup logging *after* config is loaded
+from logging_utils import setup_logging
+setup_logging() # Configure logging based on settings from config.py
+
+# Now get a logger for this module
+logger = logging.getLogger(__name__)
+
+
+# Initialize colorama (if still needed, Rich handles most console color)
 init(autoreset=True)
 
-from rich.console import Console
-from rich.logging import RichHandler
+from rich.console import Console # Keep for direct console use if needed, but prefer logging
 
-# Initialize rich console
+# Initialize rich console (primarily for direct use, logging uses its own RichHandler instance)
 console = Console()
 
-# Update logging configuration to use RichHandler
-logging.basicConfig(
-    level=config.settings.get('logging', {}).get('level', 'INFO').upper(),
-    format=config.settings.get('logging', {}).get('format', '%(message)s'),
-    datefmt=config.settings.get('logging', {}).get('date_format', '[%X]'),
-    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
-)
 
-# Replace os.system("color") with a rich console message
-console.print("[green]Rich console initialized successfully.[/green]")
+logger.info("Rich console and logging initialized successfully.") # Changed from console.print
 
 # Use the jobspy library for scraping
 try:
@@ -44,39 +41,143 @@ except ImportError:
 
 # Import analysis components
 try:
-    from main_matcher import load_and_extract_resume_async, analyze_jobs_async, apply_filters_sort_and_save
+    from main_matcher import load_and_extract_resume_async, analyze_jobs_async, apply_filters_sort_and_save # Added commas
+    # Removed: from analysis.analyzer import ResumeAnalyzer # This class no longer exists in analyzer.py
 except ImportError as e:
-    console.print(f"[red]CRITICAL ERROR: Could not import analysis functions: {e}[/red]")
+    console.print(f"[red]CRITICAL ERROR: Could not import analysis functions from main_matcher or analyzer: {e}[/red]")
     sys.exit(1)
 
 # Import the loaded settings dictionary from config.py
 try:
-    from config import settings
+    from config import settings # settings is loaded in config.py
 except ImportError:
-    console.print("[red]CRITICAL ERROR: config.py not found or cannot be imported.[/red]")
+    # This case should ideally be caught by config.py itself if it fails to load
+    logger.critical("CRITICAL ERROR: config.py not found or cannot be imported.", exc_info=True)
     sys.exit(1)
 except AttributeError:
-    console.print("[red]CRITICAL ERROR: 'settings' dictionary not found in config.py.[/red]")
+    logger.critical("CRITICAL ERROR: 'settings' dictionary not found in config.py.", exc_info=True)
     sys.exit(1)
 
 # Rich for UX needs settings for logging setup
 try:
     from rich.table import Table
 except ImportError:
-    console.print("[yellow]WARNING: 'rich' library not found. Console output will be basic.[/yellow]")
-    class Table:
-        print = staticmethod(print)
+    logger.warning("'rich' library not found. Console output will be basic.")
+    class Table: # Basic fallback
+        def __init__(self, title=None): self.title = title
+        def add_column(self, *args, **kwargs): pass
+        def add_row(self, *args, **kwargs): print(args) # Simple print for fallback
+        def __str__(self): return f"Table: {self.title}" if self.title else "Table"
 
-# Helper function for logging exceptions
+# Helper function for logging exceptions (now uses standard logger)
 def log_exception(message, exception):
-    console.log(message)
-    console.log(traceback.format_exc())
+    logger.error(message, exc_info=True) # Pass exc_info=True to include traceback
+
+from filtering.filter_utils import DateEncoder # Import DateEncoder
+
+# --- Utility functions (basic implementations) ---
+def convert_and_save_scraped(jobs_df: Optional[pd.DataFrame], output_path: str) -> List[Dict[str, Any]]:
+    """Converts DataFrame to list of dicts and saves to JSON."""
+    if jobs_df is None or jobs_df.empty:
+        logger.warning("No jobs DataFrame to convert or save.")
+        # Ensure the output directory exists and save an empty list
+        try:
+            output_dir = os.path.dirname(output_path)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump([], f, indent=4, cls=DateEncoder) # Use DateEncoder
+            logger.info(f"Empty scraped jobs file saved to {output_path}")
+        except Exception as e:
+            log_exception(f"Error saving empty scraped jobs file to {output_path}: {e}", e)
+        return []
+
+    jobs_list = jobs_df.to_dict(orient='records')
+    try:
+        output_dir = os.path.dirname(output_path)
+        if output_dir: # Ensure output directory exists
+            os.makedirs(output_dir, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(jobs_list, f, indent=4, cls=DateEncoder) # Use DateEncoder
+        logger.info(f"Successfully saved {len(jobs_list)} scraped jobs to {output_path}")
+    except Exception as e:
+        log_exception(f"Error saving scraped jobs to {output_path}: {e}", e)
+        # Still return jobs_list even if saving fails, so pipeline can continue if desired
+    return jobs_list
+
+def print_summary_table(analyzed_jobs_list: List[Dict[str, Any]], top_n: int = 10):
+    """Prints a basic summary of the top N analyzed jobs."""
+    if not analyzed_jobs_list:
+        logger.warning("No analyzed jobs to summarize.")
+        return
+
+    logger.info(f"Top {min(top_n, len(analyzed_jobs_list))} (or fewer) jobs after filtering and sorting:")
+    
+    # Check if rich.Table is available (it should be, but good practice)
+    if 'Table' in globals() and hasattr(globals()['Table'], 'add_column') and isinstance(globals()['Table'], type):
+        table = Table(title="Job Summary")
+        table.add_column("Rank", style="dim", width=6)
+        table.add_column("Title", style="bold cyan")
+        table.add_column("Company", style="green")
+        table.add_column("Location", style="magenta")
+        table.add_column("Score", style="bold yellow", justify="right")
+
+        for i, job_summary in enumerate(analyzed_jobs_list[:top_n]):
+            original_data = job_summary.get('original_job_data', {})
+            analysis_data = job_summary.get('analysis', {})
+            
+            title = original_data.get('title', 'N/A')
+            company = original_data.get('company', 'N/A')
+            location_value = original_data.get('location') # Get the raw value for 'location'
+            city = 'N/A'
+            state = None
+            country = None
+            location_str = 'N/A' # Default location_str
+
+            if isinstance(location_value, dict):
+                city = location_value.get('city', 'N/A')
+                state = location_value.get('state')
+                country = location_value.get('country')
+                
+                # Construct location_str from dictionary parts
+                location_parts = []
+                if city and city != 'N/A': # Check if city is not 'N/A' before adding
+                    location_parts.append(city)
+                if state:
+                    location_parts.append(state)
+                # Refined country logic: Add country if it's different from city and (different from state or state is None)
+                if country and country.lower() != city.lower() and (not state or country.lower() != state.lower()):
+                    location_parts.append(f"({country})")
+                
+                if location_parts:
+                    location_str = ", ".join(location_parts)
+                # If location_parts is empty, location_str remains 'N/A' (its default)
+
+            elif isinstance(location_value, str):
+                location_str = location_value # Use the string directly
+                city = location_value # Assign the string to city for potential use, though it might just be "Remote"
+            # If location_value is None or not dict/str, location_str remains 'N/A'
+
+
+            score = analysis_data.get('suitability_score', 'N/A')
+            table.add_row(str(i + 1), title, company, location_str, str(score))
+        
+        # Use the Rich console instance for printing the table directly
+        # This is okay as it's a direct user-facing output, not typical logging
+        console.print(table) 
+    else: # Fallback to basic print if Rich Table is not fully available
+        for i, job_summary in enumerate(analyzed_jobs_list[:top_n]):
+            title = job_summary.get('original_job_data', {}).get('title', 'N/A')
+            company = job_summary.get('original_job_data', {}).get('company', 'N/A')
+            score = job_summary.get('analysis', {}).get('suitability_score', 'N/A')
+            logger.info(f"{i+1}. {title} at {company} - Score: {score}")
+
 
 # --- scrape_jobs_with_jobspy function ---
 async def scrape_jobs_with_jobspy(
+    sites: list[str], # Renamed from site_name to match caller
     search_terms: str,
     location: Optional[str],
-    sites: list[str],
     results_wanted: int,
     hours_old: Optional[int],
     country_indeed: str,
@@ -91,34 +192,36 @@ async def scrape_jobs_with_jobspy(
     linkedin_company_ids: Optional[list[int]] = None,
     enforce_annual_salary: bool = False,
     verbose: int = 0,
+    cli_args: Optional[argparse.Namespace] = None, # Added to pass cli_args for file paths
+    linkedin_fetch_description: bool = True, # Added missing parameter
 ) -> Optional[pd.DataFrame]:
     """Uses the jobspy library to scrape jobs, with better logging."""
-    console.log("[blue]Starting job scraping via JobSpy...[/blue]")
-    console.log(
-        f"Search: '[cyan]{search_terms}[/cyan]' | Location: '[cyan]{location}[/cyan]' | "
+    logger.info("Starting job scraping via JobSpy...")
+    logger.info(
+        f"Search: '{search_terms}' | Location: '{location}' | "
         f"Sites: {sites}"
     )
-    console.log(
-        f"Params: Results ≈{results_wanted}, Max Age={hours_old}h, "
+    logger.info(
+        f"Params: Results ~{results_wanted}, Max Age={hours_old}h, " 
         f"Indeed Country='{country_indeed}', Offset={offset}, "
         f"Is Remote={is_remote}, Job Type={job_type}, Easy Apply={easy_apply}, "
         f"Distance={distance}, Enforce Annual Salary={enforce_annual_salary}"
     )
     if google_search_term:
-        console.log(f"Google Search Term: '{google_search_term}'")
+        logger.info(f"Google Search Term: '{google_search_term}'")
     if proxies:
-        console.log(f"Using {len(proxies)} proxies.")
+        logger.info(f"Using {len(proxies)} proxies.")
     if linkedin_company_ids:
-        console.log(f"LinkedIn Company IDs: {linkedin_company_ids}")
+        logger.info(f"LinkedIn Company IDs: {linkedin_company_ids}")
     if ca_cert:
-        console.log(f"Using CA Cert: {ca_cert}")
+        logger.info(f"Using CA Cert: {ca_cert}")
 
     try:
         # Run the synchronous scrape_jobs in a separate thread
         jobs_df = await asyncio.to_thread(
             scrape_jobs,
-            site_name=sites,
-            search_term=search_terms,
+            site_name=sites, # Pass the sites list as site_name
+            search_term=search_terms, # Pass search_terms as search_term
             google_search_term=google_search_term,
             location=location,
             distance=distance,
@@ -133,113 +236,46 @@ async def scrape_jobs_with_jobspy(
             offset=offset,
             verbose=verbose, # Use the verbose level from args/config
             description_format="markdown", # Keep markdown as default
-            linkedin_fetch_description=settings.get('scraping', {}).get('linkedin_fetch_description'), # Keep from config
+            linkedin_fetch_description=linkedin_fetch_description, # Use passed parameter
             linkedin_company_ids=linkedin_company_ids,
             enforce_annual_salary=enforce_annual_salary,
         )
         if jobs_df is None or jobs_df.empty:
-            console.log("[yellow]Jobspy scraping returned no results or failed.[/yellow]")
-            return None
-        else:
-            console.log(f"Jobspy scraping successful. Found {len(jobs_df)} jobs.")
-            console.log(f"DataFrame columns: {jobs_df.columns.tolist()}")
-            essential_scrape_cols = ['title', 'company', 'location', 'description', 'job_url', 'date_posted', 'job_type']
-            for col in essential_scrape_cols:
-                if col not in jobs_df.columns:
-                    console.log(f"[yellow]Essential column '{col}' missing, adding empty.[/yellow]")
-                    jobs_df[col] = ''
-            return jobs_df
-    except ImportError as ie:
-        log_exception(f"[red]Import error during scraping: {ie}.[/red]", ie)
-        return None
-    except TypeError as te:  # Catch TypeError specifically
-        log_exception(f"[red]TypeError during jobspy scrape call: {te}. Check argument names.[/red]", te)
-        return None
-    except Exception as e:
-        log_exception(f"[red]An error occurred during jobspy scraping: {e}[/red]", e)
-        return None
-
-
-# --- convert_and_save_scraped function (no changes needed here) ---
-def convert_and_save_scraped(jobs_df: pd.DataFrame, output_path: str) -> List[Dict[str, Any]]:
-    console.log(f"Converting DataFrame to list and saving to {output_path}")
-    rename_map = {'job_url': 'url', 'job_type': 'employment_type', 'salary': 'salary_text', 'benefits': 'benefits_text'}
-    actual_rename_map = {k: v for k, v in rename_map.items() if k in jobs_df.columns}
-    jobs_df = jobs_df.rename(columns=actual_rename_map)
-    possible_date_columns = ['date_posted', 'posted_date', 'date']
-    for col in possible_date_columns:
-        if col in jobs_df.columns and (pd.api.types.is_datetime64_any_dtype(jobs_df[col]) or jobs_df[col].dtype == 'object'):
+            logger.warning("Scraping yielded no results. Pipeline cannot continue.")
             try:
-                jobs_df[col] = pd.to_datetime(jobs_df[col], errors='coerce')
-                jobs_df[col] = jobs_df[col].dt.strftime('%Y-%m-%d')
-            except Exception:
-                jobs_df[col] = jobs_df[col].astype(str)
-    essential_cols = ['title', 'company', 'location', 'description', 'url', 'salary_text', 'employment_type',
-                      'benefits_text', 'skills', 'date_posted']
-    for col in essential_cols:
-        if col not in jobs_df.columns:
-            console.log(f"[yellow]Column '{col}' missing, adding empty.[/yellow]")
-            jobs_df[col] = ''
-    jobs_df = jobs_df.fillna('')
-    jobs_list = jobs_df.to_dict('records')
-    if output_dir := os.path.dirname(output_path):
-        os.makedirs(output_dir, exist_ok=True)
-    try:
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(jobs_list, f, indent=4)
-        console.log(
-            f"[green]Successfully saved {len(jobs_list)} scraped jobs to {output_path}[/green]"
-        )
-        return jobs_list
+                # Use cli_args for file paths if available, otherwise fallback to settings
+                scraped_jobs_target_path = cli_args.scraped_jobs_file if cli_args and hasattr(cli_args, 'scraped_jobs_file') else settings.get('output', {}).get('scraped_jobs_file')
+                analysis_output_target_path = cli_args.analysis_output if cli_args and hasattr(cli_args, 'analysis_output') else settings.get('output', {}).get('analysis_output_file')
+
+                if scraped_jobs_target_path:
+                    if scraped_jobs_dir := os.path.dirname(scraped_jobs_target_path):
+                        os.makedirs(scraped_jobs_dir, exist_ok=True)
+                    pd.DataFrame().to_json(scraped_jobs_target_path, orient='records', indent=4)
+                    logger.info(f"Empty scraped jobs file created at {scraped_jobs_target_path}")
+
+                if analysis_output_target_path: # Also save an empty analysis results file
+                    if analysis_output_dir := os.path.dirname(analysis_output_target_path):
+                        os.makedirs(analysis_output_dir, exist_ok=True)
+                    with open(analysis_output_target_path, 'w', encoding='utf-8') as f:
+                        json.dump([], f, indent=4)
+                    logger.info(f"Empty analysis results file created at {analysis_output_target_path}")
+                
+                sys.exit(0)  # Exit after creating empty file(s)
+            except Exception as e:
+                log_exception(f"Error saving empty results files: {e}", e)
+                sys.exit(1)  # Exit with error code
+
+        # --- Steps 2-6 remain unchanged ---
+        jobs_list = convert_and_save_scraped(jobs_df, cli_args.scraped_jobs_file if cli_args and hasattr(cli_args, 'scraped_jobs_file') else settings.get('output', {}).get('scraped_jobs_file')) # Use cli_args
+        return jobs_df # Ensure jobs_df is returned
+
+    except KeyboardInterrupt:
+        print() # Keep a simple print for immediate feedback on Ctrl+C before logger might flush
+        logger.warning("Pipeline interrupted by user (Ctrl+C).")
+        sys.exit(130)
     except Exception as e:
-        console.log(f"[red]Error saving scraped jobs JSON: {e}[/red]", exc_info=True)
-        return []
-
-
-# --- print_summary_table function (no changes needed here) ---
-def print_summary_table(results_json: List[Dict[str, Any]], top_n: int = 10):
-    if not results_json:
-        console.print("[yellow]No analysis results to summarize.[/yellow]")
-        return
-
-    table = Table(
-        title=f"Top {min(top_n, len(results_json))} Job Matches",
-        show_header=True,
-        header_style="bold magenta",
-        show_lines=False
-    )
-    table.add_column("Score", style="dim", width=6, justify="right")
-    table.add_column("Title", style="bold", min_width=20)
-    table.add_column("Company")
-    table.add_column("Location")
-    table.add_column("URL", overflow="fold", style="cyan")
-
-    count = 0
-    for result in results_json:
-        analysis = result.get('analysis', {})
-        original = result.get('original_job_data', {})
-        score = analysis.get('suitability_score', -1)
-        if score is None or score == 0:
-            continue
-        score_str = f"{score}%"
-        table.add_row(
-            score_str,
-            original.get('title', 'N/A'),
-            original.get('company', 'N/A'),
-            original.get('location', 'N/A'),
-            original.get('url', '#')
-        )
-        count += 1
-        if count >= top_n:
-            break
-    try:
-        console.print(
-            table
-        )
-    except Exception:
-        console.print(
-            "[yellow]No successfully analyzed jobs with score > 0 to display.[/yellow]"
-        )
+        log_exception(f"Unexpected critical error: {e}", e)
+        sys.exit(1)
 
 
 # --- Main ASYNC Execution Function ---
@@ -251,30 +287,44 @@ async def run_pipeline_async():
 
     scrape_cfg = settings.get('scraping', {})
 
-    parser = argparse.ArgumentParser(
-        description="Run Job Scraping (JobSpy) & LLM Analysis Pipeline (using LM Studio/OpenAI-compatible API).",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
     scrape_group = parser.add_argument_group('Scraping Options (JobSpy)')
     scrape_group.add_argument("--search", required=True, help="Job title, keywords, or company.")
-    scrape_group.add_argument("--location", default=scrape_cfg.get('location'), help="Primary location for scraping. Overridden if --filter-remote-country.")
-    scrape_group.add_argument("--sites", default=",".join(scrape_cfg.get('default_sites', [])), help="Comma-separated sites.")
-    scrape_group.add_argument("--results", type=int, default=scrape_cfg.get('default_results_limit', 20), help="Approx total jobs per site.")
-    scrape_group.add_argument("--hours_old", type=int, default=scrape_cfg.get('default_hours_old', 3), help="Max job age in hours (0=disable).")
+    scrape_group.add_argument("--location", default=None, help="Primary location for scraping. Overridden if --filter-remote-country.")
+    scrape_group.add_argument("--sites", default=",".join(scrape_cfg.get('default_sites', ["linkedin"])), help="Comma-separated sites.") # Added default_sites from config
+    scrape_group.add_argument("--results", type=int, default=scrape_cfg.get('default_results_limit', 10), help="Approx total jobs per site.") # Corrected default
+    scrape_group.add_argument("--days-old", type=int, default=scrape_cfg.get('default_days_old', 14), help="Max job age in days (0=disable). JobSpy uses hours, so this will be converted.") # Renamed from --hours_old and corrected default
     scrape_group.add_argument("--country-indeed", default=scrape_cfg.get('default_country_indeed', 'usa'), help="Country for Indeed search.")
-    scrape_group.add_argument("--proxies", default=scrape_cfg.get('proxies'), help="Comma-separated proxies.")
-    scrape_group.add_argument("--offset", type=int, default=scrape_cfg.get('offset', 0), help="Search results offset.")
-    scrape_group.add_argument("--scraped-jobs-file", default=settings.get("scraped_jobs_path"), help="Intermediate file for scraped jobs.")
-    scrape_group.add_argument("--google-search-term", default=scrape_cfg.get('google_search_term'), help="Specific Google search term (if using Google scraper).")
-    scrape_group.add_argument("--distance", type=int, default=scrape_cfg.get('distance'), help="Distance from location in miles (for supported sites).")
-    scrape_group.add_argument("--is-remote", type=bool, default=scrape_cfg.get('is_remote', False), help="Filter for remote jobs.")
-    scrape_group.add_argument("--job-type", default=scrape_cfg.get('job_type'), help="Job type (e.g., 'fulltime', 'parttime', 'contract', 'internship').")
-    scrape_group.add_argument("--easy-apply", type=bool, default=scrape_cfg.get('easy_apply'), help="Filter for jobs with easy apply option (for supported sites).")
-    scrape_group.add_argument("--ca-cert", default=scrape_cfg.get('ca_cert'), help="Path to CA certificate file.")
-    scrape_group.add_argument("--linkedin-company-ids", default=scrape_cfg.get('linkedin_company_ids'), help="Comma-separated LinkedIn company IDs.")
-    scrape_group.add_argument("--enforce-annual-salary", type=bool, default=scrape_cfg.get('enforce_annual_salary', False), help="Enforce conversion of salary to annual.")
-
+    scrape_group.add_argument("--proxies", default=scrape_cfg.get('proxies', None), help="Comma-separated proxies.") # Added default from config
+    scrape_group.add_argument("--offset", type=int, default=0, help="Search results offset.")
+    scrape_group.add_argument(
+        "--is-remote",
+        type=lambda x: str(x).lower() == 'true',
+        default=scrape_cfg.get('is_remote', True), # Corrected default lookup from config
+        help="Filter for remote jobs only (e.g., true, false)."
+    )
+    scrape_group.add_argument(
+        "--job-type",
+        type=str,
+        default=scrape_cfg.get('job_type', None), # Corrected default lookup from config
+        help="Job type to filter for (e.g., 'fulltime', 'contract', 'parttime')."
+    )
+    scrape_group.add_argument("--google-search-term", default=scrape_cfg.get('google_search_term', None), help="Specific search term for Google Jobs scraper.")
+    scrape_group.add_argument("--distance", type=int, default=scrape_cfg.get('distance', 2), help="Distance in miles from location (for supported sites). JobSpy default is 50.") # Corrected default
+    scrape_group.add_argument(
+        "--easy-apply",
+        type=lambda x: str(x).lower() == 'true' if x is not None else None,
+        default=scrape_cfg.get('easy_apply', None),
+        help="Filter for jobs with easy apply option (e.g., true, false). LinkedIn easy apply no longer works."
+    )
+    scrape_group.add_argument("--ca-cert", default=scrape_cfg.get('ca_cert', None), help="Path to CA certificate file for proxies.")
+    scrape_group.add_argument("--linkedin-company-ids", default=",".join(map(str, scrape_cfg.get('linkedin_company_ids', []))), type=str, help="Comma-separated LinkedIn company IDs to filter by.") # Fetch from config, parse later
+    scrape_group.add_argument(
+        "--enforce-annual-salary",
+        type=lambda x: str(x).lower() == 'true',
+        default=scrape_cfg.get('enforce_annual_salary', False),
+        help="Convert all salaries to annual (e.g., true, false)."
+    )
+    scrape_group.add_argument("--scraped-jobs-file", default=settings.get("output", {}).get("scraped_jobs_file", "output/scraped_jobs.json"), help="Intermediate file for scraped jobs.") # Corrected default path
 
     analysis_group = parser.add_argument_group('Analysis Options')
     analysis_group.add_argument("--resume", required=True, help="Path to the resume file.")
@@ -295,103 +345,125 @@ async def run_pipeline_async():
 
     args = parser.parse_args()
 
-    # Setup Logging Level
-    log_level_name = "DEBUG" if args.verbose else settings.get('logging', {}).get('level', 'INFO').upper()
-    log_level = getattr(logging, log_level_name, logging.INFO)
-    logging.getLogger().setLevel(log_level)
-    console.log(f"Log level set to: {log_level_name}")
-    console.log(
-        f"[green]Starting ASYNC Pipeline Run[/green] "
-        f"({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
+    # Logging is already set up by setup_logging() at the top of the module.
+    # The --verbose flag can be used to adjust the console handler's level if desired,
+    # or the root logger's level if setup_logging is called after arg parsing.
+    # For simplicity, setup_logging() is called once at import time.
+    # If args.verbose needs to override, setup_logging would need to be callable with a level.
+    # For now, config.yaml and the default setup_logging behavior will control levels.
+    if args.verbose:
+        # If verbose, ensure the root logger (and thus console by RichHandler default) is at least DEBUG
+        # This might be redundant if setup_logging already sets root to DEBUG and console to INFO/DEBUG
+        logging.getLogger().setLevel(logging.DEBUG) 
+        logger.info("Verbose mode enabled. Root logger level set to DEBUG.")
+    
+    logger.info(
+        f"Starting ASYNC Pipeline Run ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
     )
 
     try:
         # Argument validation and location determination (remains the same)
-        # Prioritize command line args over config for location
-        scrape_location = args.location
-        if args.filter_remote_country:
-            scrape_location = args.filter_remote_country.strip()
-            console.log(f"Using country '{scrape_location}' as primary scrape location.")
-        elif args.filter_proximity_location:
-            scrape_location = args.filter_proximity_location.strip()
-            console.log(f"Using proximity target '{scrape_location}' as primary scrape location.")
-        elif args.location:
-             console.log(
-                f"Using provided --location '{scrape_location}' as primary scrape location."
-            )
-        elif scrape_cfg.get('location'):
-             scrape_location = scrape_cfg.get('location')
-             console.log(
-                f"Using config location '{scrape_location}' as primary scrape location."
-            )
-        else:
-             parser.error("Ambiguous location: Specify --location OR --filter-remote-country OR --filter-proximity-location, or set 'location' in config.yaml.")
-
-
+        if not args.location and not args.filter_remote_country and not args.filter_proximity_location:
+            parser.error("Ambiguous location: Specify --location OR --filter-remote-country OR --filter-proximity-location.")
         if args.filter_proximity_location and args.filter_remote_country:
             parser.error("Conflicting filters: Cannot use --filter-proximity-location and --filter-remote-country.")
         if args.filter_proximity_location and args.filter_proximity_range is None:
             parser.error("--filter-proximity-range required with --filter-proximity-location.")
         if args.filter_proximity_range is not None and not args.filter_proximity_location:
-            parser.error("--filter-proximity-location required with --filter-proximity-location.")
-
+            parser.error("--filter-proximity-location required with --filter-proximity-range.")
+        scrape_location = None
+        if args.filter_remote_country:
+            scrape_location = args.filter_remote_country.strip()
+            logger.info(f"Using country '{scrape_location}' as primary scrape location.")
+        elif args.filter_proximity_location:
+            scrape_location = args.filter_proximity_location.strip()
+            logger.info(f"Using proximity target '{scrape_location}' as primary scrape location.")
+        elif args.location:
+            scrape_location = args.location
+            logger.info(
+                f"Using provided --location '{scrape_location}' as primary scrape location."
+            )
 
         # --- Step 1: Scrape Jobs ---
-        scraper_sites = [site.strip().lower() for site in args.sites.split(',')] if args.sites else scrape_cfg.get('default_sites', [])
-        proxy_list = [p.strip() for p in args.proxies.split(',')] if args.proxies else scrape_cfg.get('proxies')
-        linkedin_company_ids_list = [int(id.strip()) for id in args.linkedin_company_ids.split(',')] if args.linkedin_company_ids else scrape_cfg.get('linkedin_company_ids')
+        scraper_sites = [site.strip().lower() for site in args.sites.split(',')]
+        proxy_list = [p.strip() for p in args.proxies.split(',')] if args.proxies else None
+        
+        # Convert days_old to hours_old for JobSpy
+        hours_old_for_jobspy = args.days_old * 24 if args.days_old is not None and args.days_old > 0 else None
+        
+        # Parse linkedin_company_ids from string to list of ints
+        linkedin_company_ids_list = []
+        if args.linkedin_company_ids:
+            try:
+                linkedin_company_ids_list = [int(cid.strip()) for cid in args.linkedin_company_ids.split(',') if cid.strip()]
+            except ValueError:
+                logger.warning(f"Could not parse --linkedin-company-ids '{args.linkedin_company_ids}'. Ensure it's a comma-separated list of numbers.")
+                linkedin_company_ids_list = []
 
 
         jobs_df = await scrape_jobs_with_jobspy(
-            search_terms=args.search,
-            location=scrape_location,
-            sites=scraper_sites,
-            results_wanted=args.results,
-            hours_old=args.hours_old,
-            country_indeed=args.country_indeed,
-            proxies=proxy_list,
-            offset=args.offset,
+            sites=scraper_sites, 
+            search_terms=args.search, 
             google_search_term=args.google_search_term,
+            location=scrape_location,
             distance=args.distance,
             is_remote=args.is_remote,
             job_type=args.job_type,
             easy_apply=args.easy_apply,
+            results_wanted=args.results,
+            hours_old=hours_old_for_jobspy, 
+            country_indeed=args.country_indeed,
+            proxies=proxy_list,
             ca_cert=args.ca_cert,
+            offset=args.offset,
+            verbose=(2 if args.verbose else scrape_cfg.get('jobspy_verbose_level', 2)),
+            # description_format is hardcoded to markdown in scrape_jobs_with_jobspy call below
+            linkedin_fetch_description=settings.get('scraping', {}).get('linkedin_fetch_description', True), # Default to True if not in config
             linkedin_company_ids=linkedin_company_ids_list,
             enforce_annual_salary=args.enforce_annual_salary,
-            verbose=args.verbose # Pass verbose from args
+            cli_args=args, # Pass the parsed CLI arguments
         )
 
-        if jobs_df is None or jobs_df.empty:
-            console.log("[yellow]Scraping yielded no results. Pipeline cannot continue.[/yellow]")
-            try:
-                if analysis_output_dir := os.path.dirname(args.analysis_output):
-                    os.makedirs(analysis_output_dir, exist_ok=True)
-                empty_df = pd.DataFrame()
-                empty_df.to_json(settings.get('output', {}).get('scraped_jobs_file'), orient='records')
-                console.log(f"[green]Empty analysis results file created at {args.analysis_output}[/green]")
-                sys.exit(0)  # Exit after creating empty file
-            except Exception as e:
-                log_exception(f"[red]Error saving empty analysis results file: {e}[/red]", e)
-                sys.exit(1)  # Exit with error code
+        # The jobs_df is processed and saved within scrape_jobs_with_jobspy (via convert_and_save_scraped)
+        # or the script exits if scraping truly yields no results from jobspy.scrape_jobs.
+        # If jobs_df was None or empty initially, scrape_jobs_with_jobspy would have exited.
+        # If it proceeds, convert_and_save_scraped is called within scrape_jobs_with_jobspy.
+        # We need the jobs_list that convert_and_save_scraped would produce.
+        # For now, we assume scrape_jobs_with_jobspy returns the DataFrame, and we convert it here
+        # if it's not None. The exit logic for no results is handled inside scrape_jobs_with_jobspy.
 
-        # --- Steps 2-6 remain unchanged ---
+        if jobs_df is None: # This check might be redundant if scrape_jobs_with_jobspy exits on None
+             logger.warning("scrape_jobs_with_jobspy returned None. Exiting pipeline.")
+             sys.exit(0) # Or handle as an error
+
         jobs_list = convert_and_save_scraped(jobs_df, args.scraped_jobs_file)
-        if not jobs_list:
-            console.log("[red]Failed to convert/save scraped data. Exiting.[/red]")
-            sys.exit(1)
-        try:
-            analyzer = ResumeAnalyzer()
-        except Exception as e:
-            log_exception(f"[red]Failed to initialize ResumeAnalyzer: {e}.[/red]", e)
-            sys.exit(1)
-        structured_resume = await load_and_extract_resume_async(args.resume, analyzer)
+        
+        if not jobs_list: # If convert_and_save_scraped returned an empty list (e.g. df was empty)
+            logger.warning("No jobs to analyze after scraping and conversion. Exiting pipeline.")
+            # Ensure empty analysis file is created if not already handled by scrape_jobs_with_jobspy's exit
+            output_settings = settings.get('output', {})
+            analysis_output_file_path = args.analysis_output or os.path.join(
+                output_settings.get('directory', 'output'),
+                output_settings.get('analysis_output_file', 'analysis_results.json')
+            )
+            try:
+                os.makedirs(os.path.dirname(analysis_output_file_path), exist_ok=True)
+                with open(analysis_output_file_path, 'w', encoding='utf-8') as f:
+                    json.dump([], f, indent=4)
+                logger.info(f"Empty analysis results file created at {analysis_output_file_path}")
+            except Exception as e:
+                log_exception(f"Error saving empty analysis results file: {e}", e)
+            sys.exit(0)
+
+
+        # --- Steps 2-6: Analysis, Filtering, and Saving ---
+        structured_resume = await load_and_extract_resume_async(args.resume)
         if not structured_resume:
-            console.log("[red]Failed to load/extract resume data. Exiting.[/red]")
+            logger.error("Failed to load/extract resume data. Exiting.")
             sys.exit(1)
-        analyzed_results = await analyze_jobs_async(analyzer, structured_resume, jobs_list)
+        analyzed_results = await analyze_jobs_async(structured_resume, jobs_list)
         if not analyzed_results:
-            console.log("[yellow]Analysis step produced no results.[/yellow]")
+            logger.warning("Analysis step produced no results.")
         filter_args_dict = {}
         if args.min_salary is not None:
             filter_args_dict['salary_min'] = args.min_salary
@@ -410,25 +482,30 @@ async def run_pipeline_async():
         final_results_list_dict = apply_filters_sort_and_save(
             analyzed_results, args.analysis_output, filter_args_dict
         )
-        console.log("[blue]Pipeline Summary:[/blue]")
-        print_summary_table(final_results_list_dict, top_n=10)
-        console.print("[green]Pipeline Run Finished Successfully[/green]")
+        logger.info("Pipeline Summary:")
+        print_summary_table(final_results_list_dict, top_n=10) # Now defined
+        logger.info("Pipeline Run Finished Successfully")
 
     except KeyboardInterrupt:
-        print()
-        console.log("[yellow]Pipeline interrupted by user (Ctrl+C).[/yellow]")
+        print() # Keep for immediate feedback
+        logger.warning("Pipeline interrupted by user (Ctrl+C).")
         sys.exit(130)
     except Exception as e:
-        log_exception(f"[red]Unexpected critical error: {e}[/red]", e)
+        log_exception(f"Unexpected critical error in run_pipeline_async: {e}", e)
         sys.exit(1)
 
 
 # --- Update entry point to run the async function ---
 if __name__ == "__main__":
-    # Ensure configuration is loaded before running the pipeline
-    config.settings = config.load_config()
+    # config.settings is already loaded when config.py is imported.
+    # setup_logging() is called at the top of this file after config import.
     try:
         asyncio.run(run_pipeline_async())
     except KeyboardInterrupt:
-        console.print("\nExecution cancelled by user.")
+        # This might be redundant if the one in run_pipeline_async catches it first
+        logger.warning("Execution cancelled by user (Ctrl+C at top level).")
         sys.exit(130)
+    except Exception as e:
+        # Catch any other unexpected errors during asyncio.run or if run_pipeline_async re-raises
+        logger.critical(f"Unhandled critical error at top level: {e}", exc_info=True)
+        sys.exit(1)
