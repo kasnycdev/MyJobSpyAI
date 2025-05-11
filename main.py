@@ -6,12 +6,12 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 import argparse
 import asyncio
-from datetime import datetime, date # Added date
+from datetime import datetime # Added date, removed unused date
 from colorama import init  # Import colorama
-import traceback
+# import traceback # Unused
 
 # Ensure config module is imported first to load settings
-import config 
+# import config # Unused, settings is imported directly
 
 # Import and setup logging *after* config is loaded
 from logging_utils import setup_logging
@@ -266,7 +266,7 @@ async def scrape_jobs_with_jobspy(
                 sys.exit(1)  # Exit with error code
 
         # --- Steps 2-6 remain unchanged ---
-        jobs_list = convert_and_save_scraped(jobs_df, cli_args.scraped_jobs_file if cli_args and hasattr(cli_args, 'scraped_jobs_file') else settings.get('output', {}).get('scraped_jobs_file')) # Use cli_args
+        convert_and_save_scraped(jobs_df, cli_args.scraped_jobs_file if cli_args and hasattr(cli_args, 'scraped_jobs_file') else settings.get('output', {}).get('scraped_jobs_file')) # Use cli_args, assignment to jobs_list removed as it's unused here
         return jobs_df # Ensure jobs_df is returned
 
     except KeyboardInterrupt:
@@ -433,8 +433,8 @@ async def run_pipeline_async():
         # if it's not None. The exit logic for no results is handled inside scrape_jobs_with_jobspy.
 
         if jobs_df is None: # This check might be redundant if scrape_jobs_with_jobspy exits on None
-             logger.warning("scrape_jobs_with_jobspy returned None. Exiting pipeline.")
-             sys.exit(0) # Or handle as an error
+            logger.warning("scrape_jobs_with_jobspy returned None. Exiting pipeline.")
+            sys.exit(0) # Or handle as an error
 
         jobs_list = convert_and_save_scraped(jobs_df, args.scraped_jobs_file)
         

@@ -1,5 +1,4 @@
 import logging
-import sys
 from logging.handlers import RotatingFileHandler
 from rich.logging import RichHandler
 from rich.console import Console as RichConsole # Avoid conflict with logging.console

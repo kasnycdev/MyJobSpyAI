@@ -10,12 +10,12 @@ from typing import List, Dict, Any, Optional
 import config
 from parsers.resume_parser import parse_resume
 from parsers.job_parser import load_job_mandates
-from analysis.models import ResumeData, AnalyzedJob, JobAnalysisResult, SkillDetail
+from analysis.models import ResumeData, AnalyzedJob, JobAnalysisResult # Removed SkillDetail
 from filtering.filter import apply_filters
 from analysis.analyzer import ResumeAnalyzer, JobAnalyzer, BaseAnalyzer # Added BaseAnalyzer
-from rich.console import Console # Keep for direct progress bar use if needed
-from colorama import Fore, Style # May become unused if all console output is via logger
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, TaskProgressColumn
+# from rich.console import Console # Unused
+# from colorama import Fore, Style # Unused
+from rich.progress import TaskProgressColumn # Others imported in try/except
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ async def load_and_extract_resume_async(
             # Fall through to parsing if cache loading fails
 
     if force_reparse:
-         logger.warning("Force reparse requested. Skipping cache.")
+        logger.warning("Force reparse requested. Skipping cache.") # Corrected indentation
 
     # If cache not found, invalid, or force_reparse is True, parse and extract
     logger.info("Cache not found or invalid. Parsing and extracting resume data.")
