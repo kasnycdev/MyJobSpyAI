@@ -183,7 +183,7 @@ async def scrape_jobs_with_jobspy(
     country_indeed: str,
     proxies: Optional[list[str]] = None,
     offset: int = 0,
-    google_search_term: Optional[str] = None,
+    # google_search_term: Optional[str] = None, # Removed
     distance: Optional[int] = None,
     is_remote: bool = False,
     job_type: Optional[str] = None,
@@ -207,8 +207,8 @@ async def scrape_jobs_with_jobspy(
         f"Is Remote={is_remote}, Job Type={job_type}, Easy Apply={easy_apply}, "
         f"Distance={distance}, Enforce Annual Salary={enforce_annual_salary}"
     )
-    if google_search_term:
-        logger.info(f"Google Search Term: '{google_search_term}'")
+    # if google_search_term: # Removed
+    #     logger.info(f"Google Search Term: '{google_search_term}'") # Removed
     if proxies:
         logger.info(f"Using {len(proxies)} proxies.")
     if linkedin_company_ids:
@@ -222,7 +222,7 @@ async def scrape_jobs_with_jobspy(
             scrape_jobs,
             site_name=sites, # Pass the sites list as site_name
             search_term=search_terms, # Pass search_terms as search_term
-            google_search_term=google_search_term,
+            # google_search_term=google_search_term, # Removed
             location=location,
             distance=distance,
             is_remote=is_remote,
@@ -308,7 +308,7 @@ async def run_pipeline_async():
         default=scrape_cfg.get('job_type', None), # Corrected default lookup from config
         help="Job type to filter for (e.g., 'fulltime', 'contract', 'parttime')."
     )
-    scrape_group.add_argument("--google-search-term", default=scrape_cfg.get('google_search_term', None), help="Specific search term for Google Jobs scraper.")
+    # scrape_group.add_argument("--google-search-term", default=scrape_cfg.get('google_search_term', None), help="Specific search term for Google Jobs scraper.") # Removed
     scrape_group.add_argument("--distance", type=int, default=scrape_cfg.get('distance', 2), help="Distance in miles from location (for supported sites). JobSpy default is 50.") # Corrected default
     scrape_group.add_argument(
         "--easy-apply",
@@ -404,7 +404,7 @@ async def run_pipeline_async():
         jobs_df = await scrape_jobs_with_jobspy(
             sites=scraper_sites, 
             search_terms=args.search, 
-            google_search_term=args.google_search_term,
+            # google_search_term=args.google_search_term, # Removed
             location=scrape_location,
             distance=args.distance,
             is_remote=args.is_remote,
