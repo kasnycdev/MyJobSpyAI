@@ -170,15 +170,66 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
             f"'{settings['output_dir']}': {e}"
         )
     
-    # --- Process OpenTelemetry Sampler ---
+    # --- Process OpenTelemetry Settings with Environment Variable Overrides ---
     otel_settings = settings.get("opentelemetry", {})
-    sampler_str = otel_settings.get("OTEL_TRACES_SAMPLER", "always_on").lower()
+
+    # OTEL_SERVICE_NAME
+    otel_settings["OTEL_SERVICE_NAME"] = os.environ.get(
+        "OTEL_SERVICE_NAME", 
+        otel_settings.get("OTEL_SERVICE_NAME", "MyJobSpyAI-Default")
+    )
+
+    # OTEL_EXPORTER_OTLP_ENDPOINT
+    otel_settings["OTEL_EXPORTER_OTLP_ENDPOINT"] = os.environ.get(
+        "OTEL_EXPORTER_OTLP_ENDPOINT", 
+        otel_settings.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+    )
+
+    # OTEL_TRACES_SAMPLER (string value)
+    sampler_str_from_env = os.environ.get("OTEL_TRACES_SAMPLER")
+    sampler_str = sampler_str_from_env.lower() if sampler_str_from_env else otel_settings.get("OTEL_TRACES_SAMPLER", "always_on").lower()
+    otel_settings["OTEL_TRACES_SAMPLER"] = sampler_str # Store the final choice
+
+    # OTEL_TRACES_SAMPLER_ARG (for traceidratio ratio)
     sampler_config = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {})
+    sampler_arg_from_env = os.environ.get("OTEL_TRACES_SAMPLER_ARG")
+    if sampler_arg_from_env:
+        try:
+            sampler_config["ratio"] = float(sampler_arg_from_env)
+            logging.info(f"OTEL_TRACES_SAMPLER_ARG from env: set ratio to {sampler_config['ratio']}")
+        except ValueError:
+            logging.warning(f"Invalid OTEL_TRACES_SAMPLER_ARG '{sampler_arg_from_env}' from env. Not a float. Using config/default ratio.")
+    otel_settings["OTEL_TRACES_SAMPLER_CONFIG"] = sampler_config # Store updated config
+
+    # OTEL_RESOURCE_ATTRIBUTES
+    # Start with defaults, merge YAML, then merge ENV VARS
+    default_resource_attrs = DEFAULT_SETTINGS.get("opentelemetry", {}).get("OTEL_RESOURCE_ATTRIBUTES", {})
+    yaml_resource_attrs = settings.get("opentelemetry", {}).get("OTEL_RESOURCE_ATTRIBUTES", {}) # This already has merged defaults
     
+    final_resource_attrs = default_resource_attrs.copy()
+    final_resource_attrs.update(yaml_resource_attrs) # Merge YAML over defaults
+
+    env_resource_attrs_str = os.environ.get("OTEL_RESOURCE_ATTRIBUTES")
+    if env_resource_attrs_str:
+        try:
+            env_attrs = dict(pair.split("=", 1) for pair in env_resource_attrs_str.split(","))
+            final_resource_attrs.update(env_attrs) # Env vars override
+            logging.info(f"Loaded OTEL_RESOURCE_ATTRIBUTES from env: {env_attrs}")
+        except ValueError:
+            logging.warning(f"Invalid format for OTEL_RESOURCE_ATTRIBUTES env var: '{env_resource_attrs_str}'. Expected 'key1=value1,key2=value2'.")
+    otel_settings["OTEL_RESOURCE_ATTRIBUTES"] = final_resource_attrs
+    
+    # Ensure 'environment' from OTEL_RESOURCE_ATTRIBUTES can still be overridden by a specific 'ENVIRONMENT' env var as a convenience
+    otel_settings["OTEL_RESOURCE_ATTRIBUTES"]["environment"] = os.environ.get(
+        "ENVIRONMENT", 
+        otel_settings["OTEL_RESOURCE_ATTRIBUTES"].get("environment", "development")
+    )
+
+    # Create Sampler Instance based on final string and config
     if sampler_str == "always_on":
         otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
     elif sampler_str == "traceidratio":
-        ratio = sampler_config.get("ratio", 0.5)
+        ratio = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {}).get("ratio", 0.5) # Use the potentially updated ratio
         try:
             ratio = float(ratio)
             if not (0.0 <= ratio <= 1.0):
@@ -194,6 +245,8 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
         logging.warning(f"Unsupported OTEL_TRACES_SAMPLER '{sampler_str}'. Defaulting to ALWAYS_ON.")
         otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
     
+    settings["opentelemetry"] = otel_settings # Ensure the main settings dict has the processed otel_settings
+
     # --- Ensure log dir exists and make log paths absolute ---
     log_cfg = settings.get("logging", {})
     log_dir_path_str = log_cfg.get("log_dir", "logs")
