@@ -87,9 +87,10 @@ This project integrates OpenTelemetry to provide insights into its execution thr
     OpenTelemetry settings can be configured in your `config.yaml` under the `opentelemetry` section:
     ```yaml
     opentelemetry:
+      OTEL_ENABLED: true  # Set to false to disable OpenTelemetry
       OTEL_SERVICE_NAME: "MyJobSpyAI"  # Name of your service
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317" # Collector endpoint (can be overridden by env var)
-      OTEL_TRACES_SAMPLER: "always_on"  # "always_on" or "traceidratio"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317" # Collector endpoint
+      OTEL_TRACES_SAMPLER: "always_on"  # Options: "always_on", "traceidratio"
       OTEL_TRACES_SAMPLER_CONFIG:
         ratio: 0.5  # Sampling ratio if "traceidratio" is used (0.0 to 1.0)
       OTEL_RESOURCE_ATTRIBUTES:
@@ -97,8 +98,11 @@ This project integrates OpenTelemetry to provide insights into its execution thr
         version: "0.1.0" # Or your application version
         # Add any other custom resource attributes here
     ```
-    *   `OTEL_EXPORTER_OTLP_ENDPOINT` can also be set via an environment variable.
-    *   The application code converts the `OTEL_TRACES_SAMPLER` string to the appropriate OpenTelemetry Sampler instance.
+    *   **Environment Variable Overrides**: Standard OpenTelemetry environment variables (e.g., `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_SAMPLER_ARG`, `OTEL_RESOURCE_ATTRIBUTES`) will override settings from `config.yaml` or internal defaults if set.
+    *   **Disabling OpenTelemetry**:
+        *   Set `OTEL_ENABLED: false` in the `opentelemetry` section of your `config.yaml`.
+        *   Alternatively, set the environment variable `OTEL_SDK_DISABLED=true`. This will disable OpenTelemetry regardless of the `config.yaml` setting.
+    *   The application code converts the `OTEL_TRACES_SAMPLER` string (from config or env var) to the appropriate OpenTelemetry Sampler instance.
 
 **Viewing Telemetry:**
 Once your application runs with a collector active, you can view:

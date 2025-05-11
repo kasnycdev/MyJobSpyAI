@@ -29,9 +29,19 @@ def configure_opentelemetry():
     """Configures OpenTelemetry for logs, traces, and metrics."""
     global tracer, meter
     otel_cfg = settings.get("opentelemetry", {})
-    if not otel_cfg:
-        logging.getLogger(__name__).warning("OpenTelemetry configuration not found in settings. Skipping OTEL setup.")
+    
+    # Check if OTEL is enabled
+    if not otel_cfg or not otel_cfg.get("OTEL_ENABLED", True): # Default to True if key missing, but config.py sets it
+        logger = logging.getLogger(__name__) # Get local logger for this message
+        logger.info("OpenTelemetry is DISABLED by configuration (OTEL_ENABLED=false or OTEL_SDK_DISABLED=true). Initializing NoOp providers.")
+        # Set global tracer and meter to NoOp versions
+        tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
+        meter = metrics.get_meter(__name__, meter_provider=metrics.NoOpMeterProvider())
         return
+
+    # If we reach here, OTEL is enabled and otel_cfg exists.
+    logger = logging.getLogger(__name__) # Get local logger for subsequent messages
+    logger.info("OpenTelemetry is ENABLED. Proceeding with configuration...")
 
     service_name = otel_cfg.get("OTEL_SERVICE_NAME", "MyJobSpyAI-Default")
     otlp_endpoint = otel_cfg.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")

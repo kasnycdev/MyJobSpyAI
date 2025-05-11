@@ -85,6 +85,7 @@ DEFAULT_SETTINGS = {
     },
     # --- OpenTelemetry Settings ---
     "opentelemetry": {
+        "OTEL_ENABLED": True, # Added enable/disable flag
         "OTEL_SERVICE_NAME": "MyJobSpyAI",
         "OTEL_EXPORTER_OTLP_ENDPOINT": os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
         "OTEL_TRACES_SAMPLER": "always_on", # Default to string
@@ -173,78 +174,105 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
     # --- Process OpenTelemetry Settings with Environment Variable Overrides ---
     otel_settings = settings.get("opentelemetry", {})
 
-    # OTEL_SERVICE_NAME
-    otel_settings["OTEL_SERVICE_NAME"] = os.environ.get(
-        "OTEL_SERVICE_NAME", 
-        otel_settings.get("OTEL_SERVICE_NAME", "MyJobSpyAI-Default")
-    )
-
-    # OTEL_EXPORTER_OTLP_ENDPOINT
-    otel_settings["OTEL_EXPORTER_OTLP_ENDPOINT"] = os.environ.get(
-        "OTEL_EXPORTER_OTLP_ENDPOINT", 
-        otel_settings.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
-    )
-
-    # OTEL_TRACES_SAMPLER (string value)
-    sampler_str_from_env = os.environ.get("OTEL_TRACES_SAMPLER")
-    sampler_str = sampler_str_from_env.lower() if sampler_str_from_env else otel_settings.get("OTEL_TRACES_SAMPLER", "always_on").lower()
-    otel_settings["OTEL_TRACES_SAMPLER"] = sampler_str # Store the final choice
-
-    # OTEL_TRACES_SAMPLER_ARG (for traceidratio ratio)
-    sampler_config = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {})
-    sampler_arg_from_env = os.environ.get("OTEL_TRACES_SAMPLER_ARG")
-    if sampler_arg_from_env:
-        try:
-            sampler_config["ratio"] = float(sampler_arg_from_env)
-            logging.info(f"OTEL_TRACES_SAMPLER_ARG from env: set ratio to {sampler_config['ratio']}")
-        except ValueError:
-            logging.warning(f"Invalid OTEL_TRACES_SAMPLER_ARG '{sampler_arg_from_env}' from env. Not a float. Using config/default ratio.")
-    otel_settings["OTEL_TRACES_SAMPLER_CONFIG"] = sampler_config # Store updated config
-
-    # OTEL_RESOURCE_ATTRIBUTES
-    # Start with defaults, merge YAML, then merge ENV VARS
-    default_resource_attrs = DEFAULT_SETTINGS.get("opentelemetry", {}).get("OTEL_RESOURCE_ATTRIBUTES", {})
-    yaml_resource_attrs = settings.get("opentelemetry", {}).get("OTEL_RESOURCE_ATTRIBUTES", {}) # This already has merged defaults
-    
-    final_resource_attrs = default_resource_attrs.copy()
-    final_resource_attrs.update(yaml_resource_attrs) # Merge YAML over defaults
-
-    env_resource_attrs_str = os.environ.get("OTEL_RESOURCE_ATTRIBUTES")
-    if env_resource_attrs_str:
-        try:
-            env_attrs = dict(pair.split("=", 1) for pair in env_resource_attrs_str.split(","))
-            final_resource_attrs.update(env_attrs) # Env vars override
-            logging.info(f"Loaded OTEL_RESOURCE_ATTRIBUTES from env: {env_attrs}")
-        except ValueError:
-            logging.warning(f"Invalid format for OTEL_RESOURCE_ATTRIBUTES env var: '{env_resource_attrs_str}'. Expected 'key1=value1,key2=value2'.")
-    otel_settings["OTEL_RESOURCE_ATTRIBUTES"] = final_resource_attrs
-    
-    # Ensure 'environment' from OTEL_RESOURCE_ATTRIBUTES can still be overridden by a specific 'ENVIRONMENT' env var as a convenience
-    otel_settings["OTEL_RESOURCE_ATTRIBUTES"]["environment"] = os.environ.get(
-        "ENVIRONMENT", 
-        otel_settings["OTEL_RESOURCE_ATTRIBUTES"].get("environment", "development")
-    )
-
-    # Create Sampler Instance based on final string and config
-    if sampler_str == "always_on":
-        otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
-    elif sampler_str == "traceidratio":
-        ratio = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {}).get("ratio", 0.5) # Use the potentially updated ratio
-        try:
-            ratio = float(ratio)
-            if not (0.0 <= ratio <= 1.0):
-                logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Must be between 0.0 and 1.0. Defaulting to ALWAYS_ON.")
-                otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
-            else:
-                otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = TraceIdRatioBasedSampler(ratio)
-                logging.info(f"Using TraceIdRatioBasedSampler with ratio: {ratio}")
-        except ValueError:
-            logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Not a float. Defaulting to ALWAYS_ON.")
-            otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+    # Handle OTEL_ENABLED flag, respecting OTEL_SDK_DISABLED environment variable
+    # OTEL_SDK_DISABLED=true means OTEL is disabled.
+    if os.environ.get("OTEL_SDK_DISABLED", "false").lower() == "true":
+        otel_settings["OTEL_ENABLED"] = False
+        logging.info("OpenTelemetry disabled via OTEL_SDK_DISABLED environment variable.")
     else:
-        logging.warning(f"Unsupported OTEL_TRACES_SAMPLER '{sampler_str}'. Defaulting to ALWAYS_ON.")
-        otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
-    
+        # If not disabled by env var, use the value from settings (YAML or default)
+        # Ensure it's a boolean
+        enabled_from_settings = otel_settings.get("OTEL_ENABLED", True)
+        if isinstance(enabled_from_settings, str):
+            otel_settings["OTEL_ENABLED"] = enabled_from_settings.lower() == "true"
+        else:
+            otel_settings["OTEL_ENABLED"] = bool(enabled_from_settings)
+        if not otel_settings["OTEL_ENABLED"]:
+            logging.info("OpenTelemetry disabled via config (OTEL_ENABLED=false).")
+        else:
+            logging.info("OpenTelemetry is ENABLED.")
+            
+    # Only process other OTEL settings if OTEL_ENABLED is true
+    if otel_settings.get("OTEL_ENABLED", False):
+        # OTEL_SERVICE_NAME
+        otel_settings["OTEL_SERVICE_NAME"] = os.environ.get(
+            "OTEL_SERVICE_NAME", 
+            otel_settings.get("OTEL_SERVICE_NAME", "MyJobSpyAI-Default")
+        )
+
+        # OTEL_EXPORTER_OTLP_ENDPOINT
+        otel_settings["OTEL_EXPORTER_OTLP_ENDPOINT"] = os.environ.get(
+            "OTEL_EXPORTER_OTLP_ENDPOINT", 
+            otel_settings.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+        )
+
+        # OTEL_TRACES_SAMPLER (string value)
+        sampler_str_from_env = os.environ.get("OTEL_TRACES_SAMPLER")
+        sampler_str = sampler_str_from_env.lower() if sampler_str_from_env else otel_settings.get("OTEL_TRACES_SAMPLER", "always_on").lower()
+        otel_settings["OTEL_TRACES_SAMPLER"] = sampler_str # Store the final choice
+
+        # OTEL_TRACES_SAMPLER_ARG (for traceidratio ratio)
+        sampler_config = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {})
+        sampler_arg_from_env = os.environ.get("OTEL_TRACES_SAMPLER_ARG")
+        if sampler_arg_from_env:
+            try:
+                sampler_config["ratio"] = float(sampler_arg_from_env)
+                logging.info(f"OTEL_TRACES_SAMPLER_ARG from env: set ratio to {sampler_config['ratio']}")
+            except ValueError:
+                logging.warning(f"Invalid OTEL_TRACES_SAMPLER_ARG '{sampler_arg_from_env}' from env. Not a float. Using config/default ratio.")
+        otel_settings["OTEL_TRACES_SAMPLER_CONFIG"] = sampler_config # Store updated config
+
+        # OTEL_RESOURCE_ATTRIBUTES
+        # Start with defaults, merge YAML, then merge ENV VARS
+        default_resource_attrs = DEFAULT_SETTINGS.get("opentelemetry", {}).get("OTEL_RESOURCE_ATTRIBUTES", {})
+        yaml_resource_attrs = settings.get("opentelemetry", {}).get("OTEL_RESOURCE_ATTRIBUTES", {}) # This already has merged defaults
+        
+        final_resource_attrs = default_resource_attrs.copy()
+        final_resource_attrs.update(yaml_resource_attrs) # Merge YAML over defaults
+
+        env_resource_attrs_str = os.environ.get("OTEL_RESOURCE_ATTRIBUTES")
+        if env_resource_attrs_str:
+            try:
+                env_attrs = dict(pair.split("=", 1) for pair in env_resource_attrs_str.split(","))
+                final_resource_attrs.update(env_attrs) # Env vars override
+                logging.info(f"Loaded OTEL_RESOURCE_ATTRIBUTES from env: {env_attrs}")
+            except ValueError:
+                logging.warning(f"Invalid format for OTEL_RESOURCE_ATTRIBUTES env var: '{env_resource_attrs_str}'. Expected 'key1=value1,key2=value2'.")
+        otel_settings["OTEL_RESOURCE_ATTRIBUTES"] = final_resource_attrs
+        
+        # Ensure 'environment' from OTEL_RESOURCE_ATTRIBUTES can still be overridden by a specific 'ENVIRONMENT' env var as a convenience
+        otel_settings["OTEL_RESOURCE_ATTRIBUTES"]["environment"] = os.environ.get(
+            "ENVIRONMENT", 
+            otel_settings["OTEL_RESOURCE_ATTRIBUTES"].get("environment", "development")
+        )
+
+        # Create Sampler Instance based on final string and config
+        if sampler_str == "always_on":
+            otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+        elif sampler_str == "traceidratio":
+            ratio = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {}).get("ratio", 0.5) # Use the potentially updated ratio
+            try:
+                ratio = float(ratio)
+                if not (0.0 <= ratio <= 1.0):
+                    logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Must be between 0.0 and 1.0. Defaulting to ALWAYS_ON.")
+                    otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+                else:
+                    otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = TraceIdRatioBasedSampler(ratio)
+                    logging.info(f"Using TraceIdRatioBasedSampler with ratio: {ratio}")
+            except ValueError:
+                logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Not a float. Defaulting to ALWAYS_ON.")
+                otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+        else:
+            logging.warning(f"Unsupported OTEL_TRACES_SAMPLER '{sampler_str}'. Defaulting to ALWAYS_ON.")
+            otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+    else: # OTEL is disabled
+        # Ensure instance is None or a NoOpSampler if OTEL is disabled, so logging_utils can handle it
+        otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = None # Or specific NoOpSampler if preferred
+        # Clear other potentially sensitive or unnecessary settings if disabled
+        otel_settings["OTEL_EXPORTER_OTLP_ENDPOINT"] = None 
+        # Resource attributes might still be useful for non-OTEL purposes, or clear them too.
+        # For now, leave them as they might be used by other parts of the app.
+
     settings["opentelemetry"] = otel_settings # Ensure the main settings dict has the processed otel_settings
 
     # --- Ensure log dir exists and make log paths absolute ---
