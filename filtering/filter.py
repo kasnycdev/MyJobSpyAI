@@ -37,7 +37,9 @@ _geocode_fail_cache = set() # type: ignore
 
 def get_geocode_cache_path():
     """Gets the geocode cache file path from settings with a default."""
-    return settings.get('output', {}).get('geocode_cache_file', 'cache/geocode_cache.json')
+    path = settings.get('output', {}).get('geocode_cache_file', 'cache/geocode_cache.json')
+    logger.info(f"Resolved geocode_cache_file path: '{path}' (Absolute: '{os.path.abspath(path)}')")
+    return path
 
 def load_geocode_cache():
     """Loads the geocode cache from a JSON file."""
@@ -57,8 +59,20 @@ def save_geocode_cache():
     """Saves the geocode cache to a JSON file."""
     cache_file_path = get_geocode_cache_path()
     cache_dir = os.path.dirname(cache_file_path)
+    
     if cache_dir: # Ensure directory exists if path includes one
-        os.makedirs(cache_dir, exist_ok=True)
+        abs_cache_dir = os.path.abspath(cache_dir)
+        logger.info(f"Ensuring geocode cache directory exists: '{cache_dir}' (Absolute: '{abs_cache_dir}')")
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+        except OSError as e:
+            logger.error(f"Failed to create directory '{cache_dir}' (Absolute: '{abs_cache_dir}'): {e}", exc_info=True)
+            # Potentially re-raise or handle if directory creation is critical and fails
+            return # Do not proceed if directory cannot be made
+    else:
+        # This case means cache_file_path is a filename in the CWD, cache_dir is ''
+        logger.info(f"Geocode cache file '{cache_file_path}' will be saved in the current working directory ('{os.getcwd()}').")
+
     try:
         with open(cache_file_path, 'w', encoding='utf-8') as f:
             json.dump({'cache': _geocode_cache, 'fail_cache': list(_geocode_fail_cache)}, f, indent=4)
