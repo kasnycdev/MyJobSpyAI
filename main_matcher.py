@@ -20,20 +20,22 @@ from rich.progress import TaskProgressColumn # Others imported in try/except
 # Get a logger for this module
 logger = logging.getLogger(__name__)
 
-# Import tracer from logging_utils
+# Import OpenTelemetry trace module and tracer from logging_utils
+from opentelemetry import trace # Ensure trace module is always imported
+
 try:
-    from logging_utils import tracer as global_tracer
-    if global_tracer is None: # Check if OTEL was disabled in logging_utils
-        from opentelemetry import trace
+    from logging_utils import tracer as global_tracer_instance
+    if global_tracer_instance is None: # Check if OTEL was disabled in logging_utils
         # Fallback to a NoOpTracer if OTEL is not configured
         tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
-        logger.warning("OpenTelemetry not configured in logging_utils, using NoOpTracer for main_matcher.")
+        logger.warning("OpenTelemetry not configured in logging_utils (global_tracer_instance is None), using NoOpTracer for main_matcher.")
     else:
-        tracer = global_tracer
+        tracer = global_tracer_instance # Use the instance from logging_utils
+        logger.info("Using global_tracer_instance from logging_utils for main_matcher.")
 except ImportError:
-    from opentelemetry import trace
+    # Fallback to a NoOpTracer if logging_utils or its tracer cannot be imported
     tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
-    logger.error("Could not import global_tracer from logging_utils. Using NoOpTracer.", exc_info=True)
+    logger.error("Could not import global_tracer_instance from logging_utils. Using NoOpTracer for main_matcher.", exc_info=True)
 
 
 # console = Console() # Replaced by logger for general messages

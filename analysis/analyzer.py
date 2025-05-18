@@ -31,26 +31,32 @@ logger = logging.getLogger(__name__)
 # Get the specific logger for model outputs
 model_output_logger = logging.getLogger(MODEL_OUTPUT_LOGGER_NAME)
 
-# Import tracer and meter from logging_utils
+# Import OpenTelemetry trace and metrics modules
+from opentelemetry import trace, metrics # Ensure trace and metrics modules are always imported
+
+# Import tracer and meter instances from logging_utils
 try:
-    from logging_utils import tracer as global_tracer, meter as global_meter
-    if global_tracer is None: # Check if OTEL was disabled in logging_utils
-        from opentelemetry import trace
+    from logging_utils import tracer as global_tracer_instance, meter as global_meter_instance
+    
+    if global_tracer_instance is None: # Check if OTEL was disabled in logging_utils for tracer
         tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
-        logger.warning("OpenTelemetry not configured in logging_utils, using NoOpTracer for analyzer.")
+        logger.warning("OpenTelemetry tracer not configured in logging_utils (global_tracer_instance is None), using NoOpTracer for analyzer.")
     else:
-        tracer = global_tracer
-    if global_meter is None:
-        from opentelemetry import metrics
+        tracer = global_tracer_instance # Use the instance from logging_utils
+        logger.info("Using global_tracer_instance from logging_utils for analyzer.")
+
+    if global_meter_instance is None: # Check if OTEL was disabled in logging_utils for meter
         meter = metrics.get_meter(__name__, meter_provider=metrics.NoOpMeterProvider())
-        logger.warning("OpenTelemetry Meter not configured, using NoOpMeter for analyzer.")
+        logger.warning("OpenTelemetry meter not configured in logging_utils (global_meter_instance is None), using NoOpMeter for analyzer.")
     else:
-        meter = global_meter
+        meter = global_meter_instance # Use the instance from logging_utils
+        logger.info("Using global_meter_instance from logging_utils for analyzer.")
+        
 except ImportError:
-    from opentelemetry import trace, metrics
+    # Fallback to NoOp versions if logging_utils or its tracer/meter cannot be imported
     tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
     meter = metrics.get_meter(__name__, meter_provider=metrics.NoOpMeterProvider())
-    logger.error("Could not import global_tracer/meter from logging_utils. Using NoOp versions.", exc_info=True)
+    logger.error("Could not import global_tracer_instance/global_meter_instance from logging_utils. Using NoOp versions for analyzer.", exc_info=True)
 
 
 # Helper function for logging exceptions (now uses standard logger)

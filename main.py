@@ -168,13 +168,78 @@ def print_summary_table(analyzed_jobs_list: List[Dict[str, Any]], top_n: int = 1
         
         # Use the Rich console instance for printing the table directly
         # This is okay as it's a direct user-facing output, not typical logging
-        console.print(table) 
+        console.print(table)
     else: # Fallback to basic print if Rich Table is not fully available
         for i, job_summary in enumerate(analyzed_jobs_list[:top_n]):
             title = job_summary.get('original_job_data', {}).get('title', 'N/A')
             company = job_summary.get('original_job_data', {}).get('company', 'N/A')
             score = job_summary.get('analysis', {}).get('suitability_score', 'N/A')
             logger.info(f"{i+1}. {title} at {company} - Score: {score}")
+
+@tracer.start_as_current_span("print_detailed_analysis")
+def print_detailed_analysis(analyzed_jobs_list: List[Dict[str, Any]], top_n: int = 3):
+    """Prints detailed analysis for the top N jobs."""
+    if not analyzed_jobs_list:
+        logger.warning("No analyzed jobs to provide detailed analysis for.")
+        return
+
+    logger.info(f"\n--- Detailed Analysis for Top {min(top_n, len(analyzed_jobs_list))} Jobs ---")
+    for i, job_data_dict in enumerate(analyzed_jobs_list[:top_n]):
+        console.rule(f"[bold cyan]Rank {i+1}[/bold cyan]", style="cyan")
+
+        original_job = job_data_dict.get('original_job_data', {})
+        parsed_details = job_data_dict.get('parsed_job_details') # This is already a dict or None
+        analysis = job_data_dict.get('analysis') # This is already a dict or None
+
+        console.print(f"[bold]Title:[/bold] {original_job.get('title', 'N/A')}")
+        console.print(f"[bold]Company:[/bold] {original_job.get('company', 'N/A')}")
+        console.print(f"[bold]Location:[/bold] {original_job.get('location', 'N/A')}")
+        console.print(f"[bold]URL:[/bold] {original_job.get('job_url', original_job.get('url', 'N/A'))}")
+        console.print(f"[bold]Description Snippet:[/bold]\n {original_job.get('description', 'N/A')[:500]}...")
+
+        if parsed_details:
+            console.print("\n[bold green]--- Extracted Job Details (LLM) ---[/bold green]")
+            for key, value in parsed_details.items():
+                if isinstance(value, list) and value:
+                    console.print(f"  [bold]{key.replace('_', ' ').title()}:[/bold]")
+                    for item in value:
+                        if isinstance(item, dict): # For SkillDetail
+                            item_str = f"    - Name: {item.get('name')}"
+                            if item.get('level'): item_str += f", Level: {item.get('level')}"
+                            if item.get('years_experience') is not None: item_str += f", Years: {item.get('years_experience')}"
+                            console.print(item_str)
+                        else:
+                            console.print(f"    - {item}")
+                elif value and not isinstance(value, list):
+                     console.print(f"  [bold]{key.replace('_', ' ').title()}:[/bold] {value}")
+        else:
+            console.print("\n[bold green]--- Extracted Job Details (LLM) ---[/bold green]")
+            console.print("  Not available or extraction failed.")
+
+        if analysis:
+            console.print("\n[bold magenta]--- Suitability Analysis (LLM) ---[/bold magenta]")
+            console.print(f"  [bold]Suitability Score:[/bold] {analysis.get('suitability_score', 'N/A')}%")
+            console.print(f"  [bold]Justification:[/bold]\n    {analysis.get('justification', 'N/A')}")
+            if analysis.get('pros'):
+                console.print("  [bold]Pros:[/bold]")
+                for pro in analysis.get('pros', []): console.print(f"    - {pro}")
+            if analysis.get('cons'):
+                console.print("  [bold]Cons:[/bold]")
+                for con in analysis.get('cons', []): console.print(f"    - {con}")
+            console.print(f"  [bold]Skill Match Summary:[/bold]\n    {analysis.get('skill_match_summary', 'N/A')}")
+            console.print(f"  [bold]Experience Match Summary:[/bold]\n    {analysis.get('experience_match_summary', 'N/A')}")
+            console.print(f"  [bold]Education Match Summary:[/bold]\n    {analysis.get('education_match_summary', 'N/A')}")
+            if analysis.get('missing_keywords'):
+                console.print("  [bold]Missing Keywords:[/bold]")
+                for kw in analysis.get('missing_keywords', []): console.print(f"    - {kw}")
+        else:
+            console.print("\n[bold magenta]--- Suitability Analysis (LLM) ---[/bold magenta]")
+            console.print("  Not available or analysis failed.")
+        
+        if i < min(top_n, len(analyzed_jobs_list)) - 1:
+            console.print("\n") # Add space before next rule, unless it's the last job
+
+    console.rule(style="cyan")
 
 
 # --- scrape_jobs_with_jobspy function ---
@@ -492,7 +557,8 @@ async def run_pipeline_async():
             analyzed_results, args.analysis_output, filter_args_dict
         )
         logger.info("Pipeline Summary:")
-        print_summary_table(final_results_list_dict, top_n=10) # Now defined
+        print_summary_table(final_results_list_dict, top_n=10) 
+        print_detailed_analysis(final_results_list_dict, top_n=settings.get("output", {}).get("detailed_analysis_count", 3)) # Print detailed for top N
         logger.info("Pipeline Run Finished Successfully")
 
     except KeyboardInterrupt:

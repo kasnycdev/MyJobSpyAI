@@ -5,7 +5,14 @@ import os
 import logging
 from pathlib import Path
 from typing import Any
-from opentelemetry.sdk.trace.sampling import ALWAYS_ON, TraceIdRatioBasedSampler # Updated for OTEL config
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON # Moved here
+try:
+    from opentelemetry.sdk.trace.sampling import TraceIdRatioBasedSampler
+    TRACE_ID_RATIO_SAMPLER_AVAILABLE = True
+except ImportError:
+    TRACE_ID_RATIO_SAMPLER_AVAILABLE = False
+    # log is not yet defined here, so we can't log yet.
+    # Will log warning later if this sampler is requested.
 
 log = logging.getLogger(__name__)
 
@@ -87,13 +94,17 @@ DEFAULT_SETTINGS = {
     "opentelemetry": {
         "OTEL_ENABLED": True, # Added enable/disable flag
         "OTEL_SERVICE_NAME": "MyJobSpyAI",
-        "OTEL_EXPORTER_OTLP_ENDPOINT": os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317", # Default, will be overridden by env
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc", # Default protocol
+        "OTEL_EXPORTER_OTLP_HEADERS": {}, # Default empty dict for headers
+        "OTEL_EXPORTER_MAX_RETRIES": 3, # Default max retries for OTLP connection
+        "OTEL_EXPORTER_RETRY_DELAY_SECONDS": 5, # Default delay between retries
         "OTEL_TRACES_SAMPLER": "always_on", # Default to string
         "OTEL_TRACES_SAMPLER_CONFIG": { # Config for samplers like traceidratio
              "ratio": 0.5 # Default ratio if traceidratio is chosen
         },
         "OTEL_RESOURCE_ATTRIBUTES": {
-            "environment": os.environ.get("ENVIRONMENT", "development"),
+            "environment": "development", # Default, will be overridden by env
             "version": "0.1.0",
         },
     }
@@ -202,9 +213,69 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
 
         # OTEL_EXPORTER_OTLP_ENDPOINT
         otel_settings["OTEL_EXPORTER_OTLP_ENDPOINT"] = os.environ.get(
-            "OTEL_EXPORTER_OTLP_ENDPOINT", 
-            otel_settings.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+            otel_settings.get("OTEL_EXPORTER_OTLP_ENDPOINT") # Get from merged settings (YAML or default)
         )
+
+        # OTEL_EXPORTER_OTLP_PROTOCOL
+        otel_settings["OTEL_EXPORTER_OTLP_PROTOCOL"] = os.environ.get(
+            "OTEL_EXPORTER_OTLP_PROTOCOL",
+            otel_settings.get("OTEL_EXPORTER_OTLP_PROTOCOL") # Get from merged settings
+        ).lower()
+        if otel_settings["OTEL_EXPORTER_OTLP_PROTOCOL"] not in ["grpc", "http/protobuf"]:
+            logging.warning(
+                f"Invalid OTEL_EXPORTER_OTLP_PROTOCOL: '{otel_settings['OTEL_EXPORTER_OTLP_PROTOCOL']}'. "
+                "Defaulting to 'grpc'. Supported: 'grpc', 'http/protobuf'."
+            )
+            otel_settings["OTEL_EXPORTER_OTLP_PROTOCOL"] = "grpc"
+        
+        # OTEL_EXPORTER_OTLP_HEADERS
+        # Headers can be specified in YAML as a dict or in ENV as "key1=value1,key2=value2"
+        default_headers = {}
+        yaml_headers = otel_settings.get("OTEL_EXPORTER_OTLP_HEADERS", {})
+        
+        final_headers = default_headers.copy()
+        if isinstance(yaml_headers, dict):
+            final_headers.update(yaml_headers)
+        else:
+            logging.warning("OTEL_EXPORTER_OTLP_HEADERS in YAML is not a dictionary. Ignoring YAML headers.")
+
+        env_headers_str = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS")
+        if env_headers_str:
+            try:
+                env_headers = dict(pair.split("=", 1) for pair in env_headers_str.split(","))
+                final_headers.update(env_headers) # Env vars override YAML for headers
+                logging.info(f"Loaded OTEL_EXPORTER_OTLP_HEADERS from env: {env_headers}")
+            except ValueError:
+                logging.warning(f"Invalid format for OTEL_EXPORTER_OTLP_HEADERS env var: '{env_headers_str}'. Expected 'key1=value1,key2=value2'.")
+        otel_settings["OTEL_EXPORTER_OTLP_HEADERS"] = final_headers
+        if final_headers:
+             logging.info(f"Using OTLP exporter headers: {final_headers}")
+        
+        # OTEL_EXPORTER_MAX_RETRIES
+        try:
+            otel_settings["OTEL_EXPORTER_MAX_RETRIES"] = int(
+                os.environ.get(
+                    "OTEL_EXPORTER_MAX_RETRIES",
+                    otel_settings.get("OTEL_EXPORTER_MAX_RETRIES")
+                )
+            )
+        except (ValueError, TypeError):
+            logging.warning(f"Invalid OTEL_EXPORTER_MAX_RETRIES. Using default: {DEFAULT_SETTINGS['opentelemetry']['OTEL_EXPORTER_MAX_RETRIES']}")
+            otel_settings["OTEL_EXPORTER_MAX_RETRIES"] = DEFAULT_SETTINGS['opentelemetry']['OTEL_EXPORTER_MAX_RETRIES']
+
+        # OTEL_EXPORTER_RETRY_DELAY_SECONDS
+        try:
+            otel_settings["OTEL_EXPORTER_RETRY_DELAY_SECONDS"] = int(
+                os.environ.get(
+                    "OTEL_EXPORTER_RETRY_DELAY_SECONDS",
+                    otel_settings.get("OTEL_EXPORTER_RETRY_DELAY_SECONDS")
+                )
+            )
+        except (ValueError, TypeError):
+            logging.warning(f"Invalid OTEL_EXPORTER_RETRY_DELAY_SECONDS. Using default: {DEFAULT_SETTINGS['opentelemetry']['OTEL_EXPORTER_RETRY_DELAY_SECONDS']}")
+            otel_settings["OTEL_EXPORTER_RETRY_DELAY_SECONDS"] = DEFAULT_SETTINGS['opentelemetry']['OTEL_EXPORTER_RETRY_DELAY_SECONDS']
+
 
         # OTEL_TRACES_SAMPLER (string value)
         sampler_str_from_env = os.environ.get("OTEL_TRACES_SAMPLER")
@@ -250,17 +321,21 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
         if sampler_str == "always_on":
             otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
         elif sampler_str == "traceidratio":
-            ratio = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {}).get("ratio", 0.5) # Use the potentially updated ratio
-            try:
-                ratio = float(ratio)
-                if not (0.0 <= ratio <= 1.0):
-                    logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Must be between 0.0 and 1.0. Defaulting to ALWAYS_ON.")
+            if TRACE_ID_RATIO_SAMPLER_AVAILABLE:
+                ratio = otel_settings.get("OTEL_TRACES_SAMPLER_CONFIG", {}).get("ratio", 0.5) # Use the potentially updated ratio
+                try:
+                    ratio = float(ratio)
+                    if not (0.0 <= ratio <= 1.0):
+                        logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Must be between 0.0 and 1.0. Defaulting to ALWAYS_ON.")
+                        otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
+                    else:
+                        otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = TraceIdRatioBasedSampler(ratio)
+                        logging.info(f"Using TraceIdRatioBasedSampler with ratio: {ratio}")
+                except ValueError:
+                    logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Not a float. Defaulting to ALWAYS_ON.")
                     otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
-                else:
-                    otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = TraceIdRatioBasedSampler(ratio)
-                    logging.info(f"Using TraceIdRatioBasedSampler with ratio: {ratio}")
-            except ValueError:
-                logging.warning(f"Invalid OTEL_TRACES_SAMPLER_CONFIG ratio '{ratio}'. Not a float. Defaulting to ALWAYS_ON.")
+            else:
+                logging.warning(f"TraceIdRatioBasedSampler not available due to import error. OTEL_TRACES_SAMPLER='traceidratio' requested. Defaulting to ALWAYS_ON.")
                 otel_settings["OTEL_TRACES_SAMPLER_INSTANCE"] = ALWAYS_ON
         else:
             logging.warning(f"Unsupported OTEL_TRACES_SAMPLER '{sampler_str}'. Defaulting to ALWAYS_ON.")

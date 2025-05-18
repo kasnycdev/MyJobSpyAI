@@ -40,8 +40,8 @@ class SkillDetail(BaseModel):
     level: Optional[str] = Field(
         None, description="Proficiency level (e.g., 'Advanced', 'Intermediate', 'Familiar', 'Expert')."
     )
-    years_experience: Optional[int] = Field(
-        None, description="Approximate years of experience with the skill."
+    years_experience: Optional[Any] = Field( # Changed from Optional[int]
+        None, description="Approximate years of experience with the skill. LLM may return a range dict."
     )
 
 
@@ -96,11 +96,11 @@ class ParsedJobData(BaseModel):
     preferred_skills: List[SkillDetail] = Field(
         [], description="Skills listed as preferred, desired, or 'nice-to-have'."
     )
-    required_experience_years: Optional[int] = Field(
-        None, description="Minimum years of experience required (numeric)."
+    required_experience_years: Optional[Any] = Field( # Changed from Optional[int]
+        None, description="Minimum years of experience required (numeric). LLM may return a range dict."
     )
-    preferred_experience_years: Optional[int] = Field(
-        None, description="Preferred years of experience."
+    preferred_experience_years: Optional[Any] = Field( # Changed from Optional[int]
+        None, description="Preferred years of experience. LLM may return a range dict."
     )
     required_education: Optional[str] = Field(
         None, description="Minimum education level or degree specified (e.g., 'Bachelor's degree', 'Master's in CS')."
@@ -126,11 +126,11 @@ class ParsedJobData(BaseModel):
     industry: Optional[str] = Field(
         None, description="Industry or sector (e.g., 'Technology', 'Finance', 'Healthcare')."
     )
-    required_certifications: List[str] = Field(
-        [], description="Certifications explicitly stated as REQUIRED."
+    required_certifications: Optional[List[str]] = Field(
+        default_factory=list, description="Certifications explicitly stated as REQUIRED."
     )
-    preferred_certifications: List[str] = Field(
-        [], description="Certifications stated as PREFERRED."
+    preferred_certifications: Optional[List[str]] = Field(
+        default_factory=list, description="Certifications stated as PREFERRED."
     )
     security_clearance: Optional[str] = Field(
         None, description="Security clearance required (e.g., 'Top Secret', 'Secret', 'None')."

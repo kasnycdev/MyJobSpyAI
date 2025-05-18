@@ -10,19 +10,22 @@ from typing import Dict, Optional, List, Any
 # Get a logger for this module
 logger = logging.getLogger(__name__)
 
-# Import tracer from logging_utils
+# Import OpenTelemetry trace module and tracer from logging_utils
+from opentelemetry import trace # Ensure trace module is always imported
+
 try:
-    from logging_utils import tracer as global_tracer
-    if global_tracer is None: # Check if OTEL was disabled in logging_utils
-        from opentelemetry import trace
+    from logging_utils import tracer as global_tracer_instance
+    if global_tracer_instance is None: # Check if OTEL was disabled in logging_utils
+        # Fallback to a NoOpTracer if OTEL is not configured
         tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
-        logger.warning("OpenTelemetry not configured in logging_utils, using NoOpTracer for filtering/filter.")
+        logger.warning("OpenTelemetry not configured in logging_utils (global_tracer_instance is None), using NoOpTracer for filtering/filter.")
     else:
-        tracer = global_tracer
+        tracer = global_tracer_instance # Use the instance from logging_utils
+        logger.info("Using global_tracer_instance from logging_utils for filtering/filter.")
 except ImportError:
-    from opentelemetry import trace
+    # Fallback to a NoOpTracer if logging_utils or its tracer cannot be imported
     tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
-    logger.error("Could not import global_tracer from logging_utils. Using NoOpTracer for filtering/filter.", exc_info=True)
+    logger.error("Could not import global_tracer_instance from logging_utils. Using NoOpTracer for filtering/filter.", exc_info=True)
 
 # Import geopy and specific exceptions
 try:
@@ -245,8 +248,8 @@ def apply_filters(
             logger.debug(f"--- Checking Job {jobs_processed_count}/{initial_count}: '{job_title}' ---")
 
             # Salary
-            salary_text = job.get('salary_text')
-            if isinstance(salary_text, str) and salary_text:
+            salary_text = job.get('salary_text') # Line 271
+            if isinstance(salary_text, str) and salary_text: # Line 272
                 job_min_salary, job_max_salary = parse_salary(salary_text)
             else:
                 job_min_salary, job_max_salary = None, None
