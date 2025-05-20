@@ -151,3 +151,5 @@ profile.html
 profile.json
 .gitignore
 config.yaml
+scraped_jobs.json
+

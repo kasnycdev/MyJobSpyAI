@@ -26,7 +26,7 @@ Job Data (Dictionary - Use all fields for context, focus analysis on 'title', 'd
 {{ job_data_json }}
 ---
 
-Output *only* the final, complete JSON object containing these two keys (`original_job_data` and `analysis`). Do not include any introductory text, explanations, or markdown formatting like ```json outside of the JSON structure itself.
+Output *only* the final, complete JSON object. The JSON object MUST contain two top-level keys: `original_job_data` and `analysis`. The value associated with the `analysis` key MUST be a JSON object with the fields specified in the template below. Do not include any introductory text, explanations, or markdown formatting like ```json outside of the JSON structure itself.
 
 JSON Structure Template (Fill with your analysis):
 {{ "{{" }} {# Escaping outer brace #}

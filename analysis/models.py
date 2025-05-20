@@ -87,7 +87,7 @@ class ParsedJobData(BaseModel):
     job_title_extracted: Optional[str] = Field(
         None, description="Job title as interpreted from the description."
     )
-    key_responsibilities: List[str] = Field(
+    key_responsibilities: List[Dict[str, Any]] = Field(
         [], description="Primary duties and tasks mentioned."
     )
     required_skills: List[SkillDetail] = Field(
@@ -102,11 +102,11 @@ class ParsedJobData(BaseModel):
     preferred_experience_years: Optional[Any] = Field( # Changed from Optional[int]
         None, description="Preferred years of experience. LLM may return a range dict."
     )
-    required_education: Optional[str] = Field(
-        None, description="Minimum education level or degree specified (e.g., 'Bachelor's degree', 'Master's in CS')."
+    required_education: List[Any] = Field(
+        [], description="Minimum education level or degree specified (e.g., 'Bachelor's degree', 'Master's in CS')."
     )
-    preferred_education: Optional[str] = Field(
-        None, description="Preferred education level or degree."
+    preferred_education: List[Any] = Field(
+        [], description="Preferred education level or degree."
     )
     salary_range_extracted: Optional[str] = Field(
         None, description="Salary range found within the description text, if any."
@@ -114,10 +114,10 @@ class ParsedJobData(BaseModel):
     work_model_extracted: Optional[str] = Field(
         None, description="Work model inferred (Remote, Hybrid, On-site)."
     )
-    company_culture_hints: List[str] = Field(
+    company_culture_hints: List[Dict[str, Any]] = Field(
         [], description="Keywords or phrases hinting at company culture (e.g., 'fast-paced', 'collaborative')."
     )
-    tools_technologies: List[str] = Field(
+    tools_technologies: List[Dict[str, Any]] = Field(
         [], description="Specific tools or technologies mentioned (e.g., 'AWS', 'Jira', 'Salesforce')."
     )
     job_type: Optional[str] = Field(
@@ -126,10 +126,10 @@ class ParsedJobData(BaseModel):
     industry: Optional[str] = Field(
         None, description="Industry or sector (e.g., 'Technology', 'Finance', 'Healthcare')."
     )
-    required_certifications: Optional[List[str]] = Field(
+    required_certifications: List[Dict[str, Any]] = Field(
         default_factory=list, description="Certifications explicitly stated as REQUIRED."
     )
-    preferred_certifications: Optional[List[str]] = Field(
+    preferred_certifications: List[Dict[str, Any]] = Field(
         default_factory=list, description="Certifications stated as PREFERRED."
     )
     security_clearance: Optional[str] = Field(

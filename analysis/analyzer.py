@@ -1,5 +1,6 @@
 import openai
 import ollama
+import httpx # Added for GitHub Playground
 # cspell:ignore generativeai, genai, ollama, Jinja2, autoescape, lstrip_blocks, api_core
 import google.generativeai as genai # Corrected import alias
 import google.api_core.exceptions # Added for DeadlineExceeded
@@ -7,7 +8,7 @@ import json
 from contextlib import suppress # Added for Sourcery fix
 import os
 import asyncio
-from typing import Dict, Optional, Any, Union # Removed List
+from typing import Dict, Optional, Any, Union, List
 # from rich.console import Console # No longer needed directly here
 # import traceback # Unused
 import time
@@ -113,11 +114,12 @@ class BaseAnalyzer:
 
         self.model_name: Optional[str] = None
         self.sync_client: Union[openai.OpenAI, ollama.Client, None] = None
-        self.async_client: Union[openai.AsyncOpenAI, ollama.AsyncClient, genai.GenerativeModel, None] = None
+        self.async_client: Union[openai.AsyncOpenAI, ollama.AsyncClient, genai.GenerativeModel, httpx.AsyncClient, None] = None # Added httpx.AsyncClient
         self.request_timeout: Optional[float] = None # Changed to float
         self.max_retries: int = 2
         self.retry_delay: int = 5
         self.ollama_base_url: Optional[str] = None
+        self.github_api_key: Optional[str] = None # Added for GitHub Playground
 
         with tracer.start_as_current_span("analyzer_init") as span:
             span.set_attribute("provider_config_key", provider_config_key)
@@ -218,6 +220,13 @@ class BaseAnalyzer:
         self.retry_delay = cfg.get('retry_delay', self.retry_delay)
         return cfg
 
+    def _chunk_text(self, text: str, max_length: int) -> List[str]:
+        """Splits text into chunks of a maximum length."""
+        chunks = []
+        for i in range(0, len(text), max_length):
+            chunks.append(text[i:i + max_length])
+        return chunks
+
     def _initialize_openai_client(self, provider_config_key: str):
         cfg = self._load_common_provider_config(provider_config_key)
         base_url = cfg.get('base_url')
@@ -251,12 +260,32 @@ class BaseAnalyzer:
         self.sync_client = None
         logger.info(f"Gemini client initialized for model '{self.model_name}'.")
 
+    def _initialize_github_playground_client(self, provider_config_key: str):
+        cfg = self._load_common_provider_config(provider_config_key)
+        base_url = cfg.get('base_url')
+        api_key = cfg.get('api_key') or os.getenv('GITHUB_API_KEY') # Use GITHUB_API_KEY env var
+        self.github_api_key = api_key
+
+        if not base_url or not self.model_name or not self.github_api_key:
+            missing = []
+            if not base_url: missing.append("'base_url'")
+            if not self.model_name: missing.append("'model'")
+            if not self.github_api_key: missing.append("'api_key' in config or GITHUB_API_KEY env var")
+            raise ValueError(f"GitHub Playground provider ('{provider_config_key}') requires {', '.join(missing)} in config.")
+
+        # Use httpx.AsyncClient for async HTTP requests
+        self.async_client = httpx.AsyncClient(base_url=base_url, timeout=self.request_timeout)
+        self.sync_client = None # httpx client is async only
+        logger.info(f"GitHub Playground client initialized for model '{self.model_name}' at {base_url}.")
+
+
     def _initialize_llm_client(self, provider_config_key: str):
         try:
             if self.provider == "openai": self._initialize_openai_client(provider_config_key)
             elif self.provider == "ollama": self._initialize_ollama_client(provider_config_key)
             elif self.provider == "gemini": self._initialize_gemini_client(provider_config_key)
-            else: raise ValueError(f"Unsupported llm_provider: '{self.provider}'. Choose 'openai', 'ollama', or 'gemini'.")
+            elif self.provider == "github_playground": self._initialize_github_playground_client(provider_config_key) # Added GitHub Playground
+            else: raise ValueError(f"Unsupported llm_provider: '{self.provider}'. Choose 'openai', 'ollama', 'gemini', or 'github_playground'.") # Updated error message
         except Exception as e:
             log_exception(f"Failed to initialize LLM client for provider '{self.provider}': {e}", e)
             raise RuntimeError(f"LLM client initialization failed: {e}") from e
@@ -283,27 +312,84 @@ class BaseAnalyzer:
         else: logger.info(f"Configured Ollama model '{self.model_name}' found.")
         logger.info(f"Successfully connected to Ollama server at {self.ollama_base_url}.")
 
-    def _check_connection_and_model(self):
-        logger.info(f"Checking connection for provider '{self.provider}' and model '{self.model_name}'...")
+    def _check_gemini_connection(self):
+        if not isinstance(self.async_client, genai.GenerativeModel): raise RuntimeError("Gemini async client not initialized.")
+        logger.info("Attempting to list models from Google AI...")
+        found_model = any('generateContent' in m.supported_generation_methods and self.model_name in m.name for m in genai.list_models())
+        if not found_model:
+            logger.error(f"Error: Configured Gemini model '{self.model_name}' not found or unsuitable.")
+            with suppress(Exception):
+                generative_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                logger.info(f"Available generative models: {generative_models[:10]}")
+            raise ValueError(f"Gemini model '{self.model_name}' not suitable.")
+        else: logger.info(f"Successfully verified Gemini model '{self.model_name}'.")
+
+    def _check_github_playground_connection(self):
+        if not isinstance(self.async_client, httpx.AsyncClient) or not self.model_name or not self.github_api_key:
+             raise RuntimeError("GitHub Playground client, model_name, or API key not initialized.")
+        
+        # Attempt a simple request to verify connectivity and authentication
+        # The documentation doesn't provide a simple /models endpoint like OpenAI.
+        # A GET request to the base URL might work, or a small POST request.
+        # Let's try a GET request to the base_url + /models or similar, if that fails, maybe a small chat completion.
+        # Based on the failed URL, the base URL might be https://api.github.com/model/v1
+        # And the models might be listed at /catalog/models relative to that.
+        # Let's try GET /catalog/models
+
+        headers = {
+            "Authorization": f"token {self.github_api_key}",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+
         try:
-            if self.provider == "openai": self._check_openai_connection()
-            elif self.provider == "ollama": self._check_ollama_connection()
-            elif self.provider == "gemini":
-                logger.info("Attempting to list models from Google AI...")
-                found_model = any('generateContent' in m.supported_generation_methods and self.model_name in m.name for m in genai.list_models())
-                if not found_model:
-                    logger.error(f"Error: Configured Gemini model '{self.model_name}' not found or unsuitable.")
-                    with suppress(Exception):
-                        generative_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                        logger.info(f"Available generative models: {generative_models[:10]}")
-                    raise ValueError(f"Gemini model '{self.model_name}' not suitable.")
-                else: logger.info(f"Successfully verified Gemini model '{self.model_name}'.")
-        except (openai.APIConnectionError, ollama.ResponseError, Exception) as e:
-            log_exception(f"{self.provider.upper()} API Connection/Setup Error: {type(e).__name__} - {e}", e)
-            raise ConnectionError(f"Failed to connect/setup {self.provider.upper()} provider: {e}") from e
+            # Use a synchronous client for the check if possible, or run
+            # an async check here. Since the main client is async,
+            # it's better to make this check async as well.
+            # I need to await the async client call.
+
+            # Let's try a small, non-generating request first, like listing models if an endpoint exists.
+            # The docs mention "https://models.github.ai/catalog/models" for finding models,
+            # but the API endpoint is likely different.
+            # Let's assume the base_url in config is the API base URL (e.g., https://api.github.com/model/v1)
+            # and try a GET request to /catalog/models relative to that.
+
+            # If the base_url is "https://models.github.ai/catalog/models", then GET /catalog/models
+            # would become https://models.github.ai/catalog/models/catalog/models which is wrong.
+            # Let's assume the base_url in config should be the API root, like "https://api.github.com/model/v1"
+            # and the endpoint for listing models is /catalog/models.
+
+            # I will update the config.yaml base_url in the next step.
+            # For now, I will use the base_url from config, but be aware it might be wrong for this check.
+
+            # Let's try a GET request to the base URL itself, or a known simple endpoint if available.
+            # The documentation is not perfectly clear on a simple health check or model listing endpoint for the API.
+            # A small chat completion request is a more reliable way to check connectivity and authentication,
+            # although it consumes rate limit. Let's use a minimal chat completion request.
+
+            payload = {
+                "model": self.model_name,
+                "messages": [{"role": "user", "content": "Hello"}],
+                "temperature": 0.1,
+                "max_tokens": 1 # Request minimal response
+            }
+
+            # Use the async client to make the request
+            response = await self.async_client.post("/chat/completions", headers=headers, json=payload)
+            response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+
+            logger.info(f"Successfully connected to GitHub Playground API at {self.async_client.base_url}.")
+            logger.info(f"Configured to use model: '{self.model_name}'.")
+
+        except httpx.RequestError as e:
+            logger.error(f"GitHub Playground API Connection Error: An error occurred while requesting: {e}")
+            raise ConnectionError(f"Failed to connect to GitHub Playground API: {e}") from e
+        except httpx.HTTPStatusError as e:
+            logger.error(f"GitHub Playground API Connection Error: HTTP error {e.response.status_code} - {e.response.text}")
+            raise ConnectionError(f"Failed to connect to GitHub Playground API: HTTP error {e.response.status_code}") from e
         except Exception as e:
-            log_exception(f"Unexpected error during LLM connection check: {e}", e)
-            raise ConnectionError(f"Unexpected error during LLM connection check: {e}") from e
+            logger.error(f"GitHub Playground API Connection Error: An unexpected error occurred during connection check: {e}", exc_info=True)
+            raise ConnectionError(f"Unexpected error during GitHub Playground connection check: {e}") from e
+
 
     async def _call_openai_llm_async(self, prompt: str) -> Optional[str]:
         if not isinstance(self.async_client, openai.AsyncOpenAI) or not self.model_name:
@@ -386,6 +472,7 @@ class BaseAnalyzer:
                     if self.provider == "openai": content_str = await self._call_openai_llm_async(prompt)
                     elif self.provider == "ollama": content_str = await self._call_ollama_llm_async(prompt)
                     elif self.provider == "gemini": content_str = await self._call_gemini_llm_async(prompt)
+                    elif self.provider == "github_playground": content_str = await self._call_github_playground_llm_async(prompt) # Added GitHub Playground
                     else: raise ValueError(f"Unsupported provider '{self.provider}'.")
                 
                 attempt_duration = time.monotonic() - attempt_start_time
@@ -419,7 +506,7 @@ class BaseAnalyzer:
                         task_stats["success"] += 1 # Legacy
                         self.llm_successful_calls_counter.add(1, {"task": task_name, "provider": self.provider, "model": self.model_name})
                         logger.info(f"ASYNC ({task_name}): Attempt {attempt + 1} successful. Parsed JSON response.")
-                        current_span.set_status(trace.StatusCode.OK)
+                        current_span.set_status(trace.Status(trace.StatusCode.OK))
                         return result
                     except json.JSONDecodeError as json_err:
                         last_exception = json_err
@@ -429,7 +516,7 @@ class BaseAnalyzer:
                         current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
                         current_span.record_exception(json_err)
             
-            except (openai.APIConnectionError, ollama.ResponseError, asyncio.TimeoutError, ConnectionError, TimeoutError) as conn_err: # type: ignore
+            except (openai.APIConnectionError, ollama.ResponseError, asyncio.TimeoutError, ConnectionError, TimeoutError, httpx.RequestError, httpx.HTTPStatusError) as conn_err: # Added httpx exceptions
                 last_exception = conn_err; error_type_str = type(conn_err).__name__
                 logger.warning(f"ASYNC ({task_name}) LLM Connection/Timeout (Attempt {attempt + 1}): {error_type_str} - {conn_err}")
                 current_span.set_attribute(f"llm.attempt_{attempt+1}.error", error_type_str)
@@ -511,36 +598,72 @@ class ResumeAnalyzer(BaseAnalyzer):
         
         resume_text_for_prompt = resume_text
         if len(resume_text) > MAX_RESUME_CHARS_FOR_LLM:
-            logger.warning(f"Truncating resume text ({len(resume_text)} > {MAX_RESUME_CHARS_FOR_LLM}) for LLM.")
-            resume_text_for_prompt = resume_text[:MAX_RESUME_CHARS_FOR_LLM]
-
-        try:
-            resume_prompt_template = load_template("resume_prompt_file") # Load dynamically
-            prompt = resume_prompt_template.render(resume_text=resume_text_for_prompt)
-        except Exception as render_err:
-            log_exception(f"ResumeAnalyzer: Failed to load or render resume extraction prompt: {render_err}", render_err)
-            return None
-
-        extracted_json = await self._call_llm_async(prompt, task_name="Resume Extraction")
-        if extracted_json:
-            try:
-                if isinstance(extracted_json, dict):
-                    if 'contact_information' not in extracted_json or not isinstance(extracted_json['contact_information'], dict):
-                        extracted_json['contact_information'] = {} 
-                    
-                    resume_data = ResumeData(**extracted_json)
-                    logger.info("ResumeAnalyzer: Parsed extracted resume data.")
-                    return resume_data
-                else:
-                    logger.error(f"ResumeAnalyzer: Resume extract response not dict: {type(extracted_json)}")
+            logger.warning(f"Resume text length ({len(resume_text)}) exceeds max_prompt_chars ({MAX_RESUME_CHARS_FOR_LLM}). Chunking resume text.")
+            text_chunks = self._chunk_text(resume_text, MAX_RESUME_CHARS_FOR_LLM)
+            extracted_json = []
+            for i, chunk in enumerate(text_chunks):
+                try:
+                    resume_prompt_template = load_template("resume_prompt_file") # Load dynamically
+                    prompt = resume_prompt_template.render(resume_text=chunk)
+                except Exception as render_err:
+                    log_exception(f"ResumeAnalyzer: Failed to load or render resume extraction prompt for chunk {i+1}: {render_err}", render_err)
                     return None
-            except Exception as e:
-                log_exception(f"ResumeAnalyzer: Failed to validate extracted resume data: {e}", e)
-                logger.debug(f"Invalid JSON from LLM for ResumeData: {extracted_json}")
+
+                chunk_extracted_json = await self._call_llm_async(prompt, task_name=f"Resume Extraction - Chunk {i+1}")
+                if chunk_extracted_json:
+                    extracted_json.append(chunk_extracted_json)
+                else:
+                    logger.error(f"ResumeAnalyzer: Failed to get response for resume extraction chunk {i+1}.")
+                    return None
+
+            # Combine the extracted JSON from all chunks
+            combined_json = {}
+            for chunk_json in extracted_json:
+                if isinstance(chunk_json, dict):
+                    combined_json.update(chunk_json)
+            
+            if combined_json:
+                try:
+                    if 'contact_information' not in combined_json or not isinstance(combined_json['contact_information'], dict):
+                        combined_json['contact_information'] = {} 
+                    resume_data = ResumeData(**combined_json)
+                    logger.info("ResumeAnalyzer: Parsed extracted resume data from combined chunks.")
+                    return resume_data
+                except Exception as e:
+                    log_exception(f"ResumeAnalyzer: Failed to validate extracted resume data from combined chunks: {e}", e)
+                    logger.debug(f"Invalid JSON from LLM for ResumeData (combined chunks): {combined_json}")
+                    return None
+            else:
+                logger.error("ResumeAnalyzer: Failed to get response for resume extraction from any chunk.")
                 return None
         else:
-            logger.error("ResumeAnalyzer: Failed to get response for resume extraction.")
-            return None
+            try:
+                resume_prompt_template = load_template("resume_prompt_file") # Load dynamically
+                prompt = resume_prompt_template.render(resume_text=resume_text_for_prompt)
+            except Exception as render_err:
+                log_exception(f"ResumeAnalyzer: Failed to load or render resume extraction prompt: {render_err}", render_err)
+                return None
+
+            extracted_json = await self._call_llm_async(prompt, task_name="Resume Extraction")
+            if extracted_json:
+                try:
+                    if isinstance(extracted_json, dict):
+                        if 'contact_information' not in extracted_json or not isinstance(extracted_json['contact_information'], dict):
+                            extracted_json['contact_information'] = {} 
+                        
+                        resume_data = ResumeData(**extracted_json)
+                        logger.info("ResumeAnalyzer: Parsed extracted resume data.")
+                        return resume_data
+                    else:
+                        logger.error(f"ResumeAnalyzer: Resume extract response not dict: {type(extracted_json)}")
+                        return None
+                except Exception as e:
+                    log_exception(f"ResumeAnalyzer: Failed to validate extracted resume data: {e}", e)
+                    logger.debug(f"Invalid JSON from LLM for ResumeData: {extracted_json}")
+                    return None
+            else:
+                logger.error("ResumeAnalyzer: Failed to get response for resume extraction.")
+                return None
 
 class JobAnalyzer(BaseAnalyzer):
     def __init__(self):
@@ -559,8 +682,9 @@ class JobAnalyzer(BaseAnalyzer):
     @tracer.start_as_current_span("extract_job_details_async")
     async def extract_job_details_async(self, job_description_text: str, job_title: str = "N/A") -> Optional[ParsedJobData]:
         current_span = trace.get_current_span()
+        job_title = job_data.get('title', 'N/A')
+        job_description = job_data.get('description')
         current_span.set_attribute("job_title_param", job_title)
-        current_span.set_attribute("job_description_length", len(job_description_text))
 
         if not job_description_text or not job_description_text.strip():
             logger.warning(f"Job description for '{job_title}' is empty. Skipping extraction.")
