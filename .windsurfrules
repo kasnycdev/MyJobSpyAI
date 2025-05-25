@@ -1,0 +1,11 @@
+All write actions (include git commits, local file changes, and why the change was made) for the project should be sent to Memory mcp server and mongodb for historic reference and to allow for genai RAG to learn from the project history. #codebase-commit #project-commit
+Project root directory (c:\Users\kenne\Projects\MyJobSpyAI) should only contain main.py/config.yaml and project files that are not versioned in git.
+All other code resides under (C:\Users\kenne\Projects\MyJobSpyAI\myjobspyai)
+#codebase means all python files recursively in the project directory
+#project means all git versioned files recursively in the project directory
+#codebase-commit means cascade should stage all changes in the #codebase and commit/push them with auto-commit comments
+#project-commit means cascade should stage all changes in the #project and commit/push them with auto-commit comments
+Cascade should automatically perform a #codebase-commit after making #codebase changes that it has tested and validated are working
+#pytest indicates that cascade should run all pytesting checkpoints
+#apptest indicates that cascade should run and monitor output of the FULL_TEST_COMMAND in .env
+#cmdmon indicates that cascade should run a command in the terminal and monitor output for issues
