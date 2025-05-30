@@ -1,54 +1,157 @@
-# Project exclude paths
+# Project-specific exclusions
 */.venv/*
 .ruff
 */.ruff_cache/
-*/.history/*
+*/.history/
 .history
-.history/
-*/.vscode/*
+.DS_Store
 
-# Environments & Dependencies
+# Environment and dependency management
+.env
+.env.*
+!.env.example
 .venv/
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
-*.pyenv
+poetry.lock
+Pipfile.lock
 __pypackages__/
-node_modules/
+.python-version
+.python-version*
 
-# Python cache & compiled files
-*/__pycache__/*
+# Python cache and compiled files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# Project-specific generated directories
-logs/
-cache/
-output/
-server-logs/ # If it can appear at the root
-# More general patterns that might cover the above but good to be explicit
-*/server-logs/*
-# *.json # This is too broad, many projects use JSON for non-generated data
-*.output # Specific output extension
-*/output/*
-*/cache/*
-# config.yaml # Generally, config files are versioned. If it has secrets, use .env or a gitignored local override.
-
-# Distribution / packaging
+*.pyd
+*.pyo
+*.pth
+*.pyz
+*.pyw
 .Python
+
+# Testing and coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.tox/
+.nox/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+cover/
+
+# Distribution and packaging
 build/
 develop-eggs/
 dist/
 downloads/
-eggs/
+eggs/   
 .eggs/
-lib/
+lib\=-0waZX+1
 lib64/
 parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.manifest
+*.spec
+*.whl
+
+# Project directories
+logs/
+cache/
+output/
+server-logs/
+output/
+
+# IDE specific files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+.idea_modules/
+*.iml
+*.ipr
+*.iws
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Database and vector stores
+*.db
+*.sqlite3
+*.sqlite3-journal
+milvus_data/
+
+# Local development
+local_settings.py
+instance/
+
+# Documentation
+docs/_build/
+site/
+
+# System files
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Project-specific exclusions (add your own below)
+project.structure
+move_tests.py
+update_imports.py
+update_test_imports.py
+
+# Pre-commit hooks
+.pre-commit-config.yaml
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+.idea/
 sdist/
 var/
 wheels/
@@ -153,3 +256,6 @@ profile.json
 config.yaml
 scraped_jobs.json
 scraped_jobs.json
+
+# windsurf rules
+.windsurfrules

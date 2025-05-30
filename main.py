@@ -1,38 +1,52 @@
-import logging
-import json
-import os
-import sys
-from typing import List, Dict, Any, Optional
-import pandas as pd
+# Standard library imports
 import argparse
 import asyncio
-from datetime import datetime # Added date, removed unused date
-from colorama import init  # Import colorama
-# import traceback # Unused
+import json
+import logging
+import os
+import sys
+from datetime import datetime
+from typing import List, Dict, Any, Optional
 
-# Ensure config module is imported first to load settings
-# import config # Unused, settings is imported directly
+# Third-party imports
+import pandas as pd
+from colorama import init
+from rich.console import Console
 
-# Import and setup logging *after* config is loaded
-from logging_utils import setup_logging, tracer as global_tracer # Import tracer
-setup_logging() # Configure logging based on settings from config.py
+# Local application imports
+from myjobspyai.config import settings
+from myjobspyai.filtering.filter_utils import DateEncoder
+from myjobspyai.utils.logging_utils import setup_logging, tracer
+from myjobspyai.analysis.main_matcher import (
+    load_and_extract_resume_async,
+    analyze_jobs_async,
+    apply_filters_sort_and_save
+)
 
-# Now get a logger for this module
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Configure logging
+setup_logging()
 logger = logging.getLogger(__name__)
-# Use the global tracer instance from logging_utils
-tracer = global_tracer
 
-
-# Initialize colorama (if still needed, Rich handles most console color)
+# Initialize colorama
 init(autoreset=True)
-
-from rich.console import Console # Keep for direct console use if needed, but prefer logging
 
 # Initialize rich console (primarily for direct use, logging uses its own RichHandler instance)
 console = Console()
 
+logger.info("Rich console and logging initialized successfully.") 
 
-logger.info("Rich console and logging initialized successfully.") # Changed from console.print
+# Import the loaded settings from myjobspyai.config
+try:
+    from myjobspyai.config import settings
+except ImportError:
+    # This case should ideally be caught by config.py itself if it fails to load
+    logger.critical("CRITICAL ERROR: Failed to import settings from myjobspyai.config", exc_info=True)
+    sys.exit(1)
 
 # Use the jobspy library for scraping
 try:
@@ -43,21 +57,11 @@ except ImportError:
 
 # Import analysis components
 try:
-    from main_matcher import load_and_extract_resume_async, analyze_jobs_async, apply_filters_sort_and_save # Added commas
-    # Removed: from analysis.analyzer import ResumeAnalyzer # This class no longer exists in analyzer.py
+    from myjobspyai.analysis.main_matcher import load_and_extract_resume_async, analyze_jobs_async, apply_filters_sort_and_save
 except ImportError as e:
-    console.print(f"[red]CRITICAL ERROR: Could not import analysis functions from main_matcher or analyzer: {e}[/red]")
-    sys.exit(1)
-
-# Import the loaded settings dictionary from config.py
-try:
-    from config import settings # settings is loaded in config.py
-except ImportError:
-    # This case should ideally be caught by config.py itself if it fails to load
-    logger.critical("CRITICAL ERROR: config.py not found or cannot be imported.", exc_info=True)
-    sys.exit(1)
-except AttributeError:
-    logger.critical("CRITICAL ERROR: 'settings' dictionary not found in config.py.", exc_info=True)
+    console.print(f"[red]CRITICAL ERROR: Could not import analysis functions from myjobspyai.analysis.main_matcher: {e}[/red]")
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 
 # Rich for UX needs settings for logging setup
@@ -65,17 +69,15 @@ try:
     from rich.table import Table
 except ImportError:
     logger.warning("'rich' library not found. Console output will be basic.")
-    class Table: # Basic fallback
+    class Table: 
         def __init__(self, title=None): self.title = title
         def add_column(self, *args, **kwargs): pass
-        def add_row(self, *args, **kwargs): print(args) # Simple print for fallback
+        def add_row(self, *args, **kwargs): print(args) 
         def __str__(self): return f"Table: {self.title}" if self.title else "Table"
 
 # Helper function for logging exceptions (now uses standard logger)
 def log_exception(message, exception):
-    logger.error(message, exc_info=True) # Pass exc_info=True to include traceback
-
-from filtering.filter_utils import DateEncoder # Import DateEncoder
+    logger.error(message, exc_info=True)
 
 # --- Utility functions (basic implementations) ---
 @tracer.start_as_current_span("convert_and_save_scraped")
@@ -83,13 +85,12 @@ def convert_and_save_scraped(jobs_df: Optional[pd.DataFrame], output_path: str) 
     """Converts DataFrame to list of dicts and saves to JSON."""
     if jobs_df is None or jobs_df.empty:
         logger.warning("No jobs DataFrame to convert or save.")
-        # Ensure the output directory exists and save an empty list
         try:
             output_dir = os.path.dirname(output_path)
             if output_dir:
                 os.makedirs(output_dir, exist_ok=True)
             with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump([], f, indent=4, cls=DateEncoder) # Use DateEncoder
+                json.dump([], f, indent=4, cls=DateEncoder) 
             logger.info(f"Empty scraped jobs file saved to {output_path}")
         except Exception as e:
             log_exception(f"Error saving empty scraped jobs file to {output_path}: {e}", e)
@@ -98,14 +99,14 @@ def convert_and_save_scraped(jobs_df: Optional[pd.DataFrame], output_path: str) 
     jobs_list = jobs_df.to_dict(orient='records')
     try:
         output_dir = os.path.dirname(output_path)
-        if output_dir: # Ensure output directory exists
+        if output_dir: 
             os.makedirs(output_dir, exist_ok=True)
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(jobs_list, f, indent=4, cls=DateEncoder) # Use DateEncoder
+            json.dump(jobs_list, f, indent=4, cls=DateEncoder) 
         logger.info(f"Successfully saved {len(jobs_list)} scraped jobs to {output_path}")
     except Exception as e:
         log_exception(f"Error saving scraped jobs to {output_path}: {e}", e)
-        # Still return jobs_list even if saving fails, so pipeline can continue if desired
+        # Still return the jobs list even if saving to disk fails
     return jobs_list
 
 @tracer.start_as_current_span("print_summary_table")
@@ -117,7 +118,6 @@ def print_summary_table(analyzed_jobs_list: List[Dict[str, Any]], top_n: int = 1
 
     logger.info(f"Top {min(top_n, len(analyzed_jobs_list))} (or fewer) jobs after filtering and sorting:")
     
-    # Check if rich.Table is available (it should be, but good practice)
     if 'Table' in globals() and hasattr(globals()['Table'], 'add_column') and isinstance(globals()['Table'], type):
         table = Table(title="Job Summary")
         table.add_column("Rank", style="dim", width=6)
@@ -132,38 +132,45 @@ def print_summary_table(analyzed_jobs_list: List[Dict[str, Any]], top_n: int = 1
             
             title = original_data.get('title', 'N/A')
             company = original_data.get('company', 'N/A')
-            location_value = original_data.get('location') # Get the raw value for 'location'
+            location_value = original_data.get('location') 
             city = 'N/A'
             state = None
             country = None
-            location_str = 'N/A' # Default location_str
+            location_str = 'N/A' 
 
             if isinstance(location_value, dict):
                 city = location_value.get('city', 'N/A')
                 state = location_value.get('state')
                 country = location_value.get('country')
                 
-                # Construct location_str from dictionary parts
                 location_parts = []
-                if city and city != 'N/A': # Check if city is not 'N/A' before adding
+                if city and city != 'N/A':  
                     location_parts.append(city)
                 if state:
                     location_parts.append(state)
-                # Refined country logic: Add country if it's different from city and (different from state or state is None)
-                if country and country.lower() != city.lower() and (not state or country.lower() != state.lower()):
+                if (country and 
+                    country.lower() != city.lower() and 
+                    (not state or country.lower() != state.lower())):
                     location_parts.append(f"({country})")
                 
                 if location_parts:
                     location_str = ", ".join(location_parts)
-                # If location_parts is empty, location_str remains 'N/A' (its default)
 
             elif isinstance(location_value, str):
-                location_str = location_value # Use the string directly
-                city = location_value # Assign the string to city for potential use, though it might just be "Remote"
-            # If location_value is None or not dict/str, location_str remains 'N/A'
+                location_str = location_value 
+                city = location_value 
 
 
-            score = analysis_data.get('suitability_score', 'N/A')
+            # Safely get the score, handling both dictionary and object access
+            if hasattr(analysis_data, 'get'):
+                # It's a dictionary
+                score = analysis_data.get('suitability_score', 'N/A')
+            elif hasattr(analysis_data, 'suitability_score'):
+                # It's an object with the attribute
+                score = getattr(analysis_data, 'suitability_score', 'N/A')
+            else:
+                score = 'N/A'
+                
             table.add_row(str(i + 1), title, company, location_str, str(score))
         
         # Use the Rich console instance for printing the table directly
@@ -171,9 +178,21 @@ def print_summary_table(analyzed_jobs_list: List[Dict[str, Any]], top_n: int = 1
         console.print(table)
     else: # Fallback to basic print if Rich Table is not fully available
         for i, job_summary in enumerate(analyzed_jobs_list[:top_n]):
-            title = job_summary.get('original_job_data', {}).get('title', 'N/A')
-            company = job_summary.get('original_job_data', {}).get('company', 'N/A')
-            score = job_summary.get('analysis', {}).get('suitability_score', 'N/A')
+            # Safely get the data, handling both dictionary and object access
+            original_data = job_summary.get('original_job_data', {}) if hasattr(job_summary, 'get') else getattr(job_summary, 'original_job_data', {})
+            analysis_data = job_summary.get('analysis', {}) if hasattr(job_summary, 'get') else getattr(job_summary, 'analysis', {})
+            
+            title = original_data.get('title', 'N/A') if hasattr(original_data, 'get') else getattr(original_data, 'title', 'N/A')
+            company = original_data.get('company', 'N/A') if hasattr(original_data, 'get') else getattr(original_data, 'company', 'N/A')
+            
+            # Get the score safely
+            if hasattr(analysis_data, 'get'):
+                score = analysis_data.get('suitability_score', 'N/A')
+            elif hasattr(analysis_data, 'suitability_score'):
+                score = getattr(analysis_data, 'suitability_score', 'N/A')
+            else:
+                score = 'N/A'
+                
             logger.info(f"{i+1}. {title} at {company} - Score: {score}")
 
 @tracer.start_as_current_span("print_detailed_analysis")
@@ -205,8 +224,10 @@ def print_detailed_analysis(analyzed_jobs_list: List[Dict[str, Any]], top_n: int
                     for item in value:
                         if isinstance(item, dict): # For SkillDetail
                             item_str = f"    - Name: {item.get('name')}"
-                            if item.get('level'): item_str += f", Level: {item.get('level')}"
-                            if item.get('years_experience') is not None: item_str += f", Years: {item.get('years_experience')}"
+                            if item.get('level'):
+                                item_str += f", Level: {item.get('level')}"
+                            if item.get('years_experience') is not None:
+                                item_str += f", Years: {item.get('years_experience')}"
                             console.print(item_str)
                         else:
                             console.print(f"    - {item}")
@@ -222,16 +243,28 @@ def print_detailed_analysis(analyzed_jobs_list: List[Dict[str, Any]], top_n: int
             console.print(f"  [bold]Justification:[/bold]\n    {analysis.get('justification', 'N/A')}")
             if analysis.get('pros'):
                 console.print("  [bold]Pros:[/bold]")
-                for pro in analysis.get('pros', []): console.print(f"    - {pro}")
+                for pro in analysis.get('pros', []):
+                    console.print(f"    - {pro}")
             if analysis.get('cons'):
                 console.print("  [bold]Cons:[/bold]")
-                for con in analysis.get('cons', []): console.print(f"    - {con}")
-            console.print(f"  [bold]Skill Match Summary:[/bold]\n    {analysis.get('skill_match_summary', 'N/A')}")
-            console.print(f"  [bold]Experience Match Summary:[/bold]\n    {analysis.get('experience_match_summary', 'N/A')}")
-            console.print(f"  [bold]Education Match Summary:[/bold]\n    {analysis.get('education_match_summary', 'N/A')}")
+                for con in analysis.get('cons', []):
+                    console.print(f"    - {con}")
+            console.print(
+                f"  [bold]Skill Match Summary:[/bold]\n    "
+                f"{analysis.get('skill_match_summary', 'N/A')}"
+            )
+            console.print(
+                f"  [bold]Experience Match Summary:[/bold]\n    "
+                f"{analysis.get('experience_match_summary', 'N/A')}"
+            )
+            console.print(
+                f"  [bold]Education Match Summary:[/bold]\n    "
+                f"{analysis.get('education_match_summary', 'N/A')}"
+            )
             if analysis.get('missing_keywords'):
                 console.print("  [bold]Missing Keywords:[/bold]")
-                for kw in analysis.get('missing_keywords', []): console.print(f"    - {kw}")
+                for kw in analysis.get('missing_keywords', []):
+                    console.print(f"    - {kw}")
         else:
             console.print("\n[bold magenta]--- Suitability Analysis (LLM) ---[/bold magenta]")
             console.print("  Not available or analysis failed.")
@@ -359,50 +392,65 @@ async def run_pipeline_async():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
-    scrape_cfg = settings.get('scraping', {})
+    scrape_cfg = settings.scraping
+    default_sites = scrape_cfg.default_sites
+    default_results = scrape_cfg.default_results_limit
+    default_days_old = scrape_cfg.default_days_old
 
     scrape_group = parser.add_argument_group('Scraping Options (JobSpy)')
     scrape_group.add_argument("--search", required=True, help="Job title, keywords, or company.")
     scrape_group.add_argument("--location", default=None, help="Primary location for scraping. Overridden if --filter-remote-country.")
-    scrape_group.add_argument("--sites", default=",".join(scrape_cfg.get('default_sites', ["linkedin"])), help="Comma-separated sites.") # Added default_sites from config
-    scrape_group.add_argument("--results", type=int, default=scrape_cfg.get('default_results_limit', 10), help="Approx total jobs per site.") # Corrected default
-    scrape_group.add_argument("--days-old", type=int, default=scrape_cfg.get('default_days_old', 14), help="Max job age in days (0=disable). JobSpy uses hours, so this will be converted.") # Renamed from --hours_old and corrected default
-    scrape_group.add_argument("--country-indeed", default=scrape_cfg.get('default_country_indeed', 'usa'), help="Country for Indeed search.")
-    scrape_group.add_argument("--proxies", default=scrape_cfg.get('proxies', None), help="Comma-separated proxies.") # Added default from config
+    scrape_group.add_argument("--sites", default=",".join(default_sites), help="Comma-separated sites.")
+    scrape_group.add_argument("--results", type=int, default=default_results, help="Approx total jobs per site.")
+    scrape_group.add_argument("--days-old", type=int, default=default_days_old, help="Max job age in days (0=disable). JobSpy uses hours, so this will be converted.")
+    scrape_group.add_argument("--country-indeed", default=scrape_cfg.default_country_indeed, help="Country for Indeed search.")
+    scrape_group.add_argument("--proxies", default=scrape_cfg.proxies, help="Comma-separated proxies.") # Added default from config
     scrape_group.add_argument("--offset", type=int, default=0, help="Search results offset.")
     scrape_group.add_argument(
         "--is-remote",
         type=lambda x: str(x).lower() == 'true',
-        default=scrape_cfg.get('is_remote', True), # Corrected default lookup from config
+        default=scrape_cfg.is_remote, # Corrected default lookup from config
         help="Filter for remote jobs only (e.g., true, false)."
     )
     scrape_group.add_argument(
         "--job-type",
         type=str,
-        default=scrape_cfg.get('job_type', None), # Corrected default lookup from config
+        default=scrape_cfg.job_type, # Corrected default lookup from config
         help="Job type to filter for (e.g., 'fulltime', 'contract', 'parttime')."
     )
-    # scrape_group.add_argument("--google-search-term", default=scrape_cfg.get('google_search_term', None), help="Specific search term for Google Jobs scraper.") # Removed
-    scrape_group.add_argument("--distance", type=int, default=scrape_cfg.get('distance', 2), help="Distance in miles from location (for supported sites). JobSpy default is 50.") # Corrected default
+    # scrape_group.add_argument("--google-search-term", default=scrape_cfg.google_search_term, help="Specific search term for Google Jobs scraper.") # Removed
+    scrape_group.add_argument("--distance", type=int, default=scrape_cfg.distance, help="Distance in miles from location (for supported sites). JobSpy default is 50.") # Corrected default
     scrape_group.add_argument(
         "--easy-apply",
         type=lambda x: str(x).lower() == 'true' if x is not None else None,
-        default=scrape_cfg.get('easy_apply', None),
+        default=scrape_cfg.easy_apply,
         help="Filter for jobs with easy apply option (e.g., true, false). LinkedIn easy apply no longer works."
     )
-    scrape_group.add_argument("--ca-cert", default=scrape_cfg.get('ca_cert', None), help="Path to CA certificate file for proxies.")
-    scrape_group.add_argument("--linkedin-company-ids", default=",".join(map(str, scrape_cfg.get('linkedin_company_ids', []))), type=str, help="Comma-separated LinkedIn company IDs to filter by.") # Fetch from config, parse later
+    scrape_group.add_argument("--ca-cert", default=scrape_cfg.ca_cert, help="Path to CA certificate file for proxies.")
+    scrape_group.add_argument("--linkedin-company-ids", default=",".join(map(str, scrape_cfg.linkedin_company_ids)), type=str, help="Comma-separated LinkedIn company IDs to filter by.") # Fetch from config, parse later
     scrape_group.add_argument(
         "--enforce-annual-salary",
         type=lambda x: str(x).lower() == 'true',
-        default=scrape_cfg.get('enforce_annual_salary', False),
+        default=scrape_cfg.enforce_annual_salary,
         help="Convert all salaries to annual (e.g., true, false)."
     )
-    scrape_group.add_argument("--scraped-jobs-file", default=settings.get("output", {}).get("scraped_jobs_file", "output/scraped_jobs.json"), help="Intermediate file for scraped jobs.") # Corrected default path
+    # Get output settings with defaults
+    output_settings = settings.output
+    default_scraped_jobs_file = output_settings.scraped_jobs_file
+    
+    scrape_group.add_argument(
+        "--scraped-jobs-file", 
+        default=default_scraped_jobs_file, 
+        help="Intermediate file for scraped jobs."
+    )
 
     analysis_group = parser.add_argument_group('Analysis Options')
     analysis_group.add_argument("--resume", required=True, help="Path to the resume file.")
-    analysis_group.add_argument("--analysis-output", default=settings.get("analysis_output_path"), help="Final analysis output JSON.")
+    analysis_group.add_argument(
+        "--analysis-output", 
+        default=getattr(settings, 'analysis_output_path', None), 
+        help="Final analysis output JSON."
+    )
     analysis_group.add_argument("-v", "--verbose", action="store_true", help="Enable DEBUG level logging (overrides config).")
 
     filter_group = parser.add_argument_group('Filtering Options (Applied After Analysis)')
@@ -492,7 +540,7 @@ async def run_pipeline_async():
             offset=args.offset,
             verbose=(2 if args.verbose else scrape_cfg.get('jobspy_verbose_level', 2)),
             # description_format is hardcoded to markdown in scrape_jobs_with_jobspy call below
-            linkedin_fetch_description=settings.get('scraping', {}).get('linkedin_fetch_description', True), # Default to True if not in config
+            linkedin_fetch_description=getattr(settings.scraping, 'linkedin_fetch_description', True), # Default to True if not in config
             linkedin_company_ids=linkedin_company_ids_list,
             enforce_annual_salary=args.enforce_annual_salary,
             cli_args=args, # Pass the parsed CLI arguments
@@ -515,11 +563,10 @@ async def run_pipeline_async():
         if not jobs_list: # If convert_and_save_scraped returned an empty list (e.g. df was empty)
             logger.warning("No jobs to analyze after scraping and conversion. Exiting pipeline.")
             # Ensure empty analysis file is created if not already handled by scrape_jobs_with_jobspy's exit
-            output_settings = settings.get('output', {})
-            analysis_output_file_path = args.analysis_output or os.path.join(
-                output_settings.get('directory', 'output'),
-                output_settings.get('analysis_output_file', 'analysis_results.json')
-            )
+            output_settings = getattr(settings, 'output', {})
+            output_dir = getattr(output_settings, 'directory', 'output')
+            output_file = getattr(output_settings, 'analysis_output_file', 'analysis_results.json')
+            analysis_output_file_path = args.analysis_output or os.path.join(output_dir, output_file)
             try:
                 os.makedirs(os.path.dirname(analysis_output_file_path), exist_ok=True)
                 with open(analysis_output_file_path, 'w', encoding='utf-8') as f:
@@ -531,11 +578,58 @@ async def run_pipeline_async():
 
 
         # --- Steps 2-6: Analysis, Filtering, and Saving ---
-        structured_resume = await load_and_extract_resume_async(args.resume)
+        # Get LLM configuration from settings
+        llm_config = getattr(settings, 'llm', None)
+        
+        if not llm_config:
+            logger.warning("No LLM configuration found in settings, using defaults")
+            from myjobspyai.config import LLMConfig
+            llm_config = LLMConfig()
+        
+        # Log the configuration
+        logger.info(f"Using LLM configuration: {llm_config.model_dump()}")
+        
+        # Initialize LLM provider
+        try:
+            from myjobspyai.analysis.factory import get_factory
+            
+            # Convert llm_config to a dictionary if it's a Pydantic model
+            if hasattr(llm_config, 'model_dump'):
+                llm_config_dict = llm_config.model_dump(exclude_unset=True)
+            else:
+                llm_config_dict = dict(llm_config)
+            
+            # Get provider and model with defaults
+            provider = llm_config_dict.pop('provider', 'ollama')
+            
+            # Initialize the provider with the config including the model
+            factory = get_factory()
+            llm_provider = await factory.get_or_create_provider(
+                provider_name=provider,
+                config_overrides=llm_config_dict  # model is included in the config
+            )
+            logger.info(f"Initialized LLM provider: {llm_provider.__class__.__name__}")
+        except Exception as e:
+            logger.error(f"Failed to initialize LLM provider: {e}", exc_info=True)
+            sys.exit(1)
+        
+        # Load and parse the resume with the LLM configuration
+        structured_resume = await load_and_extract_resume_async(
+            resume_path=args.resume,
+            config=llm_config
+        )
+        
         if not structured_resume:
             logger.error("Failed to load/extract resume data. Exiting.")
             sys.exit(1)
-        analyzed_results = await analyze_jobs_async(structured_resume, jobs_list)
+            
+        # Analyze jobs with the initialized LLM provider and configuration
+        analyzed_results = await analyze_jobs_async(
+            structured_resume_data=structured_resume,
+            job_list=jobs_list,
+            llm_provider=llm_provider,
+            config=llm_config
+        )
         if not analyzed_results:
             logger.warning("Analysis step produced no results.")
         filter_args_dict = {}
@@ -553,12 +647,36 @@ async def run_pipeline_async():
             filter_args_dict['filter_proximity_location'] = args.filter_proximity_location.strip()
             filter_args_dict['filter_proximity_range'] = args.filter_proximity_range
             filter_args_dict['filter_proximity_models'] = [pm.strip().lower() for pm in args.filter_proximity_models.split(',')]
-        final_results_list_dict = apply_filters_sort_and_save(
-            analyzed_results, args.analysis_output, filter_args_dict
-        )
+        # Ensure we have a valid output path
+        output_dir = getattr(settings.output, 'directory', 'output')
+        output_file = getattr(settings.output, 'analysis_output_file', 'analysis_results.json')
+        default_output_path = os.path.join(output_dir, output_file)
+        
+        # Use the provided output path or fall back to the default
+        output_path = args.analysis_output or default_output_path
+        
+        # Ensure the output directory exists and output_path is valid
+        if not output_path or not isinstance(output_path, str):
+            output_path = default_output_path
+            logger.warning(f"Invalid output path provided, using default: {output_path}")
+            
+        try:
+            # Ensure the output directory exists
+            output_dir = os.path.dirname(os.path.abspath(output_path))
+            if output_dir:  # Only try to create directory if there is a path component
+                os.makedirs(output_dir, exist_ok=True)
+            
+            logger.info(f"Saving analysis results to: {output_path}")
+            final_results_list_dict = apply_filters_sort_and_save(
+                analyzed_results, output_path, filter_args_dict
+            )
+        except (TypeError, OSError) as _:
+            logger.error(f"Failed to create output directory or invalid path: {output_path}", exc_info=True)
+            raise
         logger.info("Pipeline Summary:")
         print_summary_table(final_results_list_dict, top_n=10) 
-        print_detailed_analysis(final_results_list_dict, top_n=settings.get("output", {}).get("detailed_analysis_count", 3)) # Print detailed for top N
+        detailed_count = getattr(getattr(settings, 'output', {}), 'detailed_analysis_count', 3)
+        print_detailed_analysis(final_results_list_dict, top_n=detailed_count) # Print detailed for top N
         logger.info("Pipeline Run Finished Successfully")
 
     except KeyboardInterrupt:
@@ -570,17 +688,21 @@ async def run_pipeline_async():
         sys.exit(1)
 
 
+async def main():
+    """Main async function to run the pipeline."""
+    try:
+        await run_pipeline_async()
+    except KeyboardInterrupt:
+        logger.warning("Execution cancelled by user (Ctrl+C at top level).")
+        return 130
+    except Exception as e:
+        logger.critical(f"Unhandled critical error at top level: {e}", exc_info=True)
+        return 1
+    return 0
+
 # --- Update entry point to run the async function ---
 if __name__ == "__main__":
     # config.settings is already loaded when config.py is imported.
     # setup_logging() is called at the top of this file after config import.
-    try:
-        asyncio.run(run_pipeline_async())
-    except KeyboardInterrupt:
-        # This might be redundant if the one in run_pipeline_async catches it first
-        logger.warning("Execution cancelled by user (Ctrl+C at top level).")
-        sys.exit(130)
-    except Exception as e:
-        # Catch any other unexpected errors during asyncio.run or if run_pipeline_async re-raises
-        logger.critical(f"Unhandled critical error at top level: {e}", exc_info=True)
-        sys.exit(1)
+    import sys
+    sys.exit(asyncio.run(main()))

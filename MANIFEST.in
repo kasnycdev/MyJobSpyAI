@@ -1,0 +1,28 @@
+# Include all files tracked by git
+recursive-include myjobspyai/templates *
+recursive-include myjobspyai/static *
+recursive-include myjobspyai/data *
+recursive-include myjobspyai/prompts *
+
+# Include documentation
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+
+# Include tests
+recursive-include tests *
+
+# Include package data
+include myjobspyai/py.typed
+
+# Exclude common patterns
+global-exclude *.py[cod] __pycache__ *.so .* *.swp .DS_Store
+prune .mypy_cache
+prune .pytest_cache
+prune .ruff_cache
+prune .venv
+prune venv
+prune build
+prune dist
+prune *.egg-info

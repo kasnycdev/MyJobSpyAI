@@ -1,0 +1,137 @@
+# MyJobSpyAI Configuration Example
+# Copy this file to config.yaml and modify as needed
+
+# Application Settings
+debug: false
+environment: "development"  # development, staging, production
+log_level: "INFO"
+
+# LLM Configuration
+llm:
+  # Supported providers: openai, ollama, gemini
+  provider: "ollama"
+  model: "llama3:instruct"
+  
+  # Provider-specific settings
+  ollama:
+    base_url: "http://localhost:11434"
+    
+  # Common settings
+  timeout: 300  # seconds
+  max_retries: 3
+  temperature: 0.7
+  max_tokens: 2048
+
+# Caching Configuration
+cache:
+  enabled: true
+  directory: "cache/"
+  ttl: 3600  # 1 hour in seconds
+  max_size: 1000
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  console_level: "INFO"
+  file: "logs/app.log"  # Set to null to disable file logging
+  error_file: "logs/error.log"
+  log_mode: "overwrite"  # 'overwrite' to replace logs each run, 'append' to keep history
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  max_size: 10485760  # 10MB - Only used when log_mode is 'append'
+  backup_count: 5  # Number of backup logs to keep - Only used when log_mode is 'append'
+
+# Output Configuration
+output:
+  # File paths for output data
+  scraped_jobs_file: "data/scraped_jobs.json"
+  analysis_results_file: "data/analysis_results.json"
+  log_file: "logs/application.log"
+  error_file: "logs/error.log"
+  debug_file: "logs/debug.log"
+  
+  # Model logging configuration
+  model_logging:
+    enabled: true
+    log_dir: "logs/models"
+    log_inputs: false  # Be cautious with sensitive data
+    log_outputs: true
+    log_latency: true
+    log_errors: true
+    max_log_size_mb: 100  # 100MB per log file
+    backup_count: 5  # Keep 5 backup log files
+    
+  # Per-model logging overrides
+  model_log_overrides:
+    # Example: Override settings for specific models
+    "llama3":
+      log_dir: "logs/models/llama3"
+      log_inputs: false
+      log_outputs: true
+    "gpt-4":
+      log_inputs: false  # Don't log inputs for GPT-4
+      log_outputs: true
+    "claude":
+      log_dir: "logs/models/anthropic"
+      log_latency: true
+
+# Job Scraping Configuration
+scraping:
+  # Supported sites: linkedin, indeed, zip_recruiter, glassdoor, google, naukri, bayt
+  default_sites: ["linkedin", "indeed"]
+  default_results_limit: 20  # 1-1000
+  default_days_old: 30  # Set to null for no limit
+  default_country_indeed: "usa"  # For Indeed searches
+  
+  # Search parameters
+  distance: 25  # miles
+  is_remote: true  # Remote jobs only
+  job_type: "fulltime"  # fulltime, parttime, contract, internship
+  
+  # Advanced settings
+  easy_apply: null  # true/false for Easy Apply filter
+  proxies: null  # e.g., ["http://user:pass@proxy:port"]
+  ca_cert: null  # Path to CA certificate
+  
+  # LinkedIn specific
+  linkedin_company_ids: []  # Filter by company IDs
+  linkedin_fetch_description: false  # Slower but more detailed
+  
+  # Google specific
+  google_search_term: null  # Custom search term
+  
+  # Result handling
+  offset: 0  # Pagination
+  description_format: "markdown"  # markdown or html
+  enforce_annual_salary: false  # Convert salaries to annual
+  
+  # Debugging
+  verbose: 1  # 0=errors, 1=info, 2=debug
+  
+  # Text processing
+  chunk_size: 3000  # characters
+  chunk_overlap: 200  # characters
+  semantic_chunking: true
+  max_parallel_chunks: 5
+
+# Analysis Configuration
+analysis:
+  # Text processing
+  min_section_length: 100  # characters
+  max_section_length: 1000  # characters
+  
+  # Feature toggles
+  extract_entities: true
+  extract_keyphrases: true
+  analyze_sentiment: false
+  
+  # Matching threshold (0.0-1.0)
+  similarity_threshold: 0.7
+
+# Application Settings
+app:
+  name: "MyJobSpyAI"
+  version: "1.0.0"
+  max_concurrent_tasks: 10
+  request_timeout: 60.0  # seconds
+  data_dir: "data"
+  enable_experimental_features: false

@@ -1,346 +1,449 @@
-    # MyJobSpy Analyst: Scrape, Analyze, and Filter Jobs with GenAI
+# MyJobSpyAI
 
-This project enhances job searching by combining the scraping power of **[JobSpy](https://github.com/speedyapply/JobSpy)** with Generative AI analysis via **multiple LLM backends (Ollama, OpenAI-compatible APIs like LM Studio, Google Gemini)** and advanced filtering, including location awareness.
+[![PyPI version](https://badge.fury.io/py/myjobspyai.svg)](https://badge.fury.io/py/myjobspyai)
+[![Python Version](https://img.shields.io/pypi/pyversions/myjobspyai)](https://pypi.org/project/myjobspyai/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![Codecov](https://codecov.io/gh/kasnycdev/MyJobSpyAI/graph/badge.svg)](https://codecov.io/gh/kasnycdev/MyJobSpyAI)
 
-**Core Workflow:**
+**MyJobSpyAI** is an advanced job search and analysis platform that combines web scraping with AI-powered analysis to help you find the perfect job match. It leverages multiple LLM backends (Ollama, OpenAI-compatible APIs, Google Gemini) for intelligent job matching, filtering, and analysis.
 
-1.  **Configure:** Select your desired LLM provider (`ollama`, `openai`, or `gemini`) and configure its specific settings (API endpoint, model, API key if needed) in `config.yaml`. Prepare LinkedIn cookies in `config.toml` (optional but recommended).
-2.  **Scrape:** Uses `JobSpy` to find jobs based on your search criteria and location across multiple job boards (LinkedIn, Indeed, etc.).
-3.  **Analyze (Async):** Parses your resume (DOCX/PDF) using `PyPDF2`/`python-docx`. It then uses the configured LLM backend concurrently via `asyncio` to:
-    *   Extract structured data from your resume (results are cached for speed).
-    *   Compare your structured resume profile against each scraped job description.
-    *   Generate a suitability score (0-100%), detailed justification, and skill/experience match assessment based on enhanced comparison logic.
-4.  **Filter & Rank:** Filters the analyzed jobs based on a wide range of criteria including salary, job type, work model, company names (include/exclude), title keywords, date posted, location (remote country or proximity), and minimum suitability score. Ranks the final list by suitability score.
-5.  **Output:** Saves the detailed analysis results (including original job data) to a JSON file and prints a summary table of top matches to the console using `rich`. Geocoding results are cached to disk.
+## 🌟 Features
 
-## Features
+- **Advanced RAG Pipeline**: Implements Retrieval-Augmented Generation for intelligent job matching
+- **Multi-LLM Support**: Seamlessly works with Ollama, OpenAI, and Google Gemini
+- **Vector Database Integration**: Utilizes Milvus for efficient semantic search and similarity matching
+- **Asynchronous Processing**: Built with asyncio for high-performance job processing
+- **Comprehensive Analysis**: Provides in-depth analysis of job listings and resume matching
+- **Observability**: Integrated OpenTelemetry for monitoring and debugging
+- **Type Safety**: Full type hints and mypy integration for better code quality
+- **Testing**: Comprehensive test suite with pytest and coverage reporting
 
-*   **Multi-Site Scraping:** Leverages `JobSpy` to scrape from sites like LinkedIn, Indeed, ZipRecruiter, Glassdoor, etc. (Check `JobSpy` docs for current support).
-*   **Asynchronous Analysis:** Significantly speeds up analysis by processing multiple jobs concurrently with the selected LLM via its API using `asyncio` and the appropriate client library (`ollama`, `openai`, `google-generativeai`).
-*   **Resume Parsing:** Handles `.docx` and `.pdf` resume files.
-*   **Flexible GenAI Analysis:** Supports multiple LLM backends:
-    *   **Ollama:** Run models locally for privacy and control.
-    *   **OpenAI-compatible APIs (e.g., LM Studio):** Use local servers like LM Studio or other compatible endpoints.
-    *   **Google Gemini:** Leverage Google's cloud-based models via API.
-    *   Configurable provider selection, model names, API endpoints/keys, timeouts, and retries via `config.yaml`.
-    *   Structured resume data extraction with emphasis on quantifiable achievements.
-    *   Detailed job suitability scoring based on recruiter-like evaluation criteria (essentials, relevance, impact).
-    *   Evidence-based justification for scores.
-*   **Advanced Filtering:**
-    *   Salary range (min/max).
-    *   Job Type(s) (Full-time, Contract, etc.).
-    *   Work Model(s) (Remote, Hybrid, On-site).
-    *   Company Name inclusion or exclusion lists.
-    *   Job Title keyword matching (any keyword).
-    *   Date Posted range (after/before YYYY-MM-DD).
-    *   Remote jobs within a specific country (uses Geopy).
-    *   Hybrid/On-site jobs within a specific mileage range of a location (uses Geopy).
-    *   Minimum Suitability Score (0-100).
-*   **JobSpy Native Filter Configuration:** Exposes and allows configuration of several native JobSpy scraping filters via `config.yaml` and command-line arguments, including:
-    *   Google search term
-    *   Distance from location
-    *   Is remote flag
-    *   Job type(s)
-    *   Easy apply flag
-    *   CA certificate path
-    *   LinkedIn company IDs
-    *   Enforce annual salary conversion
-    Command-line arguments override `config.yaml` settings for these filters.
-*   **Caching:**
-    *   **Resume Analysis:** Caches structured resume data based on file hash to speed up subsequent runs with the same resume (`output/.resume_cache/`). Use `--force-resume-reparse` to override.
-    *   **Geocoding:** Caches geocoding results to disk (`output/.geocode_cache.json` - **Note: Implementation pending**) to minimize API calls to Nominatim and improve speed on repeated runs or similar locations.
-*   **Robustness:**
-    *   More specific error handling for scraping, analysis, file I/O, and network issues.
-    *   Retry logic for LLM API calls tailored to each provider.
-    *   Graceful handling of `Ctrl+C` interruptions.
-    *   Warning for long LLM prompts (truncation may be needed depending on model/context window).
-    *   Handles jobs with missing descriptions scraped by `JobSpy` by skipping analysis for them.
-*   **Configuration:** Centralized settings via `config.yaml` with environment variable overrides for key parameters.
-*   **Rich Output:** Provides detailed JSON output and a configurable summary table in the console.
+## 🏗️ Project Architecture
 
-## Observability (OpenTelemetry)
+### Core Components
 
-This project integrates OpenTelemetry to provide insights into its execution through logs, traces, and metrics.
+#### 1. Configuration System (`/config`)
+- Central `config.yaml` with environment variable overrides
+- Multi-layered configuration (env vars > YAML > defaults)
+- Provider-specific settings (Ollama, OpenAI, Gemini)
+- Feature flags for streaming, caching, and logging
 
-**Setup & Configuration:**
+#### 2. Analysis Module (`/myjobspyai/analysis`)
+- **BaseAnalyzer**: Core analysis functionality with retry logic and error handling
+- **JobAnalyzer**: Processes and analyzes job descriptions
+- **ResumeAnalyzer**: Extracts and normalizes resume data
+- **Provider System**: Unified interface for multiple LLM backends
 
-1.  **Install Dependencies:**
-    Ensure you have installed the necessary OpenTelemetry packages by running:
-    ```bash
-    pip install -r requirements.txt
-    ```
-    This will install `opentelemetry-api`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp-proto-grpc`, and `opentelemetry-instrumentation-logging`.
+#### 3. RAG Pipeline (`/myjobspyai/rag`)
+- **RAGProcessor**: Main pipeline controller for document processing
+- **JobRAGProcessor**: Specialized job data processing
+- **TextProcessor**: Advanced text chunking and processing
+- **Milvus Integration**: Vector similarity search and storage
 
-2.  **Local Collector:**
-    You need a local OpenTelemetry collector (e.g., Jaeger, Grafana Agent, OpenTelemetry Collector) capable of receiving OTLP gRPC data.
-    *   **Example (Jaeger with Docker):**
-        ```bash
-        docker run -d --name jaeger \
-          -e COLLECTOR_OTLP_ENABLED=true \
-          -p 16686:16686 \
-          -p 4317:4317 \
-          jaegertracing/all-in-one:latest
-        ```
-        The Jaeger UI will be accessible at `http://localhost:16686`.
+#### 4. Data Processing (`/myjobspyai/parsers`)
+- **Job Parser**: Extracts structured data from job listings
+- **Resume Parser**: Processes multiple formats (PDF, DOCX, TXT)
+- **Schema Validation**: Pydantic models for data integrity
 
-3.  **Configuration (`config.yaml`):**
-    OpenTelemetry settings can be configured in your `config.yaml` under the `opentelemetry` section:
-    ```yaml
-    opentelemetry:
-      OTEL_ENABLED: true  # Set to false to disable OpenTelemetry
-      OTEL_SERVICE_NAME: "MyJobSpyAI"  # Name of your service
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317" # Collector endpoint
-      OTEL_TRACES_SAMPLER: "always_on"  # Options: "always_on", "traceidratio"
-      OTEL_TRACES_SAMPLER_CONFIG:
-        ratio: 0.5  # Sampling ratio if "traceidratio" is used (0.0 to 1.0)
-      OTEL_RESOURCE_ATTRIBUTES:
-        environment: "development"
-        version: "0.1.0" # Or your application version
-        # Add any other custom resource attributes here
-    ```
-    *   **Environment Variable Overrides**: Standard OpenTelemetry environment variables (e.g., `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_SAMPLER_ARG`, `OTEL_RESOURCE_ATTRIBUTES`) will override settings from `config.yaml` or internal defaults if set.
-    *   **Disabling OpenTelemetry**:
-        *   Set `OTEL_ENABLED: false` in the `opentelemetry` section of your `config.yaml`.
-        *   Alternatively, set the environment variable `OTEL_SDK_DISABLED=true`. This will disable OpenTelemetry regardless of the `config.yaml` setting.
-    *   The application code converts the `OTEL_TRACES_SAMPLER` string (from config or env var) to the appropriate OpenTelemetry Sampler instance.
+#### 5. Filtering System (`/myjobspyai/filtering`)
+- Custom filter chains
+- Score-based filtering
+- Configurable thresholds
 
-**Viewing Telemetry:**
-Once your application runs with a collector active, you can view:
-*   **Traces:** In Jaeger (or your chosen backend) to see distributed traces of operations.
-*   **Logs:** Standard Python logs are automatically enriched with trace context and exported via OTLP.
-*   **Metrics:** Initial metrics for LLM calls (counts, duration, errors) are collected and can be visualized in backends like Prometheus/Grafana if your collector is configured to export them.
+### Project Structure
 
-**❗ Disclaimer:** Web scraping is inherently fragile. Job boards change frequently, implement anti-scraping measures (CAPTCHAs, blocks), and may forbid automated scraping in their Terms of Service. Scraping success (especially for sites like Glassdoor or non-cookied LinkedIn) is **NOT guaranteed.** This tool relies heavily on the `JobSpy` library; its effectiveness depends on `JobSpy`'s maintenance state and the current behavior of target websites. Geocoding relies on the Nominatim service, which has usage limits. Use responsibly and ethically.
-
-## Prerequisites
-
-*   **Python 3.9+** (Recommended for enhanced `asyncio` support and type hinting)
-*   **Git**
-*   **LLM Backend (Choose one or more):**
-    *   **Ollama:** Install and run Ollama locally. ([https://ollama.com/](https://ollama.com/)). Ensure the server is running and desired models are pulled (e.g., `ollama pull llama3:instruct`).
-    *   **LM Studio (or other OpenAI-compatible server):** Install and run LM Studio locally ([https://lmstudio.ai/](https://lmstudio.ai/)). Download models via its interface and start the local API server (usually `http://localhost:1234/v1`).
-    *   **Google Gemini API Key:** Obtain an API key from Google AI Studio ([https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)).
-*   **Python LLM Libraries:** Ensure necessary libraries are installed (see Setup).
-*   **Playwright Browsers:** `JobSpy` uses Playwright for some scrapers. Install required browsers (might take time/disk space):
-    ```bash
-    playwright install
-    ```
-*   **Geocoding User Agent:** Nominatim (used by Geopy) requires a unique user agent. Set the `GEOPY_USER_AGENT` environment variable OR edit the `geocoding.user_agent` value in `config.yaml`. **Using the default placeholder will likely result in geocoding errors.** Example format: `MyAppName/1.0 (myemail@example.com)`.
-
-## Setup
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/kasnycdev/MyJobSpy.git
-    cd MyJobSpy
-    ```
-
-2.  **Create and activate a virtual environment:**
-    ```bash
-    python -m venv venv
-    # Windows: .\venv\Scripts\activate
-    # macOS/Linux: source venv/bin/activate
-    ```
-
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-    *(This installs `openai`, `ollama`, `google-generativeai`, and other core libraries listed in `requirements.txt`)*
-
-4.  **Install Playwright browsers:**
-    ```bash
-    playwright install
-    ```
-
-5.  **Configure `config.yaml`:**
-    *   Review and edit `config.yaml` in the project root.
-    *   **Set `llm_provider`:** Choose `"openai"`, `"ollama"`, or `"gemini"`.
-    *   **Configure the corresponding section (`openai`, `ollama`, or `gemini`):**
-        *   **`openai`:** Set `base_url` (e.g., for LM Studio), `model` identifier, and `api_key` (if needed).
-        *   **`ollama`:** Set `base_url` and `model` name (must be pulled in Ollama).
-        *   **`gemini`:** Set `model` name and provide your `api_key` (or set `GOOGLE_API_KEY` environment variable).
-    *   **Crucially, set `geocoding.user_agent`** to a unique value representing your application/email.
-    *   Adjust other settings (scraping, analysis, logging) as needed.
-
-6.  **Configure LinkedIn Cookies (Optional but Recommended):**
-    *   Create a `config.toml` file in the project root (this file is ignored by git).
-    *   Find your `li_at` and `JSESSIONID` cookies from your browser after logging into LinkedIn (use Developer Tools -> Application/Storage -> Cookies).
-    *   Add them to `config.toml`:
-        ```toml
-        # config.toml
-        [linkedin]
-        li_at = "YOUR_LI_AT_COOKIE_VALUE"
-        JSESSIONID = "YOUR_JSESSIONID_COOKIE_VALUE_WITH_QUOTES" # Include quotes if present
-        ```
-    *   `JobSpy` will automatically detect and use this file for authenticated LinkedIn scraping.
-
-## Usage
-
-Run the main pipeline script from the project's root directory:
-
-```bash
-python run_pipeline.py --search "Your Job Search" --resume /path/to/your/resume.pdf [LOCATION_FLAG] [OPTIONS]
+```
+MyJobSpyAI/
+├── myjobspyai/               # Main package
+│   ├── analysis/            # Job analysis and matching logic
+│   │   ├── prompts/        # Prompt templates for LLM analysis
+│   │   ├── providers/      # LLM provider implementations
+│   │   ├── base.py         # Base analyzer class
+│   │   ├── analyzer.py     # Core analysis logic
+│   │   └── models.py       # Data models
+│   │
+│   ├── filtering/        # Job filtering and processing
+│   │   ├── filter.py       # Core filtering logic
+│   │   └── filter_utils.py # Filter utilities
+│   │
+│   ├── parsers/          # Data parsing
+│   │   ├── job_parser.py   # Job description parsing
+│   │   └── resume_parser.py # Resume/CV parsing
+│   │
+│   ├── rag/              # RAG pipeline
+│   │   ├── rag_processor.py # Main RAG implementation
+│   │   ├── milvus.py       # Vector store integration
+│   │   └── text_processor.py # Text processing
+│   │
+│   ├── utils/           # Utility functions
+│   │   ├── config_utils.py # Configuration management
+│   │   ├── logging_utils.py # Logging setup
+│   │   └── monitoring/     # Monitoring and observability
+│   │
+│   ├── __init__.py      # Package initialization
+│   └── exceptions.py       # Custom exceptions
+│
+├── config/              # Configuration files
+│   └── monitoring.yaml    # Monitoring configuration
+│
+├── tests/               # Test suite
+│   ├── integration/      # Integration tests
+│   └── unit/             # Unit tests
+│
+├── .env.example        # Example environment variables
+├── config.yaml           # Main application configuration
+├── main.py               # Main entry point
+├── pyproject.toml        # Project metadata and dependencies
+└── README.md            # This file
 ```
 
-### Command-line Options
+## 🚀 Quick Start
 
-The following command-line arguments can be used to customize the job search:
+### Prerequisites
 
-*   `--search`: The search term (e.g., "software engineer").
-*   `--resume`: Path to your resume file (PDF or DOCX).
-*   `--location`: Location to search for jobs (e.g., "New York, NY").
-*   `--filter-remote-country`: Filter for remote jobs in a specific country (e.g., "United States").
-*   `--min-salary`: Minimum salary (e.g., 100000).
-*   `-v`: Verbosity level (0=errors, 1=warnings, 2=all logs).
+- Python 3.9+
+- [Poetry](https://python-poetry.org/) (recommended) or pip
 
-These command-line arguments override the settings in `config.yaml`.
-
-### config.yaml Options
-
-The `config.yaml` file allows for detailed configuration of the job scraping and analysis process. Key options include:
-
-*   `llm_provider`: Specifies the LLM provider ("openai", "ollama", or "gemini").
-*   `openai`, `ollama`, or `gemini` sections: Configure the specific settings for the chosen LLM provider, including API keys, model names, and base URLs.
-*   `geocoding.user_agent`: Set a unique user agent for geocoding requests.
-*   `linkedin`: Configure LinkedIn cookie values.
-*   JobSpy Native Filter Configuration:
-    *   `google_search_term`
-    *   `distance`
-    *   `is_remote`
-    *   `job_type`
-    *   `easy_apply`
-    *   `ca_cert`
-    *   `linkedin_company_ids`
-    *   `enforce_annual_salary`
-    # MyJobSpy Analyst: Scrape, Analyze, and Filter Jobs with GenAI
-
-This project enhances job searching by combining the scraping power of **[JobSpy](https://github.com/speedyapply/JobSpy)** with Generative AI analysis via **multiple LLM backends (Ollama, OpenAI-compatible APIs like LM Studio, Google Gemini)** and advanced filtering, including location awareness.
-
-**Core Workflow:**
-
-1.  **Configure:** Select your desired LLM provider (`ollama`, `openai`, or `gemini`) and configure its specific settings (API endpoint, model, API key if needed) in `config.yaml`. Prepare LinkedIn cookies in `config.toml` (optional but recommended).
-2.  **Scrape:** Uses `JobSpy` to find jobs based on your search criteria and location across multiple job boards (LinkedIn, Indeed, etc.).
-3.  **Analyze (Async):** Parses your resume (DOCX/PDF) using `PyPDF2`/`python-docx`. It then uses the configured LLM backend concurrently via `asyncio` to:
-    *   Extract structured data from your resume (results are cached for speed).
-    *   Compare your structured resume profile against each scraped job description.
-    *   Generate a suitability score (0-100%), detailed justification, and skill/experience match assessment based on enhanced comparison logic.
-4.  **Filter & Rank:** Filters the analyzed jobs based on a wide range of criteria including salary, job type, work model, company names (include/exclude), title keywords, date posted, location (remote country or proximity), and minimum suitability score. Ranks the final list by suitability score.
-5.  **Output:** Saves the detailed analysis results (including original job data) to a JSON file and prints a summary table of top matches to the console using `rich`. Geocoding results are cached to disk.
-
-## Features
-
-*   **Multi-Site Scraping:** Leverages `JobSpy` to scrape from sites like LinkedIn, Indeed, ZipRecruiter, Glassdoor, etc. (Check `JobSpy` docs for current support).
-*   **Asynchronous Analysis:** Significantly speeds up analysis by processing multiple jobs concurrently with the selected LLM via its API using `asyncio` and the appropriate client library (`ollama`, `openai`, `google-generativeai`).
-*   **Resume Parsing:** Handles `.docx` and `.pdf` resume files.
-*   **Flexible GenAI Analysis:** Supports multiple LLM backends:
-    *   **Ollama:** Run models locally for privacy and control.
-    *   **OpenAI-compatible APIs (e.g., LM Studio):** Use local servers like LM Studio or other compatible endpoints.
-    *   **Google Gemini:** Leverage Google's cloud-based models via API.
-    *   Configurable provider selection, model names, API endpoints/keys, timeouts, and retries via `config.yaml`.
-    *   Structured resume data extraction with emphasis on quantifiable achievements.
-    *   Detailed job suitability scoring based on recruiter-like evaluation criteria (essentials, relevance, impact).
-    *   Evidence-based justification for scores.
-*   **Advanced Filtering:**
-    *   Salary range (min/max).
-    *   Job Type(s) (Full-time, Contract, etc.).
-    *   Work Model(s) (Remote, Hybrid, On-site).
-    *   Company Name inclusion or exclusion lists.
-    *   Job Title keyword matching (any keyword).
-    *   Date Posted range (after/before YYYY-MM-DD).
-    *   Remote jobs within a specific country (uses Geopy).
-    *   Hybrid/On-site jobs within a specific mileage range of a location (uses Geopy).
-    *   Minimum Suitability Score (0-100).
-*   **JobSpy Native Filter Configuration:** Exposes and allows configuration of several native JobSpy scraping filters via `config.yaml` and command-line arguments, including:
-    *   Google search term
-    *   Distance from location
-    *   Is remote flag
-    *   Job type(s)
-    *   Easy apply flag
-    *   CA certificate path
-    *   LinkedIn company IDs
-    *   Enforce annual salary conversion
-    Command-line arguments override `config.yaml` settings for these filters.
-*   **Caching:**
-    *   **Resume Analysis:** Caches structured resume data based on file hash to speed up subsequent runs with the same resume (`output/.resume_cache/`). Use `--force-resume-reparse` to override.
-    *   **Geocoding:** Caches geocoding results to disk (`output/.geocode_cache.json` - **Note: Implementation pending**) to minimize API calls to Nominatim and improve speed on repeated runs or similar locations.
-*   **Robustness:**
-    *   More specific error handling for scraping, analysis, file I/O, and network issues.
-    *   Retry logic for LLM API calls tailored to each provider.
-    *   Graceful handling of `Ctrl+C` interruptions.
-    *   Warning for long LLM prompts (truncation may be needed depending on model/context window).
-    *   Handles jobs with missing descriptions scraped by `JobSpy` by skipping analysis for them.
-*   **Configuration:** Centralized settings via `config.yaml` with environment variable overrides for key parameters.
-*   **Rich Output:** Provides detailed JSON output and a configurable summary table in the console.
-
-**❗ Disclaimer:** Web scraping is inherently fragile. Job boards change frequently, implement anti-scraping measures (CAPTCHAs, blocks), and may forbid automated scraping in their Terms of Service. Scraping success (especially for sites like Glassdoor or non-cookied LinkedIn) is **NOT guaranteed.** This tool relies heavily on the `JobSpy` library; its effectiveness depends on `JobSpy`'s maintenance state and the current behavior of target websites. Geocoding relies on the Nominatim service, which has usage limits. Use responsibly and ethically.
-
-## Prerequisites
-
-*   **Python 3.9+** (Recommended for enhanced `asyncio` support and type hinting)
-*   **Git**
-*   **LLM Backend (Choose one or more):**
-    *   **Ollama:** Install and run Ollama locally. ([https://ollama.com/](https://ollama.com/)). Ensure the server is running and desired models are pulled (e.g., `ollama pull llama3:instruct`).
-    *   **LM Studio (or other OpenAI-compatible server):** Install and run LM Studio locally ([https://lmstudio.ai/](https://lmstudio.ai/)). Download models via its interface and start the local API server (usually `http://localhost:1234/v1`).
-    *   **Google Gemini API Key:** Obtain an API key from Google AI Studio ([https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)).
-*   **Python LLM Libraries:** Ensure necessary libraries are installed (see Setup).
-*   **Playwright Browsers:** `JobSpy` uses Playwright for some scrapers. Install required browsers (might take time/disk space):
-    ```bash
-    playwright install
-    ```
-*   **Geocoding User Agent:** Nominatim (used by Geopy) requires a unique user agent. Set the `GEOPY_USER_AGENT` environment variable OR edit the `geocoding.user_agent` value in `config.yaml`. **Using the default placeholder will likely result in geocoding errors.** Example format: `MyAppName/1.0 (myemail@example.com)`.
-
-## Setup
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/kasnycdev/MyJobSpy.git
-    cd MyJobSpy
-    ```
-
-2.  **Create and activate a virtual environment:**
-    ```bash
-    python -m venv venv
-    # Windows: .\venv\Scripts\activate
-    # macOS/Linux: source venv/bin/activate
-    ```
-
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-    *(This installs `openai`, `ollama`, `google-generativeai`, and other core libraries listed in `requirements.txt`)*
-
-4.  **Install Playwright browsers:**
-    ```bash
-    playwright install
-    ```
-
-5.  **Configure `config.yaml`:**
-    *   Review and edit `config.yaml` in the project root.
-    *   **Set `llm_provider`:** Choose `"openai"`, `"ollama"`, or `"gemini"`.
-    *   **Configure the corresponding section (`openai`, `ollama`, or `gemini`):**
-        *   **`openai`:** Set `base_url` (e.g., for LM Studio), `model` identifier, and `api_key` (if needed).
-        *   **`ollama`:** Set `base_url` and `model` name (must be pulled in Ollama).
-        *   **`gemini`:** Set `model` name and provide your `api_key` (or set `GOOGLE_API_KEY` environment variable).
-    *   **Crucially, set `geocoding.user_agent`** to a unique value representing your application/email.
-    *   Adjust other settings (scraping, analysis, logging) as needed.
-
-6.  **Configure LinkedIn Cookies (Optional but Recommended):**
-    *   Create a `config.toml` file in the project root (this file is ignored by git).
-    *   Find your `li_at` and `JSESSIONID` cookies from your browser after logging into LinkedIn (use Developer Tools -> Application/Storage -> Cookies).
-    *   Add them to `config.toml`:
-        ```toml
-        # config.toml
-        [linkedin]
-        li_at = "YOUR_LI_AT_COOKIE_VALUE"
-        JSESSIONID = "YOUR_JSESSIONID_COOKIE_VALUE_WITH_QUOTES" # Include quotes if present
-        ```
-    *   `JobSpy` will automatically detect and use this file for authenticated LinkedIn scraping.
-
-## Usage
-
-Run the main pipeline script from the project's root directory:
+### Installation
 
 ```bash
-python run_pipeline.py --search "Your Job Search" --resume /path/to/your/resume.pdf [LOCATION_FLAG] [OPTIONS]
+# Clone the repository
+git clone https://github.com/kasnycdev/MyJobSpyAI.git
+cd MyJobSpyAI
+
+# Install dependencies using pip
+pip install -e .[all]  # Install with all optional dependencies
+
+# Or using Poetry
+poetry install --with all  # Install with all optional dependencies
+
+# For development, install additional dependencies
+pip install -e ".[all,dev]"  # Using pip
+# or
+poetry install --with all,dev  # Using Poetry
+
+# Copy the example environment file and update with your credentials
+cp .env.example .env
+# Edit .env with your actual API keys and settings
+```
+
+## ⚙️ Configuration
+
+### Active Configuration
+
+- **Default Provider**: Ollama
+- **Model**: Mistral-7B-Instruct (default: `mistral:instruct`)
+- **Chunking**:
+  - Size: 3000 characters
+  - Overlap: 200 characters
+  - Semantic: Enabled
+- **Caching**:
+  - Enabled: Yes
+  - TTL: 1 hour
+  - Max size: 1000 items
+- **Ollama Configuration**:
+  - Base URL: http://localhost:11434
+  - Default Model: mistral:instruct
+  - Timeout: 300 seconds
+  - Max Retries: 3
+
+### Environment Variables
+
+1. Copy the example environment file and update with your credentials:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Update the `.env` file with your actual API keys and settings. The following environment variables are supported:
+
+   ```bash
+   # LLM Providers
+   OPENAI_API_KEY=your_openai_key
+   GEMINI_API_KEY=your_google_key
+   
+   # Application Settings
+   DEBUG=false
+   LOG_LEVEL=INFO
+   
+   # Ollama Configuration (Default)
+   OLLAMA_BASE_URL=http://localhost:11434
+   OLLAMA_MODEL=mistral:instruct
+   OLLAMA_TIMEOUT=300
+   OLLAMA_MAX_RETRIES=3
+   
+   # Milvus Vector Database
+   MILVUS_HOST=localhost
+   MILVUS_PORT=19530
+   
+   # Scraping Configuration
+   DEFAULT_SITES=linkedin,indeed
+   DEFAULT_RESULTS_LIMIT=10
+   DEFAULT_DAYS_OLD=14
+   
+   # Network
+   HTTP_PROXY=http://proxy.example.com:8080
+   HTTPS_PROXY=http://proxy.example.com:8080
+   ```
+
+### Configuration File (config.yaml)
+
+The application uses a `config.yaml` file for comprehensive configuration. Here's an example with all available options:
+
+```yaml
+# Application Configuration
+app:
+  name: "MyJobSpyAI"
+  version: "1.0.0"
+  debug: ${DEBUG:-false}
+  log_level: "${LOG_LEVEL:-INFO}"
+  environment: "development"
+
+# LLM Configuration
+llm:
+  provider: "ollama"  # Options: ollama, openai, gemini
+  model: "mistral:instruct"  # Default model to use
+  
+  # Ollama provider configuration
+  ollama:
+    base_url: "${OLLAMA_BASE_URL:-http://localhost:11434}"
+    model: "${OLLAMA_MODEL:-mistral:instruct}"
+    timeout: ${OLLAMA_TIMEOUT:-300}  # seconds
+    max_retries: ${OLLAMA_MAX_RETRIES:-3}
+  
+  # Global streaming settings
+  streaming:
+    enabled: true
+    chunk_size: 128
+    timeout: 30
+    buffer_size: 5
+
+  # Provider-specific configurations
+  openai:
+    api_key: ${OPENAI_API_KEY}
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2000
+    
+  gemini:
+    api_key: ${GEMINI_API_KEY}
+    model: "gemini-pro"
+    temperature: 0.7
+    
+  ollama:
+    base_url: ${OLLAMA_BASE_URL:-http://localhost:11434}
+    model: ${OLLAMA_MODEL:-mistral:instruct}
+    timeout: 300
+
+# RAG Pipeline Configuration
+rag:
+  chunk_size: 3000
+  chunk_overlap: 200
+  semantic_chunking: true
+  
+  # Vector Store (Milvus)
+  milvus:
+    host: ${MILVUS_HOST:-localhost}
+    port: ${MILVUS_PORT:-19530}
+    collection_name: "job_listings"
+    embedding_dim: 768
+    
+  # Embeddings
+  embeddings:
+    model: "all-MiniLM-L6-v2"
+    device: "cpu"  # or "cuda" for GPU acceleration
+
+# Scraping Configuration
+scraping:
+  default_sites: ${DEFAULT_SITES:-linkedin,indeed}
+  default_results_limit: ${DEFAULT_RESULTS_LIMIT:-10}
+  default_days_old: ${DEFAULT_DAYS_OLD:-14}
+  default_country: "usa"
+  
+  # Job Filters
+  is_remote: false
+  job_type: null  # fulltime, contract, parttime, etc.
+  easy_apply: null
+  distance: 50  # miles
+  
+  # Proxies (optional)
+  # proxies:
+  #   - "http://proxy1.example.com:8080"
+  #   - "http://proxy2.example.com:8080"
+  # ca_cert: "/path/to/ca_cert.pem"
+
+# Logging Configuration
+logging:
+  level: "${LOG_LEVEL:-INFO}"
+  file: "logs/app.log"
+  max_size: 10485760  # 10MB
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+# Monitoring (OpenTelemetry)
+monitoring:
+  enabled: true
+  service_name: "myjobspyai"
+  otlp_endpoint: "http://localhost:4317"
+  metrics_enabled: true
+  traces_enabled: true
+  logs_enabled: true
+```
+
+### Configuration Precedence
+
+Configuration values are loaded in the following order of precedence:
+1. Command-line arguments (highest)
+2. Environment variables
+3. `config.yaml` file
+4. Default values in the code (lowest)
+
+### Accessing Configuration in Code
+
+Use the `settings` object to access configuration values:
+
+```python
+from myjobspyai.utils.config_utils import settings
+
+# Access configuration values
+provider = settings.llm.provider
+model = settings.llm.model
+
+# Access nested configuration
+chunk_size = settings.rag.chunk_size
+milvus_host = settings.rag.milvus.host
+
+# Check if debug mode is enabled
+if settings.app.debug:
+    print("Debug mode is enabled")
+    
+# Access with defaults
+job_type = settings.scraping.job_type or "fulltime"
+```
+
+### Installation
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/kasnycdev/MyJobSpyAI.git
+cd MyJobSpyAI
+```
+
+2. **Set up a virtual environment** (recommended)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+3. **Install dependencies**
+
+Using Poetry:
+```bash
+poetry install
+```
+
+Or using pip:
+```bash
+pip install -r requirements.txt -r requirements-test.txt
+```
+
+4. **Set up environment variables**
+
+Copy the example environment file and update the values:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+### Configuration
+
+Edit `config.yaml` to configure your job search parameters, LLM settings, and RAG pipeline:
+
+```yaml
+# LLM Configuration
+llm:
+  provider: "ollama"  # or "openai", "gemini"
+  model: "codellama:latest"
+  temperature: 0.7
+  max_tokens: 2048
+
+# Ollama Configuration
+ollama:
+  base_url: "http://localhost:11434"
+  timeout: 300
+
+# Milvus Configuration
+milvus:
+  host: "localhost"
+  port: 19530
+  collection_name: "job_listings"
+  embedding_dim: 768
+
+# RAG Pipeline
+rag:
+  chunk_size: 1000
+  chunk_overlap: 200
+  top_k: 5
+
+# Job Search
+job_search:
+  keywords: "software engineer"
+  location: "New York, NY"
+  distance: 25  # miles
+  job_types: ["full-time", "contract"]
+  remote: true
+  min_salary: 100000
+```
+
+### Usage
+
+Run the job search pipeline:
+
+```bash
+python -m myjobspyai.search --config config.yaml
+```
+
+Or use the Python API:
+
+```python
+from myjobspyai import JobSearchPipeline
+
+pipeline = JobSearchPipeline.from_config("config.yaml")
+results = pipeline.search()
+```
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+pytest tests/ --cov=myjobspyai --cov-report=term-missing
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) for details.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📬 Contact
+
+For questions or support, please open an issue on [GitHub](https://github.com/kasnycdev/MyJobSpyAI/issues).
+
+## 🙏 Acknowledgments
+
+- Built with ❤️ by the MyJobSpyAI team
+- Powered by [Ollama](https://ollama.ai/), [Milvus](https://milvus.io/), and other amazing open-source projects

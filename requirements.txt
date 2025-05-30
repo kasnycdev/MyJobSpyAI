@@ -1,6 +1,5 @@
 # === Core Functionality ===
 python-jobspy >= 1.1.80 # Job scraping
-geopy >= 2.4.0          # Geocoding for location filtering
 python-docx >= 1.1.0    # Resume parsing (.docx)
 pypdf >= 3.0.0         # Resume parsing (.pdf) - Changed from PyPDF2
 # pdfminer.six >= 20221105 # Alternative/dependency for PDF parsing if needed
@@ -10,8 +9,22 @@ pydantic >= 2.5.0       # Data validation for LLM outputs
 openai >= 1.0.0         # For OpenAI-compatible APIs (LM Studio, etc.)
 google-generativeai     # For Google Gemini API
 ollama >= 0.2.0         # For Ollama local server
+instructor >= 1.1.0     # For structured outputs with LLMs
+langchain>=0.1.0      # For RAG and chat management
+pymilvus>=2.3.0        # Milvus vector database client
+sentence-transformers   # For text embeddings
+faiss-cpu              # For local vector similarity search
+numpy>=2.2.6          # Required by various ML libraries
+python-dotenv          # For environment variable loading
+langchain-core>=0.1.0   # Core LangChain components
+langgraph>=0.1.0        # For orchestration and state management
+chromadb>=0.4.0         # Vector store for RAG
+sentence-transformers>=2.2.0 # For embeddings
+faiss-cpu>=1.7.0        # For vector similarity search
 
 # === Configuration & Utilities ===
+pydantic-settings >= 2.0.0 # For configuration management
+python-dotenv >= 1.0.0   # For .env file support
 PyYAML >= 6.0           # For loading config.yaml
 Jinja2 >= 3.1.0         # For loading prompt templates
 
@@ -25,12 +38,138 @@ scalene                 # Required by pytrail for profiling
 pandas >= 2.0.0         # Data manipulation (primarily after scraping)
 numpy >= 1.26.3         # Required by jobspy 1.1.80, also used by pandas
 
+# === Document Processing ===
+docling>=0.1.0          # Document processing and conversion library
+textract==1.6.3         # Pinned to specific version for stability
+extract-msg>=0.29.0,<0.30.0  # Required by textract, pinned to avoid .* version specifier
+six>=1.16.0             # Required for textract and other dependencies
+
 # === Observability / Telemetry ===
-opentelemetry-api ~= 1.22 # Core API for OpenTelemetry
-opentelemetry-sdk ~= 1.22 # Core SDK for OpenTelemetry
-opentelemetry-exporter-otlp-proto-grpc ~= 1.22 # OTLP exporter using gRPC
-opentelemetry-exporter-otlp-proto-http ~= 1.22 # OTLP exporter using HTTP/protobuf
+opentelemetry-api ~= 1.22.0 # Core API for OpenTelemetry
+opentelemetry-sdk ~= 1.22.0 # Core SDK for OpenTelemetry
+opentelemetry-exporter-otlp-proto-grpc ~= 1.22.0 # OTLP exporter using gRPC
+opentelemetry-exporter-otlp-proto-http ~= 1.22.0 # OTLP exporter using HTTP/protobuf
+opentelemetry-instrumentation ~= 0.43b0 # Instrumentation framework
 opentelemetry-instrumentation-logging ~= 0.43b0 # Logging instrumentation
+opentelemetry-instrumentation-requests ~= 0.43b0 # HTTP requests instrumentation
+opentelemetry-instrumentation-urllib3 ~= 0.43b0 # urllib3 instrumentation
+opentelemetry-instrumentation-http ~= 0.43b0 # HTTP client instrumentation
+opentelemetry-instrumentation-sqlalchemy ~= 0.43b0 # SQLAlchemy instrumentation
+opentelemetry-instrumentation-asgi ~= 0.43b0 # ASGI instrumentation (FastAPI, Starlette, etc.)
+opentelemetry-instrumentation-wsgi ~= 0.43b0 # WSGI instrumentation (Flask, etc.)
+opentelemetry-instrumentation-psycopg2 ~= 0.43b0 # PostgreSQL instrumentation
+opentelemetry-instrumentation-sqlite3 ~= 0.43b0 # SQLite instrumentation
+opentelemetry-instrumentation-pymongo ~= 0.43b0 # MongoDB instrumentation
+opentelemetry-instrumentation-elasticsearch ~= 0.43b0 # Elasticsearch instrumentation
+opentelemetry-instrumentation-requests ~= 0.43b0 # HTTP requests instrumentation
+opentelemetry-instrumentation-httpx ~= 0.43b0 # HTTPX instrumentation
+opentelemetry-instrumentation-aiohttp-client ~= 0.43b0 # aiohttp client instrumentation
+opentelemetry-instrumentation-urllib3 ~= 0.43b0 # urllib3 instrumentation
+opentelemetry-instrumentation-urllib ~= 0.43b0 # urllib instrumentation
+opentelemetry-instrumentation-grpc ~= 0.43b0 # gRPC instrumentation
+opentelemetry-instrumentation-aws-lambda ~= 0.43b0 # AWS Lambda instrumentation
+opentelemetry-instrumentation-boto3 ~= 0.43b0 # Boto3 (AWS SDK) instrumentation
+opentelemetry-instrumentation-botocore ~= 0.43b0 # Botocore (AWS SDK Core) instrumentation
+opentelemetry-instrumentation-confluent-kafka ~= 0.43b0 # Confluent Kafka instrumentation
+opentelemetry-instrumentation-pika ~= 0.43b0 # Pika (RabbitMQ) instrumentation
+opentelemetry-instrumentation-redis ~= 0.43b0 # Redis instrumentation
+opentelemetry-instrumentation-sqlalchemy ~= 0.43b0 # SQLAlchemy instrumentation
+opentelemetry-instrumentation-tornado ~= 0.43b0 # Tornado instrumentation
+opentelemetry-instrumentation-tortoise-orm ~= 0.43b0 # Tortoise ORM instrumentation
+opentelemetry-instrumentation-pymysql ~= 0.43b0 # PyMySQL instrumentation
+opentelemetry-instrumentation-psycopg2-binary ~= 0.43b0 # psycopg2-binary instrumentation
+opentelemetry-instrumentation-pymemcache ~= 0.43b0 # PyMemcache instrumentation
+opentelemetry-instrumentation-pymongo ~= 0.43b0 # PyMongo instrumentation
+opentelemetry-instrumentation-pymssql ~= 0.43b0 # PyMSSQL instrumentation
+opentelemetry-instrumentation-pymysql ~= 0.43b0 # PyMySQL instrumentation
+opentelemetry-instrumentation-pg8000 ~= 0.43b0 # pg8000 instrumentation
+opentelemetry-instrumentation-psycopg2 ~= 0.43b0 # psycopg2 instrumentation
+opentelemetry-instrumentation-psycopg2cffi ~= 0.43b0 # psycopg2cffi instrumentation
+opentelemetry-instrumentation-pymongo ~= 0.43b0 # PyMongo instrumentation
+opentelemetry-instrumentation-pymysql ~= 0.43b0 # PyMySQL instrumentation
+opentelemetry-instrumentation-pymssql ~= 0.43b0 # PyMSSQL instrumentation
+opentelemetry-instrumentation-pg8000 ~= 0.43b0 # pg8000 instrumentation
+opentelemetry-instrumentation-psycopg2 ~= 0.43b0 # psycopg2 instrumentation
+opentelemetry-instrumentation-psycopg2cffi ~= 0.43b0 # psycopg2cffi instrumentation
+opentelemetry-instrumentation-sqlite3 ~= 0.43b0 # SQLite instrumentation
+opentelemetry-instrumentation-sqlalchemy ~= 0.43b0 # SQLAlchemy instrumentation
+opentelemetry-instrumentation-tortoise-orm ~= 0.43b0 # Tortoise ORM instrumentation
+opentelemetry-instrumentation-tortoise-orm ~= 0.43b0 # Tortoise ORM instrumentation
+opentelemetry-instrumentation-tortoise-orm ~= 0.43b0 # Tortoise ORM instrumentation
+
+# Structured logging
+structlog ~= 23.2.0 # Structured logging for Python
+python-json-logger ~= 2.0.7 # JSON formatter for logging
+
+# Metrics and monitoring
+prometheus-client ~= 0.20.0 # Prometheus client for metrics
+datadog ~= 0.45.0 # Datadog integration
+
+# Distributed tracing
+jaeger-client ~= 4.8.0 # Jaeger client for distributed tracing
+opentelemetry-exporter-jaeger ~= 1.22.0 # Jaeger exporter for OpenTelemetry
+opentelemetry-exporter-jaeger-proto-grpc ~= 1.22.0 # Jaeger gRPC exporter
+opentelemetry-exporter-jaeger-thrift ~= 1.22.0 # Jaeger Thrift exporter
+opentelemetry-exporter-otlp ~= 1.22.0 # OTLP exporter
+opentelemetry-exporter-otlp-proto-grpc ~= 1.22.0 # OTLP gRPC exporter
+opentelemetry-exporter-otlp-proto-http ~= 1.22.0 # OTLP HTTP exporter
+opentelemetry-exporter-zipkin ~= 1.22.0 # Zipkin exporter
+opentelemetry-exporter-zipkin-json ~= 1.22.0 # Zipkin JSON exporter
+opentelemetry-exporter-zipkin-proto-http ~= 1.22.0 # Zipkin Proto HTTP exporter
+opentelemetry-exporter-zipkin-thrift ~= 1.22.0 # Zipkin Thrift exporter
+opentelemetry-exporter-datadog ~= 1.22.0 # Datadog exporter
+opentelemetry-exporter-prometheus ~= 1.22.0 # Prometheus exporter
+opentelemetry-exporter-prometheus-remote-write ~= 1.22.0 # Prometheus Remote Write exporter
+opentelemetry-exporter-otlp ~= 1.22.0 # OTLP exporter
+opentelemetry-exporter-otlp-proto-grpc ~= 1.22.0 # OTLP gRPC exporter
+opentelemetry-exporter-otlp-proto-http ~= 1.22.0 # OTLP HTTP exporter
+opentelemetry-exporter-zipkin ~= 1.22.0 # Zipkin exporter
+opentelemetry-exporter-zipkin-json ~= 1.22.0 # Zipkin JSON exporter
+opentelemetry-exporter-zipkin-proto-http ~= 1.22.0 # Zipkin Proto HTTP exporter
+opentelemetry-exporter-zipkin-thrift ~= 1.22.0 # Zipkin Thrift exporter
+opentelemetry-exporter-datadog ~= 1.22.0 # Datadog exporter
+opentelemetry-exporter-prometheus ~= 1.22.0 # Prometheus exporter
+opentelemetry-exporter-prometheus-remote-write ~= 1.22.0 # Prometheus Remote Write exporter
+opentelemetry-exporter-otlp ~= 1.22.0 # OTLP exporter
+opentelemetry-exporter-otlp-proto-grpc ~= 1.22.0 # OTLP gRPC exporter
+opentelemetry-exporter-otlp-proto-http ~= 1.22.0 # OTLP HTTP exporter
+opentelemetry-exporter-zipkin ~= 1.22.0 # Zipkin exporter
+opentelemetry-exporter-zipkin-json ~= 1.22.0 # Zipkin JSON exporter
+opentelemetry-exporter-zipkin-proto-http ~= 1.22.0 # Zipkin Proto HTTP exporter
+opentelemetry-exporter-zipkin-thrift ~= 1.22.0 # Zipkin Thrift exporter
+opentelemetry-exporter-datadog ~= 1.22.0 # Datadog exporter
+opentelemetry-exporter-prometheus ~= 1.22.0 # Prometheus exporter
+opentelemetry-exporter-prometheus-remote-write ~= 1.22.0 # Prometheus Remote Write exporter
+opentelemetry-exporter-otlp ~= 1.22.0 # OTLP exporter
+opentelemetry-exporter-otlp-proto-grpc ~= 1.22.0 # OTLP gRPC exporter
+opentelemetry-exporter-otlp-proto-http ~= 1.22.0 # OTLP HTTP exporter
+opentelemetry-exporter-zipkin ~= 1.22.0 # Zipkin exporter
+opentelemetry-exporter-zipkin-json ~= 1.22.0 # Zipkin JSON exporter
+opentelemetry-exporter-zipkin-proto-http ~= 1.22.0 # Zipkin Proto HTTP exporter
+opentelemetry-exporter-zipkin-thrift ~= 1.22.0 # Zipkin Thrift exporter
+opentelemetry-exporter-datadog ~= 1.22.0 # Datadog exporter
+opentelemetry-exporter-prometheus ~= 1.22.0 # Prometheus exporter
+opentelemetry-exporter-prometheus-remote-write ~= 1.22.0 # Prometheus Remote Write exporter
+opentelemetry-exporter-otlp ~= 1.22.0 # OTLP exporter
+opentelemetry-exporter-otlp-proto-grpc ~= 1.22.0 # OTLP gRPC exporter
+opentelemetry-exporter-otlp-proto-http ~= 1.22.0 # OTLP HTTP exporter
+opentelemetry-exporter-zipkin ~= 1.22.0 # Zipkin exporter
+opentelemetry-exporter-zipkin-json ~= 1.22.0 # Zipkin JSON exporter
+opentelemetry-exporter-zipkin-proto-http ~= 1.22.0 # Zipkin Proto HTTP exporter
+opentelemetry-exporter-zipkin-thrift ~= 1.22.0 # Zipkin Thrift exporter
+opentelemetry-exporter-datadog ~= 1.22.0 # Datadog exporter
+opentelemetry-exporter-prometheus ~= 1.22.0 # Prometheus exporter
+opentelemetry-exporter-prometheus-remote-write ~= 1.22.0 # Prometheus Remote Write exporter
+opentelemetry-exporter-otlp ~= 1.22.0 # OTLP exporter
+opentelemetry-exporter-otlp-proto-grpc ~= 1.22.0 # OTLP gRPC exporter
+opentelemetry-exporter-otlp-proto-http ~= 1.22.0 # OTLP HTTP exporter
+opentelemetry-exporter-zipkin ~= 1.22.0 # Zipkin exporter
+opentelemetry-exporter-zipkin-json ~= 1.22.0 # Zipkin JSON exporter
+opentelemetry-exporter-zipkin-proto-http ~= 1.22.0 # Zipkin Proto HTTP exporter
+opentelemetry-exporter-zipkin-thrift ~= 1.22.0 # Zipkin Thrift exporter
+opentelemetry-exporter-datadog ~= 1.22.0 # Datadog exporter
+opentelemetry-exporter-prometheus ~= 1.22.0 # Prometheus exporter
+opentelemetry-exporter-prometheus-remote-write ~= 1.22.0 # Prometheus Remote Write exporter
 
 # === Important Transitive Dependencies (Usually installed by above) ===
 # httpx                 # Used by openai, ollama, jobspy
@@ -42,13 +181,15 @@ opentelemetry-instrumentation-logging ~= 0.43b0 # Logging instrumentation
 # six                   # Used by python-dateutil
 
 # === Development/Linting Tools (Optional) ===
-# pydocstyle
-# pep8
-# flake8
-# bandit
-# pylint
-# pylama
-# prospector
-# mypy
+ pydocstyle
+ pep8
+ flake8
+ bandit
+ pylint
+ pylama
+ prospector
+ mypy
 
 # Note: playwright browser binaries are installed via 'playwright install' command.
+#mem0ai# If using pip
+openlit

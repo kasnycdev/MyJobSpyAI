@@ -1,0 +1,252 @@
+{
+  "timestamp": "20250528_181604",
+  "resume": {
+    "contact_info": {
+      "name": "John A. Doe",
+      "email": "john.doe@example.com",
+      "phone": "+1 (555) 123-4567",
+      "linkedin": "linkedin.com/in/johndoe",
+      "location": "San Francisco, CA",
+      "portfolio": "johndoe.dev"
+    },
+    "summary": "Senior Software Engineer with 6+ years of experience in building scalable web applications using Python and modern JavaScript frameworks. Specialized in backend development, API design, and cloud infrastructure. Proven track record of leading engineering teams and delivering high-quality software.",
+    "skills": [
+      {
+        "name": "Python",
+        "level": "Expert",
+        "years_experience": 6,
+        "category": "Programming Languages"
+      },
+      {
+        "name": "JavaScript/TypeScript",
+        "level": "Advanced",
+        "years_experience": 5,
+        "category": "Programming Languages"
+      },
+      {
+        "name": "Django/FastAPI",
+        "level": "Expert",
+        "years_experience": 5,
+        "category": "Frameworks"
+      },
+      {
+        "name": "React/Redux",
+        "level": "Advanced",
+        "years_experience": 4,
+        "category": "Frontend"
+      },
+      {
+        "name": "PostgreSQL",
+        "level": "Advanced",
+        "years_experience": 5,
+        "category": "Databases"
+      },
+      {
+        "name": "Docker/Kubernetes",
+        "level": "Intermediate",
+        "years_experience": 3,
+        "category": "DevOps"
+      },
+      {
+        "name": "AWS/GCP",
+        "level": "Intermediate",
+        "years_experience": 3,
+        "category": "Cloud"
+      },
+      {
+        "name": "CI/CD",
+        "level": "Advanced",
+        "years_experience": 4,
+        "category": "DevOps"
+      },
+      {
+        "name": "RESTful APIs",
+        "level": "Expert",
+        "years_experience": 5,
+        "category": "APIs"
+      },
+      {
+        "name": "Microservices",
+        "level": "Advanced",
+        "years_experience": 3,
+        "category": "Architecture"
+      }
+    ],
+    "experience": [
+      {
+        "job_title": "Senior Software Engineer",
+        "company": "TechCorp Inc.",
+        "location": "San Francisco, CA",
+        "duration": "2020 - Present",
+        "responsibilities": [
+          "Lead a cross-functional team of 5 developers in designing and implementing new features",
+          "Architected and deployed scalable microservices using Python, FastAPI, and Docker",
+          "Mentored junior developers and conducted code reviews to maintain code quality"
+        ],
+        "quantifiable_achievements": [
+          "Reduced API response time by 40% through query optimization and caching",
+          "Increased test coverage from 70% to 95% by implementing comprehensive test suites",
+          "Led migration from monolith to microservices, improving deployment frequency by 3x"
+        ]
+      },
+      {
+        "job_title": "Software Engineer",
+        "company": "WebSolutions LLC",
+        "location": "Austin, TX",
+        "duration": "2018 - 2020",
+        "responsibilities": [
+          "Developed and maintained RESTful APIs using Django REST Framework",
+          "Implemented frontend components using React and Redux",
+          "Collaborated with product team to define requirements and technical specifications"
+        ],
+        "quantifiable_achievements": [
+          "Improved application performance by 25% through database optimization",
+          "Reduced deployment time by 40% by implementing CI/CD pipelines"
+        ]
+      }
+    ],
+    "education": [
+      {
+        "degree": "Master of Science in Computer Science",
+        "institution": "Stanford University",
+        "location": "Stanford, CA",
+        "graduation_year": "2018",
+        "gpa": "3.8/4.0",
+        "honors": [
+          "Summa Cum Laude",
+          "Dean's List"
+        ]
+      },
+      {
+        "degree": "Bachelor of Science in Computer Engineering",
+        "institution": "University of California, Berkeley",
+        "location": "Berkeley, CA",
+        "graduation_year": "2016",
+        "gpa": "3.7/4.0"
+      }
+    ],
+    "certifications": [
+      "AWS Certified Solutions Architect - Associate",
+      "Google Cloud Professional Cloud Architect",
+      "Certified Kubernetes Administrator (CKA)",
+      "Python Institute Certified Professional"
+    ],
+    "languages": [
+      {
+        "language": "English",
+        "proficiency": "Native"
+      },
+      {
+        "language": "Spanish",
+        "proficiency": "Professional Working"
+      },
+      {
+        "language": "French",
+        "proficiency": "Elementary"
+      }
+    ],
+    "projects": [
+      {
+        "name": "E-commerce Platform",
+        "description": "A full-stack e-commerce platform with product catalog, shopping cart, and payment integration.",
+        "technologies_used": [
+          "Python",
+          "Django",
+          "React",
+          "PostgreSQL",
+          "Stripe"
+        ],
+        "role": "Lead Developer",
+        "duration": "6 months",
+        "impact": "Processed over 10,000+ orders in the first quarter"
+      },
+      {
+        "name": "Task Management System",
+        "description": "A collaborative task management tool with real-time updates and team collaboration features.",
+        "technologies_used": [
+          "FastAPI",
+          "WebSockets",
+          "Vue.js",
+          "MongoDB"
+        ],
+        "role": "Full-stack Developer",
+        "duration": "3 months",
+        "impact": "Adopted by 20+ teams across the organization"
+      }
+    ],
+    "raw_text_hash": null
+  },
+  "jobs": [
+    {
+      "job_id": "job123",
+      "title": "Senior Python Developer",
+      "company": "InnovateTech",
+      "location": "San Francisco, CA (Hybrid)",
+      "job_type": "Full-time",
+      "salary": {
+        "min": 140000,
+        "max": 180000,
+        "currency": "USD",
+        "period": "year"
+      },
+      "description": "We are looking for an experienced Python Developer to join our team. The ideal candidate will have 5+ years of experience with Python, Django, and cloud technologies. Experience with microservices and containerization is a plus. You will be responsible for designing and implementing scalable backend services and APIs.",
+      "requirements": {
+        "required_skills": [
+          "Python",
+          "Django",
+          "REST APIs",
+          "PostgreSQL"
+        ],
+        "preferred_skills": [
+          "Docker",
+          "Kubernetes",
+          "AWS",
+          "React"
+        ],
+        "education": "Bachelor's degree in Computer Science or related field",
+        "experience_years": 5,
+        "certifications": [
+          "AWS Certified Developer"
+        ]
+      },
+      "posted_date": "2023-05-15",
+      "application_deadline": "2023-06-15",
+      "application_url": "https://careers.innovatetech.com/senior-python-dev"
+    },
+    {
+      "job_id": "job124",
+      "title": "Full Stack Developer",
+      "company": "WebCrafters",
+      "location": "Remote",
+      "job_type": "Full-time",
+      "salary": {
+        "min": 120000,
+        "max": 160000,
+        "currency": "USD",
+        "period": "year"
+      },
+      "description": "Join our team as a Full Stack Developer to build and maintain web applications. You'll work with a team of talented engineers to design and implement new features, optimize performance, and ensure code quality. Strong experience with React, Node.js, and modern JavaScript is required.",
+      "requirements": {
+        "required_skills": [
+          "JavaScript",
+          "React",
+          "Node.js",
+          "Express"
+        ],
+        "preferred_skills": [
+          "TypeScript",
+          "MongoDB",
+          "GraphQL",
+          "Docker"
+        ],
+        "education": "Bachelor's degree or equivalent experience",
+        "experience_years": 3,
+        "certifications": []
+      },
+      "posted_date": "2023-05-20",
+      "application_deadline": "2023-06-20",
+      "application_url": "https://webcrafters.io/careers/full-stack-dev"
+    }
+  ],
+  "results": []
+}
