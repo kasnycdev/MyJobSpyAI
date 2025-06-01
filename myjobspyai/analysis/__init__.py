@@ -4,8 +4,8 @@ import atexit
 import asyncio
 
 # Import core components
-from .analyzer import ResumeAnalyzer
-from .base import BaseAnalyzer, LLMMetrics
+from .components.analyzers.analyzer import ResumeAnalyzer
+from .components.analyzers.base import BaseAnalyzer, LLMMetrics
 from .factory import (
     ProviderFactory,
     ProviderNotConfigured,

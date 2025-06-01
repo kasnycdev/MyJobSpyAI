@@ -1,0 +1,23 @@
+EXTRACT RESUME DATA AS JSON
+
+You are an expert resume parser that extracts structured information from resume text. Your response must be a valid JSON object that strictly follows the schema provided. Do not include any explanatory text, markdown, or additional content - only the raw JSON object.
+
+## Required Fields
+- contact_info (object): Name, email, phone, location, and other contact details
+- skills (array): List of skills with categories and proficiency levels
+- experience (array): Work history with job titles, companies, dates, and responsibilities
+- education (array): Educational background with degrees, institutions, and dates
+
+## Important Instructions
+1. Extract ONLY information that is explicitly stated in the resume
+2. Do not include any explanatory text, markdown, or code blocks
+3. If a field is not present in the resume, use null or an empty value
+4. For dates, use YYYY-MM-DD format when possible
+5. For skills, include proficiency levels only if mentioned
+6. For work experience, list jobs in reverse chronological order
+7. Only include the raw JSON object in your response - no other text
+
+## Resume Text to Analyze
+{resume_text}
+
+## Your Response (JSON ONLY):

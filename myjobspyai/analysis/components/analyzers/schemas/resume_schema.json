@@ -1,0 +1,538 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Resume Data Extraction Schema",
+  "description": "Schema for structured resume data extracted from text",
+  "type": "object",
+  "required": ["contact_info", "skills", "experience", "education"],
+  "properties": {
+    "contact_info": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full name of the candidate"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number"
+        },
+        "location": {
+          "type": "string",
+          "description": "City, State/Province, Country"
+        },
+        "linkedin": {
+          "type": "string",
+          "format": "uri",
+          "description": "LinkedIn profile URL"
+        },
+        "github": {
+          "type": "string",
+          "format": "uri",
+          "description": "GitHub profile URL"
+        },
+        "portfolio": {
+          "type": "string",
+          "format": "uri",
+          "description": "Personal website or portfolio URL"
+        }
+      },
+      "required": ["name", "email"]
+    },
+    "summary": {
+      "type": "string",
+      "description": "Professional summary or objective statement"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the skill"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the skill (e.g., 'Programming', 'Tools', 'Soft Skills')",
+            "enum": ["Programming", "Frameworks", "Tools", "Databases", "Cloud", "DevOps", "Soft Skills", "Other"]
+          },
+          "proficiency": {
+            "type": "string",
+            "description": "Proficiency level (e.g., 'Beginner', 'Intermediate', 'Advanced', 'Expert')",
+            "enum": ["Beginner", "Intermediate", "Advanced", "Expert", ""]
+          },
+          "years_experience": {
+            "type": ["number", "null"],
+            "description": "Years of experience with this skill"
+          },
+          "last_used": {
+            "type": "string",
+            "format": "date",
+            "description": "When this skill was last used (YYYY-MM-DD)"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Related keywords or technologies"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "job_title": {
+            "type": "string",
+            "description": "Job title or position"
+          },
+          "company": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "location": {
+            "type": "string",
+            "description": "Job location (city, state/country)"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date (YYYY-MM-DD or YYYY-MM or YYYY), empty if current position"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Whether this is the current position"
+          },
+          "description": {
+            "type": "string",
+            "description": "Brief description of the role"
+          },
+          "responsibilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of key responsibilities and achievements"
+          },
+          "technologies_used": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Technologies, tools, or methodologies used"
+          },
+          "achievements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Notable achievements or contributions"
+          }
+        },
+        "required": ["job_title", "company", "start_date"]
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "degree": {
+            "type": "string",
+            "description": "Degree or certification name"
+          },
+          "field_of_study": {
+            "type": "string",
+            "description": "Field of study or major"
+          },
+          "institution": {
+            "type": "string",
+            "description": "Name of the educational institution"
+          },
+          "location": {
+            "type": "string",
+            "description": "Location of the institution"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date (YYYY-MM-DD or YYYY-MM or YYYY), empty if in progress"
+          },
+          "in_progress": {
+            "type": "boolean",
+            "description": "Whether the education is currently in progress"
+          },
+          "gpa": {
+            "type": "string",
+            "description": "Grade point average (e.g., '3.8/4.0')"
+          },
+          "honors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Honors, awards, or distinctions received"
+          },
+          "description": {
+            "type": "string",
+            "description": "Additional information about the education"
+          }
+        },
+        "required": ["degree", "institution"]
+      }
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the certification"
+          },
+          "issuing_organization": {
+            "type": "string",
+            "description": "Organization that issued the certification"
+          },
+          "issue_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date when the certification was issued (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "expiration_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Expiration date if applicable (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "credential_id": {
+            "type": "string",
+            "description": "Credential ID or license number"
+          },
+          "credential_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to verify the credential"
+          }
+        },
+        "required": ["name", "issuing_organization"]
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the project"
+          },
+          "description": {
+            "type": "string",
+            "description": "Brief description of the project"
+          },
+          "technologies_used": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Technologies, tools, or frameworks used"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date if completed (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "in_progress": {
+            "type": "boolean",
+            "description": "Whether the project is currently in progress"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to the project (GitHub, live demo, etc.)"
+          },
+          "contributions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Key contributions or achievements in this project"
+          },
+          "team_size": {
+            "type": ["integer", "null"],
+            "description": "Number of people involved in the project"
+          },
+          "role": {
+            "type": "string",
+            "description": "Role in the project"
+          }
+        },
+        "required": ["name", "description"]
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string",
+            "description": "Name of the language"
+          },
+          "proficiency": {
+            "type": "string",
+            "description": "Proficiency level (e.g., 'Native', 'Fluent', 'Intermediate', 'Basic')",
+            "enum": ["Native", "Fluent", "Professional Working", "Limited Working", "Elementary", ""]
+          },
+          "certification": {
+            "type": "string",
+            "description": "Language certification if any (e.g., 'TOEFL', 'DELE')"
+          },
+          "score": {
+            "type": "string",
+            "description": "Test score if applicable (e.g., 'C2', 'TOEFL 110/120')"
+          }
+        },
+        "required": ["language"]
+      }
+    },
+    "volunteer_experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "organization": {
+            "type": "string",
+            "description": "Name of the organization"
+          },
+          "role": {
+            "type": "string",
+            "description": "Volunteer role or position"
+          },
+          "cause": {
+            "type": "string",
+            "description": "Cause or area of volunteering"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date if applicable (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Whether currently volunteering"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of volunteer work"
+          },
+          "highlights": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Key contributions or achievements"
+          }
+        },
+        "required": ["organization", "role"]
+      }
+    },
+    "awards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Name of the award or honor"
+          },
+          "date_awarded": {
+            "type": "string",
+            "format": "date",
+            "description": "Date when the award was received (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "awarder": {
+            "type": "string",
+            "description": "Organization or institution that granted the award"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Brief description of the award and its significance"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL with more information about the award"
+          }
+        },
+        "required": ["title"]
+      }
+    },
+    "publications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title of the publication"
+          },
+          "publisher": {
+            "type": "string",
+            "description": "Name of the publisher or journal"
+          },
+          "publication_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of publication (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to access the publication"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Brief summary of the publication"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of authors"
+          },
+          "doi": {
+            "type": "string",
+            "description": "Digital Object Identifier (DOI) if available"
+          }
+        },
+        "required": ["title"]
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Reference's full name"
+          },
+          "title": {
+            "type": "string",
+            "description": "Reference's job title"
+          },
+          "company": {
+            "type": "string",
+            "description": "Reference's company or organization"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Reference's email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Reference's phone number"
+          },
+          "relationship": {
+            "type": "string",
+            "description": "Relationship to the candidate (e.g., 'Former Manager', 'Professor')"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "additional_sections": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "subtitle": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "highlights": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "description": "Any additional sections that don't fit the standard format"
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the resume was last updated"
+        },
+        "version": {
+          "type": "string",
+          "description": "Schema version"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source of the resume (e.g., 'LinkedIn', 'PDF', 'DOCX')"
+        },
+        "confidence_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score of the extraction (0-1)"
+        },
+        "extraction_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Any notes or warnings from the extraction process"
+        }
+      }
+    }
+  }
+}

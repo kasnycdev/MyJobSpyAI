@@ -40,3 +40,11 @@ class ConfigurationError(AnalysisError):
         super().__init__(message)
         self.config_key = config_key
         self.original_exception = original_exception
+
+
+class ProviderError(AnalysisError):
+    """Raised when there's an error with a provider."""
+    def __init__(self, message: str, provider: Optional[str] = None, original_exception: Optional[Exception] = None):
+        super().__init__(message)
+        self.provider = provider
+        self.original_exception = original_exception

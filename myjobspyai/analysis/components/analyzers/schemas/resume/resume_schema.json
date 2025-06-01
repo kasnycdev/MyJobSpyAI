@@ -1,0 +1,508 @@
+{
+  "$schema": "http://json-schema.org/draft/2020-12/schema#",
+  "title": "ResumeData",
+  "type": "object",
+  "required": ["contact_info", "skills", "experience", "education"],
+  "properties": {
+    "contact_info": {
+      "type": "object",
+      "required": ["name", "email"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full name of the candidate"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address"
+        },
+        "phone": {
+          "type": ["string", "null"],
+          "description": "Phone number"
+        },
+        "location": {
+          "type": ["string", "null"],
+          "description": "City, State, Country"
+        },
+        "linkedin": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "LinkedIn profile URL"
+        },
+        "github": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "GitHub profile URL"
+        },
+        "portfolio": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "Personal website or portfolio URL"
+        }
+      }
+    },
+    "summary": {
+      "type": ["string", "null"],
+      "description": "Professional summary or objective"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the skill"
+          },
+          "category": {
+            "type": ["string", "null"],
+            "description": "Category of the skill (e.g., 'Programming', 'Tools', 'Languages')"
+          },
+          "proficiency": {
+            "type": ["string", "null"],
+            "enum": ["Beginner", "Intermediate", "Advanced", "Expert", null],
+            "description": "Proficiency level if mentioned"
+          },
+          "years_of_experience": {
+            "type": ["number", "null"],
+            "description": "Years of experience if mentioned"
+          }
+        }
+      }
+    },
+    "experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "company"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Job title"
+          },
+          "company": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "location": {
+            "type": ["string", "null"],
+            "description": "Job location"
+          },
+          "start_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Start date (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "end_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "End date (YYYY-MM-DD or YYYY-MM or YYYY), null if current"
+          },
+          "current": {
+            "type": ["boolean", "null"],
+            "description": "Whether this is the current position"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Brief description of the role"
+          },
+          "responsibilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of responsibilities and achievements"
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Technologies used in this role"
+          }
+        }
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["institution"],
+        "properties": {
+          "degree": {
+            "type": ["string", "null"],
+            "description": "Degree or certification name"
+          },
+          "field_of_study": {
+            "type": ["string", "null"],
+            "description": "Field of study"
+          },
+          "institution": {
+            "type": "string",
+            "description": "Name of the educational institution"
+          },
+          "location": {
+            "type": ["string", "null"],
+            "description": "Location of the institution"
+          },
+          "start_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Start date (YYYY or YYYY-MM)"
+          },
+          "end_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "End date (YYYY or YYYY-MM), null if current"
+          },
+          "gpa": {
+            "type": ["number", "string", "null"],
+            "description": "GPA if mentioned"
+          },
+          "honors": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "string"
+            },
+            "description": "Academic honors or awards"
+          },
+          "activities": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "string"
+            },
+            "description": "Extracurricular activities or societies"
+          }
+        }
+      }
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the certification"
+          },
+          "issuing_organization": {
+            "type": ["string", "null"],
+            "description": "Organization that issued the certification"
+          },
+          "issue_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Date the certification was issued (YYYY-MM or YYYY)"
+          },
+          "expiration_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Expiration date if applicable (YYYY-MM or YYYY)"
+          },
+          "credential_id": {
+            "type": ["string", "null"],
+            "description": "Credential ID or license number if applicable"
+          },
+          "credential_url": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "description": "URL to verify the credential online"
+          }
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the project"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Brief description of the project"
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Technologies used in the project"
+          },
+          "start_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Start date (YYYY-MM or YYYY)"
+          },
+          "end_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "End date (YYYY-MM or YYYY), null if ongoing"
+          },
+          "url": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "description": "URL to the project if available"
+          },
+          "contributions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of contributions or key features"
+          }
+        }
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["language"],
+        "properties": {
+          "language": {
+            "type": "string",
+            "description": "Name of the language"
+          },
+          "proficiency": {
+            "type": ["string", "null"],
+            "enum": ["Elementary", "Limited Working", "Professional Working", "Full Professional", "Native/Bilingual", null],
+            "description": "Proficiency level"
+          }
+        }
+      }
+    },
+    "publications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title of the publication"
+          },
+          "publisher": {
+            "type": ["string", "null"],
+            "description": "Name of the publisher or journal"
+          },
+          "publication_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Date of publication (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "url": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "description": "URL to the publication if available online"
+          },
+          "doi": {
+            "type": ["string", "null"],
+            "description": "Digital Object Identifier (DOI) if available"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of authors"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Brief description or abstract"
+          }
+        }
+      }
+    },
+    "awards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Name of the award"
+          },
+          "date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Date received (YYYY-MM-DD or YYYY-MM or YYYY)"
+          },
+          "awarder": {
+            "type": ["string", "null"],
+            "description": "Organization that granted the award"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Brief description of the award"
+          }
+        }
+      }
+    },
+    "volunteer": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["organization"],
+        "properties": {
+          "organization": {
+            "type": "string",
+            "description": "Name of the organization"
+          },
+          "position": {
+            "type": ["string", "null"],
+            "description": "Position or role"
+          },
+          "start_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Start date (YYYY-MM or YYYY)"
+          },
+          "end_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "End date (YYYY-MM or YYYY), null if ongoing"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Brief description of the role"
+          },
+          "causes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Causes or focus areas"
+          },
+          "hours": {
+            "type": ["number", "null"],
+            "description": "Number of volunteer hours per week/month if mentioned"
+          }
+        }
+      }
+    },
+    "interests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the interest"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Related keywords or sub-interests"
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Reference's full name"
+          },
+          "title": {
+            "type": ["string", "null"],
+            "description": "Reference's job title"
+          },
+          "company": {
+            "type": ["string", "null"],
+            "description": "Reference's company"
+          },
+          "email": {
+            "type": ["string", "null"],
+            "format": "email",
+            "description": "Reference's email address"
+          },
+          "phone": {
+            "type": ["string", "null"],
+            "description": "Reference's phone number"
+          },
+          "relationship": {
+            "type": ["string", "null"],
+            "description": "Relationship to the candidate (e.g., 'Former Manager', 'Professor')"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "extraction_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date and time when the extraction was performed"
+        },
+        "extractor_version": {
+          "type": ["string", "null"],
+          "description": "Version of the extraction tool"
+        },
+        "source_format": {
+          "type": ["string", "null"],
+          "enum": ["pdf", "docx", "txt", "json", "html", "image", "other", null],
+          "description": "Original format of the resume"
+        },
+        "confidence_score": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score of the extraction (0-1)"
+        },
+        "raw_text_length": {
+          "type": ["integer", "null"],
+          "description": "Length of the raw extracted text in characters"
+        },
+        "processing_time_ms": {
+          "type": ["number", "null"],
+          "description": "Time taken to process the resume in milliseconds"
+        },
+        "warnings": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          },
+          "description": "Any warnings generated during extraction"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "error_messages": {
+    "required": {
+      "contact_info": "Contact information is required",
+      "skills": "At least one skill is required",
+      "experience": "Work experience is required",
+      "education": "Education information is required"
+    },
+    "properties": {
+      "contact_info": {
+        "required": {
+          "name": "Name is required in contact information",
+          "email": "Email is required in contact information"
+        },
+        "properties": {
+          "email": {
+            "format": "Email must be a valid email address"
+          }
+        }
+      }
+    }
+  }
+}

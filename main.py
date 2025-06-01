@@ -8,6 +8,9 @@ import sys
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
+# Add project root to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Third-party imports
 import pandas as pd
 from colorama import init
@@ -17,7 +20,7 @@ from rich.console import Console
 from myjobspyai.config import settings
 from myjobspyai.filtering.filter_utils import DateEncoder
 from myjobspyai.utils.logging_utils import setup_logging, tracer
-from myjobspyai.analysis.main_matcher import (
+from myjobspyai.analysis.components.matchers.main_matcher import (
     load_and_extract_resume_async,
     analyze_jobs_async,
     apply_filters_sort_and_save
@@ -57,7 +60,7 @@ except ImportError:
 
 # Import analysis components
 try:
-    from myjobspyai.analysis.main_matcher import load_and_extract_resume_async, analyze_jobs_async, apply_filters_sort_and_save
+    from myjobspyai.analysis.components.matchers.main_matcher import load_and_extract_resume_async, analyze_jobs_async, apply_filters_sort_and_save
 except ImportError as e:
     console.print(f"[red]CRITICAL ERROR: Could not import analysis functions from myjobspyai.analysis.main_matcher: {e}[/red]")
     import traceback
@@ -613,10 +616,23 @@ async def run_pipeline_async():
             logger.error(f"Failed to initialize LLM provider: {e}", exc_info=True)
             sys.exit(1)
         
+        # Convert llm_config to dictionary if it's a Pydantic model
+        if hasattr(llm_config, 'model_dump'):
+            llm_config_dict = llm_config.model_dump()
+        else:
+            llm_config_dict = dict(llm_config)
+            
+        # Create the config structure expected by load_and_extract_resume_async
+        config_for_resume_analyzer = {
+            'llm': llm_config_dict
+        }
+        
+        logger.debug(f"Sending config to resume analyzer: {config_for_resume_analyzer}")
+            
         # Load and parse the resume with the LLM configuration
         structured_resume = await load_and_extract_resume_async(
             resume_path=args.resume,
-            config=llm_config
+            config=config_for_resume_analyzer
         )
         
         if not structured_resume:

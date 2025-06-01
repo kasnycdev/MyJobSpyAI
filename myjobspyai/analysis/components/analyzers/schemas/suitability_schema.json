@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Resume Suitability Analysis Schema",
+  "description": "Schema for analyzing resume suitability for a job position",
+  "type": "object",
+  "required": ["analysis"],
+  "properties": {
+    "original_job_data": {
+      "type": "object",
+      "description": "The original job data that was analyzed"
+    },
+    "analysis": {
+      "type": "object",
+      "required": ["suitability_score", "justification"],
+      "properties": {
+        "suitability_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Integer score from 0-100 representing overall fit"
+        },
+        "justification": {
+          "type": "string",
+          "description": "Detailed explanation comparing candidate's qualifications to job requirements"
+        },
+        "pros": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Specific point where the candidate strongly matches requirements"
+          },
+          "default": []
+        },
+        "cons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Specific area where the candidate's qualifications don't match requirements"
+          },
+          "default": []
+        },
+        "skill_match_summary": {
+          "type": "string",
+          "description": "Brief summary of skill alignment between candidate and job"
+        },
+        "experience_match_summary": {
+          "type": "string",
+          "description": "Brief summary of how well the candidate's experience matches requirements"
+        },
+        "education_match_summary": {
+          "type": "string",
+          "description": "Brief summary of education alignment"
+        },
+        "missing_keywords": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Important keywords/skills from the job description not evident in the resume"
+          },
+          "default": []
+        },
+        "strengths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "description": "Category of strength (e.g., 'Skills', 'Experience', 'Education')"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the strength"
+              },
+              "relevance": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "Relevance score (1-5) of this strength to the job"
+              }
+            },
+            "required": ["category", "description"]
+          },
+          "default": []
+        },
+        "areas_for_improvement": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "description": "Category of improvement area (e.g., 'Skills', 'Experience')"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the area for improvement"
+              },
+              "impact": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "Impact score (1-5) of this area on job suitability"
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "Suggested actions to improve in this area"
+                },
+                "default": []
+              }
+            },
+            "required": ["category", "description"]
+          },
+          "default": []
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Type of recommendation (e.g., 'Highlight', 'Address', 'Acquire')"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the recommendation"
+              },
+              "priority": {
+                "type": "string",
+                "enum": ["High", "Medium", "Low"],
+                "description": "Priority level of the recommendation"
+              }
+            },
+            "required": ["type", "description"]
+          },
+          "default": []
+        },
+        "overall_assessment": {
+          "type": "string",
+          "description": "Comprehensive assessment of the candidate's fit for the position"
+        },
+        "next_steps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Suggested next steps for the candidate or recruiter"
+          },
+          "default": []
+        },
+        "confidence_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score (0-1) in the analysis provided"
+        }
+      }
+    }
+  }
+}

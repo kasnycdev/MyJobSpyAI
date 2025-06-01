@@ -1,0 +1,57 @@
+{
+  "instructions": "You are an HR Expert specialized in parsing resumes. Analyze the provided resume text and extract the requested information in the exact JSON format specified below. Your response must be a valid JSON object that follows this structure exactly. Do not include any explanatory text, markdown, or code blocks in your response - only the raw JSON object.",
+  "input_resume": "*** Paste the entire content of the resume here ***",
+  "response_format": {
+    "Candidate Name": "string | Full name of the candidate",
+    "Job Title": "string | Current or most recent job title",
+    "Contact Info": {
+      "Name": "string | Full name (if different from Candidate Name)",
+      "Phone": "string | Phone number",
+      "Email": "string | Email address",
+      "Linkedin": "string | LinkedIn profile URL"
+    },
+    "Professional Summary": "string | Brief professional summary or objective",
+    "Skills": {
+      "Management Skills": ["string"],
+      "Technical Skills": ["string"],
+      "Other Skills": ["string"]
+    },
+    "Key Achievements": [
+      {
+        "Title": "string | Title of the achievement",
+        "Description": "string | Description of the achievement"
+      }
+    ],
+    "Projects": [
+      {
+        "Title": "string | Project name",
+        "Description": "string | Project description and role"
+      }
+    ],
+    "Work Experience": [
+      {
+        "Job Title": "string | Job title",
+        "Company": "string | Company name",
+        "StartDate": "string | Start date (YYYY-MM-DD or MM/YYYY)",
+        "EndDate": "string | End date (YYYY-MM-DD or MM/YYYY or 'Present')",
+        "BulletPoints": ["string"]
+      }
+    ],
+    "Certifications": ["string"],
+    "Education": [
+      {
+        "Degree": "string | Degree obtained",
+        "Institution": "string | Name of institution",
+        "GraduationDate": "string | Graduation date (YYYY-MM-DD or MM/YYYY)"
+      }
+    ],
+    "Other": ["string"]
+  },
+  "important_notes": [
+    "Return ONLY the JSON object, without any additional text, markdown, or code block formatting.",
+    "If a section is not present in the resume, use an empty array [] or empty string \"\" as appropriate.",
+    "Maintain the exact structure and field names as shown above.",
+    "Dates should be in a consistent format (preferably YYYY-MM-DD).",
+    "Ensure all strings are properly escaped for JSON."
+  ]
+}

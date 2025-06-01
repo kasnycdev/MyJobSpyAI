@@ -2,16 +2,21 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
+import json
 import logging
+import re
 import time
-from typing import Any, Dict, Optional, Union, AsyncIterator
+from typing import Any, Dict, Optional, Union, AsyncIterator, TypeVar
 
 import httpx
 from ollama import AsyncClient
-from myjobspyai.utils import with_retry
-
+from pydantic import BaseModel
 from myjobspyai.exceptions import LLMError, RateLimitExceeded
+from myjobspyai.utils import with_retry
 from .base import BaseProvider
+
+T = TypeVar('T', bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
@@ -379,7 +384,23 @@ class OllamaClient(BaseProvider):
         stream: bool = False,
         timeout: Optional[float] = None,
         **kwargs
-    ) -> Union[str, AsyncIterator[str]]:
+    ) -> Union[str, AsyncIterator[str], BaseModel]:
+        """Generate text using the Ollama API with enhanced JSON handling.
+        
+        Args:
+            prompt: The prompt to generate text from
+            model: The model to use for generation (defaults to config model)
+            temperature: Controls randomness (0.0 to 1.0)
+            max_tokens: Maximum number of tokens to generate
+            stream: Whether to stream the response
+            timeout: Optional timeout in seconds
+            **kwargs: Additional parameters including:
+                - response_model: Pydantic model to parse response into
+                - format: Force 'json' format for structured output
+                
+        Returns:
+            The generated text, or a parsed Pydantic model if response_model is provided
+            """
         """Generate text using the Ollama API.
         
         Args:
@@ -426,6 +447,12 @@ class OllamaClient(BaseProvider):
                 self.logger.warning("Model verification timed out, attempting to continue...")
                 # Continue anyway as the model might still be usable
             
+            # Extract response_model from kwargs if present
+            response_model = kwargs.pop('response_model', None)
+            
+            # Check if we should force JSON output
+            force_json = kwargs.get('format', '').lower() == 'json' or 'response_model' in kwargs
+            
             # Prepare generation options with enhanced defaults
             options = {
                 'temperature': max(0.0, min(1.0, float(temperature))),  # Clamp to 0-1 range
@@ -434,8 +461,31 @@ class OllamaClient(BaseProvider):
                 'repeat_penalty': 1.1,
                 'top_k': 40,
                 'stop': ['\n###', '\n\n'],
-                **{k: v for k, v in kwargs.items() if v is not None and k not in ['model', 'prompt', 'stream']}
+                **{k: v for k, v in kwargs.items() if v is not None and k not in ['model', 'prompt', 'stream', 'response_model', 'format', 'schema']}
             }
+            
+            # If JSON is forced, update the prompt to include JSON schema instructions
+            if force_json:
+                json_schema = kwargs.get('schema')
+                if json_schema:
+                    if isinstance(json_schema, dict):
+                        try:
+                            json_schema = json.dumps(json_schema, indent=2)
+                        except (TypeError, ValueError):
+                            self.logger.warning("Failed to serialize JSON schema, using as-is")
+                    
+                    # Add JSON schema instructions to the prompt
+                    schema_instructions = (
+                        "\n\nIMPORTANT: You MUST respond with a valid JSON object that matches the following schema. "
+                        "Do not include any other text, markdown, or code blocks in your response. "
+                        "Only the raw JSON object is accepted.\n\n"
+                        f"JSON Schema:\n```json\n{json_schema}\n```\n\n"
+                        "Your response (JSON only, no other text):\n"
+                    )
+                    prompt = prompt.rstrip() + "\n\n" + schema_instructions
+                
+                # Set format to json in options
+                options['format'] = 'json'
             
             # Log the request (without the full prompt in production)
             self.logger.debug("Sending request to Ollama API")
@@ -449,15 +499,19 @@ class OllamaClient(BaseProvider):
             
             # Make the request with timeout
             start_time = time.time()
-            response = await asyncio.wait_for(
-                self._client.generate(
-                    model=model,
-                    prompt=prompt,
-                    options=options,
-                    stream=False
-                ),
-                timeout=request_timeout
-            )
+            try:
+                response = await asyncio.wait_for(
+                    self._client.generate(
+                        model=model,
+                        prompt=prompt,
+                        options=options,
+                        stream=False
+                    ),
+                    timeout=request_timeout
+                )
+            except Exception as e:
+                self.logger.error(f"Error in Ollama API call: {str(e)}", exc_info=True)
+                raise LLMError(f"Ollama API call failed: {str(e)}") from e
             
             # Log response time
             elapsed = time.time() - start_time
@@ -467,12 +521,18 @@ class OllamaClient(BaseProvider):
             if not response:
                 raise LLMError("Empty response from Ollama API")
                 
+            # Extract response text based on response format
+            response_text = None
+            
             # Handle case where response is already a string
             if isinstance(response, str):
                 response_text = response.strip()
             # Handle case where response is a dictionary with 'response' key
-            elif isinstance(response, dict) and 'response' in response:
-                response_text = response['response']
+            elif isinstance(response, dict):
+                if 'response' in response:
+                    response_text = response['response']
+                elif 'error' in response:
+                    raise LLMError(f"Ollama API error: {response['error']}")
             # Handle case where response is an object with 'response' attribute
             elif hasattr(response, 'response'):
                 response_text = response.response
@@ -486,7 +546,7 @@ class OllamaClient(BaseProvider):
                 # Try to get the response text using common attributes
                 for attr in ['text', 'output', 'result']:
                     if hasattr(response, attr):
-                        response_text = getattr(response, attr)
+                        response_text = str(getattr(response, attr))
                         break
                 else:
                     # Last resort: convert to string and clean up
@@ -495,7 +555,63 @@ class OllamaClient(BaseProvider):
             if not response_text:
                 error_msg = response.get('error', 'No response content') if isinstance(response, dict) else 'Empty response content'
                 raise LLMError(f"Ollama API error: {error_msg}")
+            
+            # If response_model is provided, parse the response text into the model
+            if response_model is not None and inspect.isclass(response_model) and issubclass(response_model, BaseModel):
+                response_text = response_text.strip()
                 
+                # If we forced JSON output, try to parse directly first
+                if force_json:
+                    try:
+                        # Try direct JSON parse first
+                        json_data = json.loads(response_text)
+                        return response_model.model_validate(json_data)
+                    except json.JSONDecodeError as je:
+                        self.logger.debug(f"Direct JSON parse failed, trying patterns: {str(je)}")
+                        # Fall through to pattern matching
+                
+                # Common JSON parsing patterns to try
+                json_patterns = [
+                    # Try to extract JSON from markdown code blocks first
+                    r'```(?:json\n)?(.*?)```',
+                    # Try to extract JSON from any code block
+                    r'```(.*?)```',
+                    # Try to find JSON object or array
+                    r'{[\s\S]*}'
+                ]
+                
+                for pattern in json_patterns:
+                    try:
+                        match = re.search(pattern, response_text, re.DOTALL)
+                        if match:
+                            json_str = match.group(1) if len(match.groups()) > 0 else match.group(0)
+                            json_str = json_str.strip()
+                            
+                            # Clean up common JSON issues
+                            json_str = re.sub(r'^[^\{]*', '', json_str)  # Remove non-JSON prefix
+                            json_str = re.sub(r'[^\}]*$', '', json_str)  # Remove non-JSON suffix
+                            
+                            # Try to parse the JSON
+                            try:
+                                json_data = json.loads(json_str)
+                                return response_model.model_validate(json_data)
+                            except (json.JSONDecodeError, ValueError) as je:
+                                self.logger.debug(f"Failed to parse JSON with pattern '{pattern}': {str(je)}")
+                                continue
+                    except Exception as e:
+                        self.logger.debug(f"Error processing pattern '{pattern}': {str(e)}")
+                        continue
+                
+                # If we get here, all parsing attempts failed
+                error_msg = (
+                    f"Failed to parse response into {response_model.__name__}. "
+                    f"The response was not in a valid JSON format. "
+                    f"Response type: {type(response_text).__name__}, length: {len(response_text) if response_text else 0}\n"
+                    f"Response start (200 chars): {str(response_text)[:200] if response_text else 'None'}"
+                )
+                self.logger.error(error_msg)
+                raise LLMError(error_msg)
+            
             # Update last used timestamp
             self._last_used = time.time()
             

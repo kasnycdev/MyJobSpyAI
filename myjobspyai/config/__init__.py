@@ -15,7 +15,6 @@ from pydantic import (
     Field,
     field_validator,
     model_validator,
-    HttpUrl,
     ValidationError as PydanticValidationError,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -52,6 +51,72 @@ def validate_required_fields(model: type[BaseModel], data: Dict[str, Any]) -> No
     if errors:
         raise MissingRequiredFieldError("\n".join(errors))
 
+class ProviderConfig(BaseModel):
+    """Configuration for a specific LLM provider."""
+    api_key: Optional[str] = Field(
+        default=None,
+        description="API key for the provider",
+        exclude=True
+    )
+    model: str = Field(
+        ...,  # Required field
+        description="Model name to use"
+    )
+    temperature: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature"
+    )
+    max_tokens: int = Field(
+        default=2000,
+        ge=1,
+        description="Maximum number of tokens in the response"
+    )
+    top_p: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Top-p (nucleus) sampling parameter"
+    )
+    timeout: float = Field(
+        default=30.0,
+        gt=0,
+        description="Request timeout in seconds"
+    )
+    max_retries: int = Field(
+        default=3,
+        ge=0,
+        le=10,
+        description="Maximum number of retry attempts"
+    )
+    base_url: Optional[str] = Field(
+        default=None,
+        description="Base URL for self-hosted instances (e.g., http://localhost:11434 for Ollama)"
+    )
+
+class StreamingConfig(BaseModel):
+    """Streaming configuration settings."""
+    enabled: bool = Field(
+        default=True,
+        description="Enable/disable streaming"
+    )
+    chunk_size: int = Field(
+        default=128,
+        ge=1,
+        description="Number of tokens per chunk"
+    )
+    timeout: float = Field(
+        default=30.0,
+        gt=0,
+        description="Timeout in seconds for each chunk"
+    )
+    buffer_size: int = Field(
+        default=5,
+        ge=1,
+        description="Number of chunks to buffer"
+    )
+
 class LLMConfig(BaseModel):
     """Configuration for LLM providers."""
     provider: str = Field(
@@ -65,37 +130,21 @@ class LLMConfig(BaseModel):
         description="Model name to use (must be specified in config.yaml)",
         examples=["deepseek-r1:1.5b", "llama3:instruct", "llama2", "gemini-pro"]
     )
-    api_key: Optional[str] = Field(
+    streaming: StreamingConfig = Field(
+        default_factory=StreamingConfig,
+        description="Streaming configuration"
+    )
+    openai: Optional[ProviderConfig] = Field(
         default=None,
-        description=(
-            "API key for the provider. Required for cloud-based providers "
-            "like OpenAI and Anthropic."
-        ),
-        exclude=True  # Don't include in string representation
+        description="OpenAI provider configuration"
     )
-    base_url: Optional[HttpUrl] = Field(
+    gemini: Optional[ProviderConfig] = Field(
         default=None,
-        description=(
-            "Base URL for self-hosted instances. "
-            "Example: http://localhost:11434 for Ollama"
-        )
+        description="Gemini provider configuration"
     )
-    timeout: float = Field(
-        default=30.0,
-        gt=0,
-        description=(
-            "Request timeout in seconds. Increase this for slower connections "
-            "or larger models."
-        )
-    )
-    max_retries: int = Field(
-        default=3,
-        ge=0,
-        le=10,
-        description=(
-            "Maximum number of retry attempts for failed requests. "
-            "Set to 0 to disable retries."
-        )
+    ollama: Optional[ProviderConfig] = Field(
+        default=None,
+        description="Ollama provider configuration"
     )
     temperature: float = Field(
         default=0.7,
@@ -142,19 +191,7 @@ class LLMConfig(BaseModel):
         )
     )
     
-    # Provider-specific configurations
-    openai: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="OpenAI-specific configuration"
-    )
-    ollama: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Ollama-specific configuration"
-    )
-    gemini: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Gemini-specific configuration"
-    )
+
     
     # Streaming configuration
     streaming: Dict[str, Any] = Field(
@@ -1192,10 +1229,11 @@ def configure(config_path: Optional[Union[str, Path]] = None, **overrides) -> Ap
             logger.debug(f"CLI overrides: {cli_args}")
         
         # Log important configuration details
+        provider_config = getattr(settings.llm, settings.llm.provider)
         logger.debug(f"Active LLM provider: {settings.llm.provider}")
         logger.debug(f"Active model: {settings.llm.model}")
-        if settings.llm.base_url:
-            logger.debug(f"Base URL: {settings.llm.base_url}")
+        if provider_config.base_url:
+            logger.debug(f"Base URL: {provider_config.base_url}")
         
         return settings
         

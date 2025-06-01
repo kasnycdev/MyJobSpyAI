@@ -5,15 +5,17 @@ This module provides comprehensive logging and OpenTelemetry integration,
 including structured logging, trace correlation, and metrics collection.
 """
 from __future__ import annotations
-                                
+
+# Standard library imports
+import glob
 import logging
 import logging.config
 import os
 import sys  # Used for sys.path in debug logging
 import time  # Used for time-related operations
-from logging.handlers import RotatingFileHandler
 from collections.abc import Callable
-from typing import Any, Optional, TypeVar, Literal
+from logging.handlers import RotatingFileHandler
+from typing import Any, Literal, Optional, TypeVar, Optional as Opt
 
 # Third-party imports
 import structlog
@@ -24,6 +26,74 @@ from structlog.types import EventDict, Processor
 # Local application imports
 from myjobspyai.utils.config_utils import config as settings
 from myjobspyai.utils.otel_config import OTELSDKConfig, get_otel_config
+
+
+class OverwritingRotatingFileHandler(RotatingFileHandler):
+    """A RotatingFileHandler that can overwrite existing log files.
+    
+    This handler will delete any existing log files matching the pattern
+    when it's first instantiated, then behave like a normal RotatingFileHandler.
+    """
+    def __init__(
+        self,
+        filename: str,
+        mode: str = 'a',
+        maxBytes: int = 0,
+        backupCount: int = 0,
+        encoding: Opt[str] = None,
+        delay: bool = False,
+        errors: Opt[str] = None,
+    ) -> None:
+        # Delete any existing log files before initializing the handler
+        if os.path.exists(filename):
+            try:
+                os.remove(filename)
+            except OSError:
+                pass
+                
+        # Also clean up any rotated log files
+        if backupCount > 0:
+            for f in glob.glob(f"{filename}.*"):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+        
+        # Now initialize the parent class
+        super().__init__(
+            filename=filename,
+            mode=mode,
+            maxBytes=maxBytes,
+            backupCount=backupCount,
+            encoding=encoding,
+            delay=delay,
+            errors=errors
+        )
+        
+    def doRollover(self) -> None:
+        """Override to handle rollover with our custom behavior."""
+        if self.stream:
+            self.stream.close()
+            self.stream = None  # type: ignore
+            
+        if self.backupCount > 0:
+            for i in range(self.backupCount - 1, 0, -1):
+                sfn = f"{self.baseFilename}.{i}"
+                dfn = f"{self.baseFilename}.{i + 1}"
+                if os.path.exists(sfn):
+                    if os.path.exists(dfn):
+                        os.remove(dfn)
+                    os.rename(sfn, dfn)
+            
+            dfn = f"{self.baseFilename}.1"
+            if os.path.exists(dfn):
+                os.remove(dfn)
+            
+            if os.path.exists(self.baseFilename):
+                os.rename(self.baseFilename, dfn)
+        
+        if not self.delay:
+            self.stream = self._open()
 
 # Type variable for generic exporter factory function
 T = TypeVar('T')
@@ -567,24 +637,22 @@ def setup_logging() -> None:
         
         # Debug file handler - logs everything
         debug_log_path = os.path.join(logs_dir, "debug.log")
-        debug_file_handler = RotatingFileHandler(
-            debug_log_path,
+        debug_file_handler = OverwritingRotatingFileHandler(
+            filename=debug_log_path,
             maxBytes=getattr(settings.logging, 'max_size', 10 * 1024 * 1024) if hasattr(settings, 'logging') else 10 * 1024 * 1024,
             backupCount=getattr(settings.logging, 'backup_count', 5) if hasattr(settings, 'logging') else 5,
-            encoding="utf-8",
-            mode='w'  # Always overwrite the log file
+            encoding="utf-8"
         )
         debug_file_handler.setLevel(logging.DEBUG)
         debug_file_handler.setFormatter(detailed_formatter)
         
         # Error file handler - only logs errors and above
         error_log_path = os.path.join(logs_dir, "error.log")
-        error_file_handler = RotatingFileHandler(
-            error_log_path,
+        error_file_handler = OverwritingRotatingFileHandler(
+            filename=error_log_path,
             maxBytes=getattr(settings.logging, 'max_size', 10 * 1024 * 1024) if hasattr(settings, 'logging') else 10 * 1024 * 1024,
             backupCount=getattr(settings.logging, 'backup_count', 5) if hasattr(settings, 'logging') else 5,
-            encoding="utf-8",
-            mode='w'  # Always overwrite the log file
+            encoding="utf-8"
         )
         error_file_handler.setLevel(logging.ERROR)
         error_file_handler.setFormatter(detailed_formatter)
@@ -630,12 +698,11 @@ def setup_logging() -> None:
     model_output_logger.propagate = False  # Prevent model output from going to root logger's handlers
     
     # Create a separate file handler for model output
-    model_output_handler = RotatingFileHandler(
-        model_output_log_path,
+    model_output_handler = OverwritingRotatingFileHandler(
+        filename=model_output_log_path,
         maxBytes=getattr(settings.logging, 'max_size', 10 * 1024 * 1024),  # Default to 10 MB
         backupCount=getattr(settings.logging, 'backup_count', 5),  # Default to 5 backups
-        encoding='utf-8',
-        mode='w'  # Always overwrite the log file
+        encoding='utf-8'
     )
     model_output_handler.setLevel(logging.INFO)
     model_output_formatter = logging.Formatter(
@@ -649,6 +716,40 @@ def setup_logging() -> None:
     model_output_logger.info("Model output logging initialized")
     logger.info("Model output will be written to: %s", model_output_log_path)
 
-# ... (rest of the code remains the same)
-# logger.debug("This is a debug message from my_module.")
-# logger.error("This is an error message from my_module.", exc_info=True) # For errors with tracebacks
+def log_model_output(model_name: str, prompt: str, response: str, metadata: dict = None) -> None:
+    """
+    Log model input/output to a dedicated log file.
+    
+    Args:
+        model_name: Name or identifier of the model
+        prompt: The input prompt sent to the model
+        response: The model's response
+        metadata: Optional additional metadata to include in the log
+    """
+    try:
+        model_logger = logging.getLogger(MODEL_OUTPUT_LOGGER_NAME)
+        
+        # Prepare log entry
+        log_entry = {
+            "model": model_name,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "prompt": prompt,
+            "response": response,
+            "metadata": metadata or {}
+        }
+        
+        # Log as JSON for easy parsing
+        import json
+        model_logger.info(json.dumps(log_entry, ensure_ascii=False))
+        
+    except Exception as e:
+        # Fallback to regular error logging if model logging fails
+        logger.error(f"Failed to log model output: {str(e)}", exc_info=True)
+
+# Example usage:
+# log_model_output(
+#     model_name="gpt-4",
+#     prompt="What is the capital of France?",
+#     response="The capital of France is Paris.",
+#     metadata={"temperature": 0.7, "max_tokens": 50}
+# )

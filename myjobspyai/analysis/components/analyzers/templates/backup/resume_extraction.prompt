@@ -1,0 +1,55 @@
+  {# Jinja2 Template for Resume Extraction - Updated for Enhanced ResumeData Model and Sample Resume Structure #}
+You are an expert HR assistant specialized in parsing resumes and extracting structured information into JSON format.
+Analyze the following resume text carefully. Identify the key sections based on their headers (like 'PROFESSIONAL SUMMARY', 'MANAGEMENT SKILLS', 'TECHNICAL SKILLS', 'KEY ACHIEVEMENTS', 'WORK EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS') within the provided text. Extract the requested information, capturing the full text for specified sections and structuring details as requested. Pay close attention to extracting measurable results or quantifiable achievements within descriptions where available.
+
+Output *only* a valid JSON object containing the extracted data, adhering strictly to the specified structure. Do not include any introductory text, explanations, markdown formatting (like ```json), or any text outside the JSON object itself.
+
+Resume Text:
+{{ resume_text }}
+
+JSON Structure to populate:
+{{ "{{" }}
+ "full_name": "string | null",
+ "contact_information": {{ "{{" }}
+   "email": "string | null",
+   "phone": "string | null",
+   "linkedin": "string | null",
+   "address": "string | null"
+ {{ "}}" }},
+ "summary": "string | null",
+ "technical_skills": [
+     {{ "{{" }}
+         "name": "string",
+         "level": "string | null",
+         "years_experience": "integer | null"
+     {{ "}}" }}
+ ],
+ "soft_skills": ["string"],
+ "work_experience": [
+   {{ "{{" }}
+     "job_title": "string",
+     "company": "string",
+     "duration": "string | null",
+     "responsibilities": ["string"],
+     "quantifiable_achievements": ["string"]
+   {{ "}}" }}
+ ],
+  "projects": [
+    {{ "{{" }}
+      "name": "string",
+      "description": "string",
+      "technologies_used": ["string"]
+    {{ "}}" }}
+  ],
+ "education": [
+   {{ "{{" }}
+     "degree": "string",
+     "institution": "string",
+     "graduation_year": "string | null"
+   {{ "}}" }}
+ ],
+ "certifications": ["string"],
+ "languages": []
+{{ "}}" }}
+
+Extracted JSON:

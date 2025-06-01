@@ -1,0 +1,86 @@
+{
+  "instructions": "You are an expert HR analyst tasked with extracting structured information from a job description. Analyze the provided job description text and output a JSON object that follows the exact format specified below. Your response must be a valid JSON object that strictly adheres to this structure. Do not include any explanatory text, markdown, or code blocks in your response - only the raw JSON object.",
+  
+  "input": {
+    "job_description": "*** Paste the job description text here ***",
+    "job_url": "*** Paste the job URL here ***" 
+  },
+  
+  "response_format": {
+    "job_title_extracted": "string | The exact job title as mentioned in the description",
+    "key_responsibilities": [
+      {
+        "name": "string | A specific responsibility or duty"
+      }
+    ],
+    "required_skills": [
+      {
+        "name": "string | Name of the required skill",
+        "level": "string | Proficiency level (e.g., 'Beginner', 'Intermediate', 'Expert')",
+        "years_experience": "number | Minimum years of experience required"
+      }
+    ],
+    "preferred_skills": [
+      {
+        "name": "string | Name of the preferred skill",
+        "level": "string | Proficiency level",
+        "years_experience": "number | Years of experience preferred"
+      }
+    ],
+    "required_experience_years": "number | Minimum years of experience required",
+    "preferred_experience_years": "number | Preferred years of experience",
+    "required_education": [
+      {
+        "name": "string | Required degree or certification"
+      }
+    ],
+    "preferred_education": [
+      {
+        "name": "string | Preferred degree or certification"
+      }
+    ],
+    "salary_range_extracted": "string | Salary range if mentioned (e.g., '$80,000 - $100,000')",
+    "work_model_extracted": "string | Work model (e.g., 'Remote', 'On-site', 'Hybrid')",
+    "company_culture_hints": [
+      {
+        "name": "string | Aspect of company culture mentioned"
+      }
+    ],
+    "tools_technologies": [
+      {
+        "name": "string | Name of a tool or technology mentioned"
+      }
+    ],
+    "job_type": "string | Type of job (e.g., 'Full-time', 'Part-time', 'Contract')",
+    "industry": "string | Industry of the company",
+    "company_name": "string | Name of the company",
+    "company_size": "string | Size of the company (e.g., '51-200 employees')",
+    "location": "string | Job location (city, state, country)",
+    "job_description": "string | The full job description text",
+    "required_certifications": [
+      {
+        "name": "string | Name of a required certification"
+      }
+    ],
+    "preferred_certifications": [
+      {
+        "name": "string | Name of a preferred certification"
+      }
+    ],
+    "security_clearance": "string | Security clearance level if required",
+    "travel_requirements": "string | Travel requirements if mentioned",
+    "job_id": "string | Job ID or reference number if available",
+    "source": "string | Source of the job posting",
+    "posting_date": "string | Date when the job was posted (YYYY-MM-DD format if possible)"
+  },
+  
+  "important_notes": [
+    "Return ONLY the JSON object, without any additional text, markdown, or code block formatting.",
+    "If a field is not mentioned in the job description, use null for that field.",
+    "For array fields, return an empty array [] if no items are found.",
+    "Maintain the exact structure and field names as shown above.",
+    "Extract only information that is explicitly stated or strongly implied in the job description.",
+    "Do not include any personal opinions or assumptions in the output.",
+    "Ensure all strings are properly escaped for JSON."
+  ]
+}

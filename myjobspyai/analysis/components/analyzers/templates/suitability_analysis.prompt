@@ -1,0 +1,45 @@
+{
+  "instructions": "You are an expert HR analyst simulating the process of screening a candidate's resume against a specific job description. Your goal is to provide a detailed, evidence-based suitability analysis that evaluates the candidate's fit for the position. Your response must be a valid JSON object that follows the exact format specified below. Do not include any explanatory text, markdown, or code blocks in your response - only the raw JSON object.",
+  
+  "input": {
+    "resume_data": "*** Paste the structured resume data here ***",
+    "job_data": "*** Paste the job description data here ***"
+  },
+  
+  "response_format": {
+    "original_job_data": {},
+    "analysis": {
+      "suitability_score": "number | Integer score from 0-100 representing overall fit",
+      "justification": "string | Detailed explanation comparing candidate's qualifications to job requirements",
+      "pros": [
+        "string | Specific point where the candidate strongly matches requirements"
+      ],
+      "cons": [
+        "string | Specific area where the candidate's qualifications don't match requirements"
+      ],
+      "skill_match_summary": "string | Brief summary of skill alignment between candidate and job",
+      "experience_match_summary": "string | Brief summary of how well the candidate's experience matches requirements",
+      "education_match_summary": "string | Brief summary of education alignment",
+      "missing_keywords": [
+        "string | Important keywords/skills from the job description not evident in the resume"
+      ]
+    }
+  },
+  
+  "analysis_guidelines": [
+    "Evaluate candidate fit based on essential requirements, skill alignment, experience relevance, and contextual fit.",
+    "For skill alignment, differentiate between 'must-have' and 'nice-to-have' skills based on the job description.",
+    "For experience, consider relevance of previous roles, responsibilities, and accomplishments.",
+    "Consider career progression and increasing responsibility in the candidate's work history.",
+    "The suitability score should reflect the overall fit, weighted more heavily toward essential requirements."
+  ],
+  
+  "important_notes": [
+    "Return ONLY the JSON object, without any additional text, markdown, or code block formatting.",
+    "The 'original_job_data' field must contain the exact, unmodified job data that was provided as input.",
+    "For array fields, return an empty array [] if no items are found.",
+    "Maintain the exact structure and field names as shown above.",
+    "Be specific and evidence-based in your analysis, citing details from both the resume and job description.",
+    "Ensure all strings are properly escaped for JSON."
+  ]
+}

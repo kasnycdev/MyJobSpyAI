@@ -1,0 +1,228 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Job Description Extraction Schema",
+  "description": "Schema for structured job description data extracted from text",
+  "type": "object",
+  "required": ["job_title_extracted", "key_responsibilities", "required_skills"],
+  "properties": {
+    "job_title_extracted": {
+      "type": "string",
+      "description": "The exact job title as mentioned in the description"
+    },
+    "key_responsibilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "A specific responsibility or duty"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "required_skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the required skill"
+          },
+          "level": {
+            "type": "string",
+            "description": "Proficiency level (e.g., 'Beginner', 'Intermediate', 'Expert')",
+            "enum": ["Beginner", "Intermediate", "Expert", ""]
+          },
+          "years_experience": {
+            "type": ["number", "null"],
+            "description": "Minimum years of experience required"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "preferred_skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the preferred skill"
+          },
+          "level": {
+            "type": "string",
+            "description": "Proficiency level",
+            "enum": ["Beginner", "Intermediate", "Expert", ""]
+          },
+          "years_experience": {
+            "type": ["number", "null"],
+            "description": "Years of experience preferred"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "required_experience_years": {
+      "type": ["number", "null"],
+      "description": "Minimum years of experience required"
+    },
+    "preferred_experience_years": {
+      "type": ["number", "null"],
+      "description": "Preferred years of experience"
+    },
+    "required_education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Required degree or certification"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "preferred_education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Preferred degree or certification"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "salary_range_extracted": {
+      "type": "string",
+      "description": "Salary range if mentioned (e.g., '$80,000 - $100,000')"
+    },
+    "work_model_extracted": {
+      "type": "string",
+      "description": "Work model (e.g., 'Remote', 'On-site', 'Hybrid')",
+      "enum": ["Remote", "On-site", "Hybrid", ""]
+    },
+    "company_culture_hints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Aspect of company culture mentioned"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "tools_technologies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of a tool or technology mentioned"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the tool/technology"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    "job_level": {
+      "type": "string",
+      "description": "Experience level (e.g., 'Entry', 'Mid', 'Senior', 'Lead')",
+      "enum": ["Entry", "Mid", "Senior", "Lead", ""]
+    },
+    "industry": {
+      "type": "string",
+      "description": "Industry or sector the job belongs to"
+    },
+    "location": {
+      "type": "string",
+      "description": "Job location if specified"
+    },
+    "job_type": {
+      "type": "string",
+      "description": "Type of employment (e.g., 'Full-time', 'Part-time', 'Contract')",
+      "enum": ["Full-time", "Part-time", "Contract", "Temporary", "Internship", ""]
+    },
+    "travel_requirements": {
+      "type": "string",
+      "description": "Any travel requirements mentioned"
+    },
+    "security_clearance_required": {
+      "type": "boolean",
+      "description": "Whether security clearance is required"
+    },
+    "relocation_assistance": {
+      "type": "boolean",
+      "description": "Whether relocation assistance is provided"
+    },
+    "application_deadline": {
+      "type": "string",
+      "format": "date",
+      "description": "Application deadline if specified"
+    },
+    "start_date": {
+      "type": "string",
+      "description": "Expected start date if mentioned"
+    },
+    "benefits": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "List of benefits mentioned"
+      }
+    },
+    "company_name": {
+      "type": "string",
+      "description": "Name of the company posting the job"
+    },
+    "company_size": {
+      "type": "string",
+      "description": "Size of the company if mentioned"
+    },
+    "company_website": {
+      "type": "string",
+      "format": "uri",
+      "description": "Company website if provided"
+    },
+    "contact_information": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Contact person's name if provided"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact email if provided"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number if provided"
+        }
+      }
+    },
+    "application_instructions": {
+      "type": "string",
+      "description": "Instructions for applying to the position"
+    },
+    "equal_opportunity_statement": {
+      "type": "string",
+      "description": "EEO statement if included"
+    }
+  }
+}

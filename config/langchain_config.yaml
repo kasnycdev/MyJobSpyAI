@@ -1,0 +1,42 @@
+# LangChain Configuration
+langchain:
+  # Model settings
+  model:
+    name: "llama3"  # Default model to use
+    temperature: 0.1  # Lower for more deterministic outputs
+    max_tokens: 2000  # Maximum tokens to generate
+    
+  # Analyzer settings
+  analyzer:
+    chunk_size: 4000  # For splitting large resumes
+    chunk_overlap: 200  # Overlap between chunks
+    
+  # Matching settings
+  matching:
+    skill_weight: 0.5  # Weight for skill matching (0-1)
+    experience_weight: 0.3  # Weight for experience matching
+    education_weight: 0.2  # Weight for education matching
+    min_skill_match: 0.7  # Minimum skill match ratio (0-1)
+    
+  # Vector store settings (for semantic search)
+  vector_store:
+    type: "faiss"  # Can be 'faiss' or 'chroma'
+    persist_dir: "./data/vector_store"  # Where to store vectors
+    
+  # LLM provider settings
+  provider:
+    type: "ollama"  # 'ollama' or 'openai'
+    base_url: "http://localhost:11434"  # Ollama server URL
+    timeout: 300  # Request timeout in seconds
+    max_retries: 3  # Max retries for API calls
+    
+  # Caching settings
+  cache:
+    enabled: true  # Enable response caching
+    ttl: 86400  # Cache TTL in seconds (24 hours)
+    
+  # Logging
+  logging:
+    level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+    log_prompts: false  # Log prompts (can be verbose)
+    log_responses: false  # Log LLM responses
