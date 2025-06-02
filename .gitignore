@@ -163,3 +163,9 @@ package.json
 .windsurf/*
 !.windsurf/.gitkeep
 
+# Project specific directories to ignore
+src/myjobspyai/logs/
+src/myjobspyai/output/
+src/myjobspyai/parsers/
+*.egg-info/
+
