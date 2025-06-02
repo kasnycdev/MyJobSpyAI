@@ -151,5 +151,15 @@ profile.html
 profile.json
 .gitignore
 config.yaml
-scraped_jobs.json
+scraped_*.json
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+package.json
+
+# Windsurf rules and configuration
+.windsurf/
+.windsurf/*
+!.windsurf/.gitkeep
 
