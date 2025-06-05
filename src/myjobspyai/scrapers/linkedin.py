@@ -61,11 +61,11 @@ class LinkedInScraper(BaseJobScraper):
             List of JobListing objects
         """
         await self._init_session()
-        
+
         job_listings = []
         start = 0
         results_per_page = 10
-        
+
         try:
             while len(job_listings) < max_results:
                 # Build search URL
@@ -75,7 +75,7 @@ class LinkedInScraper(BaseJobScraper):
                     'start': start,
                     'count': results_per_page
                 }
-                
+
                 # Make request to LinkedIn job search
                 response = await self.session.get(
                     self.api_url,
@@ -85,21 +85,21 @@ class LinkedInScraper(BaseJobScraper):
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 )
-                
+
                 if response.status_code != 200:
                     self.logger.error(f"Failed to fetch jobs: {response.status_code}")
                     break
-                
+
                 # Parse response
                 data = response.json()
                 if not data.get('included'):
                     break
-                    
+
                 # Extract job listings
                 for job_data in data['included']:
                     if len(job_listings) >= max_results:
                         break
-                        
+
                     if job_data.get('trackingUrn'):
                         job = {
                             'title': job_data.get('title', 'No Title'),
@@ -110,18 +110,18 @@ class LinkedInScraper(BaseJobScraper):
                             'posted_date': job_data.get('listedAt', 0) / 1000,  # Convert to Unix timestamp
                             'job_posting_id': job_data.get('jobPostingId', '')
                         }
-                        
+
                         job_listings.append(JobListing(**job))
-                
+
                 # Check if we've reached the end of results
                 if len(data.get('included', [])) < results_per_page:
                     break
-                    
+
                 start += results_per_page
-                
+
         except Exception as e:
             self.logger.error(f"Error searching for jobs: {str(e)}", exc_info=True)
-        
+
         return job_listings
 
     async def get_job_details(self, job_url: str) -> Optional[Dict[str, Any]]:

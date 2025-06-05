@@ -28,7 +28,7 @@ from .base import BaseJobScraper, JobListing
 class ExampleScraper(BaseJobScraper):
     def __init__(self, config=None):
         super().__init__("example", config)
-    
+
     async def search_jobs(self, query, location, **kwargs):
         # Implementation here
         pass

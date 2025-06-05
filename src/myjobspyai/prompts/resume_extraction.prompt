@@ -1,10 +1,10 @@
 # Resume Information Extraction Prompt
-# 
+#
 # This prompt is used to extract structured information from resume/CV text.
-# 
+#
 # Required variables:
 # - resume_text: The full text content of the resume/CV
-# 
+#
 # Returns a JSON object with the following structure:
 # {
 #   "contact_info": {

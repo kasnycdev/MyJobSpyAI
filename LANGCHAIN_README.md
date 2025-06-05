@@ -53,7 +53,7 @@ llm_provider:
     provider: "openai"  # The underlying provider to use
     model: "gpt-4-turbo-preview"  # Model to use
     api_key: ${OPENAI_API_KEY}  # Read from environment variable
-    
+
     # Generation parameters
     temperature: 0.7
     max_tokens: 1000
@@ -61,26 +61,26 @@ llm_provider:
     frequency_penalty: 0.0
     presence_penalty: 0.0
     stop: null
-    
+
     # Connection settings
     streaming: true
     timeout: 60
     max_retries: 3
-    
+
     # Provider-specific configuration
     provider_config:
       # OpenAI-specific settings
       openai:
         organization: ${OPENAI_ORG_ID}  # Optional
-      
+
       # Anthropic-specific settings
       anthropic:
         max_tokens_to_sample: 1000
-        
+
       # Google-specific settings
       google:
         model_name: "gemini-pro"
-        
+
       # Ollama settings
       ollama:
         base_url: "http://localhost:11434"

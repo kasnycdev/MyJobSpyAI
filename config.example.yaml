@@ -27,7 +27,7 @@ job_sources:
       location: "United States"
       distance: 25  # miles
       limit: 50
-  
+
   # Example: Direct company job board
   company_board:
     name: "Example Company Jobs"
@@ -41,7 +41,7 @@ job_sources:
 provider:
   # Supported providers: openai, ollama, gemini
   type: "ollama"
-  
+
   # Provider-specific settings
   settings:
     # OpenAI settings (when provider=openai)
@@ -49,13 +49,13 @@ provider:
       api_key: "your-openai-api-key"
       model: "gpt-4-turbo-preview"
       temperature: 0.7
-    
+
     # Ollama settings (when provider=ollama)
     ollama:
       base_url: "http://localhost:11434"
       model: "llama3"
       temperature: 0.7
-    
+
     # Google Gemini settings (when provider=gemini)
     gemini:
       api_key: "your-gemini-api-key"
@@ -83,7 +83,7 @@ notifications:
     from_email: "noreply@example.com"
     to_emails:
       - "your-email@example.com"
-  
+
   # Webhook notifications (e.g., for Slack, Discord)
   webhook:
     enabled: false
@@ -103,14 +103,14 @@ matching:
     - "Flask"
     - "FastAPI"
     - "SQL"
-  
+
   preferred_skills:
     - "AWS"
     - "Docker"
     - "Kubernetes"
     - "CI/CD"
     - "TDD"
-  
+
   experience_level: "mid"  # junior, mid, senior, lead
   min_salary: 80000  # USD
   remote_ok: true
@@ -124,7 +124,7 @@ filters:
     - "Wipro"
     - "Infosys"
     - "Tata Consultancy Services"
-  
+
   exclude_keywords:
     - "senior"
     - "lead"
@@ -133,7 +133,7 @@ filters:
     - "director"
     - "vp"
     - "vice president"
-  
+
   exclude_titles:
     - "manager"
     - "architect"
@@ -149,7 +149,7 @@ database:
   # SQLite (default)
   engine: "sqlite"
   name: "{{ app.data_dir }}/myjobspyai.db"
-  
+
   # PostgreSQL example (uncomment and configure as needed)
   # engine: "postgresql"
   # name: "myjobspyai"

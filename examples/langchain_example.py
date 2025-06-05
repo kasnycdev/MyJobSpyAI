@@ -6,6 +6,7 @@ This script shows how to initialize the provider, generate text, and handle stre
 
 import asyncio
 import os
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
@@ -13,6 +14,7 @@ load_dotenv()
 
 # Import the provider
 from myjobspyai.llm.providers import LangChainProvider
+
 
 async def main():
     """Main async function to demonstrate provider usage."""
@@ -85,7 +87,7 @@ async def main():
                     }
                 }
             }
-            
+
             anthropic_provider = LangChainProvider(anthropic_config)
             try:
                 response = await anthropic_provider.generate(

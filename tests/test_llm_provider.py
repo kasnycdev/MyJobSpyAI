@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from myjobspyai.llm.base import LLMResponse, LLMError, LLMRequestError
-from myjobspyai.llm.providers.ollama import OllamaProvider, OllamaConfig
+from myjobspyai.llm.base import LLMError, LLMRequestError, LLMResponse
+from myjobspyai.llm.providers.ollama import OllamaConfig, OllamaProvider
 
 
 class TestOllamaConfig(TestCase):

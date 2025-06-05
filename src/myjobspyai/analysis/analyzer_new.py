@@ -12,26 +12,27 @@ import logging
 import time
 from collections import defaultdict
 from contextlib import suppress
-from typing import Any, Dict, Optional, Union, List, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
+
+import google.api_core.exceptions
+import google.generativeai as genai
+import ollama
 
 # Import LLM providers
 import openai
-import ollama
-import google.generativeai as genai
-import google.api_core.exceptions
+from analysis.providers.base import BaseProvider as LLMProvider
 
 # Import provider factory and base provider
 from analysis.providers.factory import ProviderFactory
-from analysis.providers.base import BaseProvider as LLMProvider
 
 # Import Jinja2 components
 try:
     from jinja2 import (
         Environment,
         FileSystemLoader,
-        select_autoescape,
         TemplateNotFound,
         TemplateSyntaxError,
+        select_autoescape,
     )
 
     JINJA2_AVAILABLE = True
@@ -39,8 +40,9 @@ except ImportError:
     JINJA2_AVAILABLE = False
 
 # Import models and utilities
-from analysis.models import ResumeData, JobAnalysisResult, ParsedJobData
+from analysis.models import JobAnalysisResult, ParsedJobData, ResumeData
 from config import settings
+
 from myjobspyai.utils.logging_utils import MODEL_OUTPUT_LOGGER_NAME
 
 # Get a logger for this module
@@ -48,14 +50,12 @@ logger = logging.getLogger(__name__)
 model_output_logger = logging.getLogger(MODEL_OUTPUT_LOGGER_NAME)
 
 # Import OpenTelemetry trace and metrics modules
-from opentelemetry import trace, metrics
+from opentelemetry import metrics, trace
 
 # Import tracer and meter instances from myjobspyai.utils.logging_utils
 try:
-    from myjobspyai.utils.logging_utils import (
-        tracer as global_tracer_instance,
-        meter as global_meter_instance,
-    )
+    from myjobspyai.utils.logging_utils import meter as global_meter_instance
+    from myjobspyai.utils.logging_utils import tracer as global_tracer_instance
 
     if (
         global_tracer_instance is None

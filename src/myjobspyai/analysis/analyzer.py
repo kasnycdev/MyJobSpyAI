@@ -1,55 +1,62 @@
-import openai
-import logging
-
 # Standard library imports
 import asyncio
 import inspect
 import json
-from traceback import format_exc
-from typing import Dict, List, Any, Optional, Union
-import re
+import logging
 import os
+import re
 import time
 from collections import defaultdict
 from contextlib import suppress
-from typing import Dict, Optional, Any, Union, List, Type, TYPE_CHECKING
+from traceback import format_exc
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 # Third-party imports
 import google.api_core.exceptions  # Added for DeadlineExceeded
 import google.generativeai as genai  # Corrected import alias
 import ollama
+import openai
 
-# cspell:ignore generativeai, genai, ollama, Jinja2, autoescape, lstrip_blocks, api_core
+from myjobspyai.analysis.providers.base import BaseProvider as LLMProvider
 
 # Import provider factory and base provider
 from myjobspyai.analysis.providers.factory import ProviderFactory
-from myjobspyai.analysis.providers.base import BaseProvider as LLMProvider
+
+# cspell:ignore generativeai, genai, ollama, Jinja2, autoescape, lstrip_blocks, api_core
+
 
 if TYPE_CHECKING:
-    from myjobspyai.analysis.providers import LangChainProvider  # For type checking only
+    from myjobspyai.analysis.providers import (
+        LangChainProvider,  # For type checking only
+    )
 
 # Import Jinja2 components
 try:
     from jinja2 import (
         Environment,
         FileSystemLoader,
-        select_autoescape,
         TemplateNotFound,
         TemplateSyntaxError,
+        select_autoescape,
     )
 
     JINJA2_AVAILABLE = True
 except ImportError:
     JINJA2_AVAILABLE = False
 
-from myjobspyai.analysis.models import ResumeData, JobAnalysisResult, ParsedJobData, SkillDetail
-from myjobspyai.filtering.filter_utils import DateEncoder
+from myjobspyai.analysis.models import (
+    JobAnalysisResult,
+    ParsedJobData,
+    ResumeData,
+    SkillDetail,
+)
 from myjobspyai.config import config
+from myjobspyai.filtering.filter_utils import DateEncoder
+from myjobspyai.utils.logging_utils import MODEL_OUTPUT_LOGGER_NAME
+from myjobspyai.utils.logging_utils import meter as global_meter_instance
 from myjobspyai.utils.logging_utils import (
-    MODEL_OUTPUT_LOGGER_NAME,
-    tracer as global_tracer_instance,
-    meter as global_meter_instance,
-)  # Import the constant for model output logger
+    tracer as global_tracer_instance,  # Import the constant for model output logger
+)
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
@@ -57,17 +64,15 @@ logger = logging.getLogger(__name__)
 model_output_logger = logging.getLogger(MODEL_OUTPUT_LOGGER_NAME)
 
 # Import OpenTelemetry trace and metrics modules
-from opentelemetry import (
-    trace,
+from opentelemetry import (  # Ensure trace and metrics modules are always imported
     metrics,
-)  # Ensure trace and metrics modules are always imported
+    trace,
+)
 
 # Import tracer and meter instances from myjobspyai.utils.logging_utils
 try:
-    from myjobspyai.utils.logging_utils import (
-        tracer as global_tracer_instance,
-        meter as global_meter_instance,
-    )
+    from myjobspyai.utils.logging_utils import meter as global_meter_instance
+    from myjobspyai.utils.logging_utils import tracer as global_tracer_instance
 
     # Use the global tracer instance if available
     if global_tracer_instance is not None:
@@ -168,7 +173,7 @@ class BaseAnalyzer:
         """
         # Get provider configuration from config
         default_provider = getattr(config, 'default_provider', 'openai')
-        
+
         # Use specified provider or default from config
         self.provider_name = provider_name or default_provider
         self.provider_type = None

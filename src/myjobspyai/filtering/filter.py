@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ except ImportError:
         exc_info=True,
     )
 
-from .filter_utils import parse_salary, normalize_string
+from .filter_utils import normalize_string, parse_salary
 
 
 # --- Main Filter Function ---

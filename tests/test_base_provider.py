@@ -5,8 +5,9 @@ This module contains tests to verify that the BaseProvider
 class works as expected and provides the required interface.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 
 # Import the modules to test
 from myjobspyai.analysis.providers.base import BaseProvider
@@ -17,7 +18,7 @@ TEST_CONFIG = {"param1": "value1", "param2": 42, "nested": {"key": "value"}}
 
 class TestBaseProvider:
     """Test cases for the BaseProvider class."""
-    
+
     class ConcreteProvider(BaseProvider):
         """Concrete implementation of BaseProvider for testing."""
 
@@ -66,10 +67,10 @@ class TestBaseProvider:
         # Create a new class that doesn't implement generate
         class UnimplementedProvider(BaseProvider):
             pass
-            
+
         with pytest.raises(TypeError) as exc_info:
             UnimplementedProvider(config=TEST_CONFIG, name="test_provider")
-            
+
         error_msg = str(exc_info.value)
         expected_msg = "Can't instantiate abstract class UnimplementedProvider with abstract method generate"
         assert error_msg == expected_msg
@@ -79,10 +80,10 @@ class TestBaseProvider:
         provider = self.ConcreteProvider(
             config=TEST_CONFIG, name="test_provider", provider_type="test_type"
         )
-        
+
         # Get the string representation
         str_rep = str(provider)
-        
+
         # Should contain the full class path
         assert "TestBaseProvider.ConcreteProvider" in str_rep
         # Should contain the memory address
@@ -95,10 +96,10 @@ class TestBaseProvider:
         provider = self.ConcreteProvider(
             config=TEST_CONFIG, name="test_provider", provider_type="test_type"
         )
-        
+
         # Get the repr representation
         repr_rep = repr(provider)
-        
+
         # Should be the same as str() for the default implementation
         assert repr_rep == str(provider)
         # Should contain the full class path
@@ -178,7 +179,7 @@ class TestProviderWithHooks:
                 # Call pre_generate manually for testing
                 prompt, kwargs = await self.pre_generate(prompt, **kwargs)
                 return await super().generate(prompt, **kwargs)
-                
+
         provider = PreHookTestProvider(
             config=TEST_CONFIG, name="hooked_provider", provider_type="hooked"
         )
@@ -200,7 +201,7 @@ class TestProviderWithHooks:
             async def generate(self, prompt, **kwargs):
                 response = await super().generate(prompt, **kwargs)
                 return await self.post_generate(response, **kwargs)
-                
+
         provider = PostHookTestProvider(
             config=TEST_CONFIG, name="hooked_provider", provider_type="hooked"
         )

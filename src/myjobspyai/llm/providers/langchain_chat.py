@@ -2,14 +2,19 @@
 
 import importlib
 import logging
-from typing import Any, Dict, List, Optional, Union, AsyncGenerator, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, Type, Union
 
-from myjobspyai.llm.base import BaseLLMProvider, LLMResponse, LLMError, LLMRequestError
+from myjobspyai.llm.base import BaseLLMProvider, LLMError, LLMRequestError, LLMResponse
 
 # Lazy imports to avoid loading all providers at once
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
-    from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
+    from langchain_core.messages import (
+        AIMessage,
+        BaseMessage,
+        HumanMessage,
+        SystemMessage,
+    )
     from langchain_core.outputs import ChatGeneration, ChatResult
     from langchain_core.runnables import RunnableConfig
     from langchain_core.runnables.config import run_in_executor
@@ -31,7 +36,7 @@ PROVIDER_MAPPING = {
     "openai": ("langchain_openai", "ChatOpenAI"),
     "anthropic": ("langchain_anthropic", "ChatAnthropic"),
     "google": ("langchain_google_genai", "ChatGoogleGenerativeAI"),
-    
+
     # Community providers
     "ollama": ("langchain_community.chat_models", "ChatOllama"),
     "anyscale": ("langchain_community.chat_models", "ChatAnyscale"),
@@ -64,10 +69,10 @@ logger = logging.getLogger(__name__)
 
 class LangChainChatProvider(BaseLLMProvider):
     """LangChain chat model provider implementation."""
-    
+
     def __init__(self, config: Dict[str, Any]):
         """Initialize the LangChain chat model provider.
-        
+
         Args:
             config: Configuration dictionary with the following keys:
                 - provider: The provider name (e.g., 'openai', 'anthropic', 'google')
@@ -90,11 +95,11 @@ class LangChainChatProvider(BaseLLMProvider):
                 "LangChain is not installed. Please install it with: "
                 "pip install langchain-core langchain-openai langchain-community"
             )
-        
+
         # Initialize the base class with the provider name
         provider_type = config.get("provider", "openai").lower()
         super().__init__(provider_name=f"langchain_{provider_type}")
-        
+
         self.config = config
         self.provider = provider_type
         self.model = config.get("model", "gpt-4")
@@ -108,14 +113,14 @@ class LangChainChatProvider(BaseLLMProvider):
         self.timeout = int(config.get("timeout", 60))
         self.max_retries = int(config.get("max_retries", 3))
         self.provider_config = config.get("provider_config", {})
-        
+
         # Set API key from config or environment variable
         self.api_key = config.get("api_key")
         self.base_url = config.get("base_url")
-        
+
         # Initialize the chat model
         self._model = self._initialize_model()
-    
+
     def _initialize_model(self) -> BaseChatModel:
         """Initialize the LangChain chat model based on provider."""
         common_kwargs = {
@@ -127,17 +132,18 @@ class LangChainChatProvider(BaseLLMProvider):
             "max_retries": self.max_retries,
             **self.provider_config
         }
-        
+
         # Add API key and base URL if provided
         if self.api_key and self.api_key != "ollama":  # Skip API key for Ollama if it's just 'ollama'
             common_kwargs["api_key"] = self.api_key
         if self.base_url:
             common_kwargs["base_url"] = self.base_url
-        
+
         # Special handling for Ollama
         if self.provider == "ollama":
             try:
                 from langchain_community.chat_models import ChatOllama
+
                 # Ensure base_url is set for Ollama
                 if "base_url" not in common_kwargs:
                     common_kwargs["base_url"] = "http://10.10.0.178:11434"
@@ -147,11 +153,11 @@ class LangChainChatProvider(BaseLLMProvider):
             except ImportError as e:
                 logger.error("Failed to import Ollama. Install with: pip install langchain-community")
                 raise
-        
+
         # Initialize other providers
         try:
             module_name, class_name = PROVIDER_MAPPING.get(
-                self.provider, 
+                self.provider,
                 ("langchain_openai", "ChatOpenAI")
             )
             module = importlib.import_module(module_name)
@@ -162,7 +168,7 @@ class LangChainChatProvider(BaseLLMProvider):
         except (ImportError, AttributeError) as e:
             logger.error(f"Failed to initialize provider {self.provider}: {str(e)}")
             logger.warning(f"Provider '{self.provider}' not found or not properly configured. Defaulting to OpenAI.")
-            
+
             # Fall back to OpenAI if the configured provider fails
             try:
                 from langchain_openai import ChatOpenAI
@@ -173,14 +179,14 @@ class LangChainChatProvider(BaseLLMProvider):
                     "Failed to initialize default OpenAI provider. "
                     "Please install langchain-openai: pip install langchain-openai"
                 ) from e
-    
+
     async def generate(
         self,
         prompt: str,
         **kwargs: Any,
     ) -> LLMResponse:
         """Generate text from a prompt.
-        
+
         Args:
             prompt: The prompt to generate text from.
             **kwargs: Additional generation parameters.
@@ -190,10 +196,10 @@ class LangChainChatProvider(BaseLLMProvider):
                 - max_tokens: Override the default max tokens
                 - stop: Override the default stop sequences
                 - Any other model-specific parameters
-                
+
         Returns:
             LLMResponse containing the generated text and metadata
-            
+
         Raises:
             LLMError: If the request fails
         """
@@ -201,35 +207,35 @@ class LangChainChatProvider(BaseLLMProvider):
             # Extract common parameters
             system_message = kwargs.pop("system_message", None)
             messages = kwargs.pop("messages", None)
-            
+
             # Override instance settings with any provided in kwargs
             temperature = kwargs.pop("temperature", self.temperature)
             max_tokens = kwargs.pop("max_tokens", self.max_tokens)
             stop = kwargs.pop("stop", self.stop)
-            
+
             # Prepare messages
             chat_messages = []
-            
+
             # Add system message if provided
             if system_message:
                 chat_messages.append(SystemMessage(content=system_message))
-            
+
             # Add conversation history if provided
             if messages:
                 for msg in messages:
                     role = msg.get("role", "user").lower()
                     content = msg.get("content", "")
-                    
+
                     if role == "system":
                         chat_messages.append(SystemMessage(content=content))
                     elif role == "assistant":
                         chat_messages.append(AIMessage(content=content))
                     else:  # default to user
                         chat_messages.append(HumanMessage(content=content))
-            
+
             # Add the current user prompt
             chat_messages.append(HumanMessage(content=prompt))
-            
+
             # Prepare generation parameters
             generation_kwargs = {
                 "temperature": temperature,
@@ -237,13 +243,13 @@ class LangChainChatProvider(BaseLLMProvider):
                 "stop": stop,
                 **kwargs  # Allow any other model-specific parameters
             }
-            
+
             # Generate response
             response = await self._model.agenerate(
                 messages=[chat_messages],
                 **generation_kwargs
             )
-            
+
             # Extract the generated text
             if isinstance(response, ChatResult) and response.generations:
                 generation = response.generations[0]
@@ -252,21 +258,21 @@ class LangChainChatProvider(BaseLLMProvider):
                 text = generation.text
             else:
                 text = str(response)
-            
+
             # Calculate token usage if available
             usage = {
                 "prompt_tokens": None,
                 "completion_tokens": None,
                 "total_tokens": None
             }
-            
+
             if hasattr(response, "usage"):
                 usage.update({
                     "prompt_tokens": getattr(response.usage, "prompt_tokens", None),
                     "completion_tokens": getattr(response.usage, "completion_tokens", None),
                     "total_tokens": getattr(response.usage, "total_tokens", None),
                 })
-            
+
             return LLMResponse(
                 text=text,
                 model=self.model,
@@ -279,39 +285,39 @@ class LangChainChatProvider(BaseLLMProvider):
                     "stop": stop,
                 }
             )
-            
+
         except Exception as e:
             logger.error(f"Error in LangChain chat model generation: {str(e)}", exc_info=True)
             raise LLMRequestError(f"Error generating response: {str(e)}")
-    
+
     async def get_embeddings(
         self,
         texts: Union[str, List[str]],
         **kwargs: Any,
     ) -> List[List[float]]:
         """Get embeddings for the given texts.
-        
+
         Args:
             texts: A single text or a list of texts to get embeddings for.
             **kwargs: Additional parameters for the embedding model.
-            
+
         Returns:
             A list of embeddings, one for each input text.
-            
+
         Raises:
             NotImplementedError: If the provider doesn't support embeddings
         """
         # Most LangChain chat models don't support embeddings directly
         # This would require a separate embedding model
         raise NotImplementedError("Embeddings not supported by this provider. Use a dedicated embedding model.")
-    
+
     async def generate_stream(
         self,
         prompt: str,
         **kwargs: Any,
     ) -> AsyncGenerator[LLMResponse, None]:
         """Stream a response from the chat model.
-        
+
         Args:
             prompt: The prompt to generate text from.
             **kwargs: Additional generation parameters.
@@ -321,10 +327,10 @@ class LangChainChatProvider(BaseLLMProvider):
                 - max_tokens: Override the default max tokens
                 - stop: Override the default stop sequences
                 - Any other model-specific parameters
-                
+
         Yields:
             LLMResponse chunks containing the generated text and metadata
-            
+
         Raises:
             LLMError: If the request fails
         """
@@ -334,37 +340,37 @@ class LangChainChatProvider(BaseLLMProvider):
             response = await self.generate(prompt, **kwargs)
             yield response
             return
-        
+
         try:
             # Extract common parameters
             system_message = kwargs.pop("system_message", None)
             messages = kwargs.pop("messages", None)
-            
+
             # Override instance settings with any provided in kwargs
             temperature = kwargs.pop("temperature", self.temperature)
             max_tokens = kwargs.pop("max_tokens", self.max_tokens)
             stop = kwargs.pop("stop", self.stop)
-            
+
             # Prepare messages
             chat_messages = []
-            
+
             if system_message:
                 chat_messages.append(SystemMessage(content=system_message))
-            
+
             if messages:
                 for msg in messages:
                     role = msg.get("role", "user").lower()
                     content = msg.get("content", "")
-                    
+
                     if role == "system":
                         chat_messages.append(SystemMessage(content=content))
                     elif role == "assistant":
                         chat_messages.append(AIMessage(content=content))
                     else:
                         chat_messages.append(HumanMessage(content=content))
-            
+
             chat_messages.append(HumanMessage(content=prompt))
-            
+
             # Prepare generation parameters
             generation_kwargs = {
                 "temperature": temperature,
@@ -372,7 +378,7 @@ class LangChainChatProvider(BaseLLMProvider):
                 "stop": stop,
                 **kwargs  # Allow any other model-specific parameters
             }
-            
+
             # Stream the response
             full_response = ""
             async for chunk in self._model.astream(chat_messages, **generation_kwargs):
@@ -382,9 +388,9 @@ class LangChainChatProvider(BaseLLMProvider):
                     chunk_text = chunk.content
                 else:
                     chunk_text = str(chunk)
-                
+
                 full_response += chunk_text
-                
+
                 yield LLMResponse(
                     text=chunk_text,
                     model=self.model,
@@ -401,7 +407,7 @@ class LangChainChatProvider(BaseLLMProvider):
                         "chunk": True
                     }
                 )
-            
+
             # Final response to mark completion
             yield LLMResponse(
                 text=full_response,
@@ -419,11 +425,11 @@ class LangChainChatProvider(BaseLLMProvider):
                     "complete": True
                 }
             )
-            
+
         except Exception as e:
             logger.error(f"Error in LangChain chat model streaming: {str(e)}", exc_info=True)
             raise LLMRequestError(f"Error streaming response: {str(e)}")
-    
+
     async def close(self):
         """Close the provider and release any resources."""
         # Most LangChain models don't need explicit cleanup, but some might
@@ -433,7 +439,7 @@ class LangChainChatProvider(BaseLLMProvider):
                     await self._model.close()
                 else:
                     self._model.close()
-        
+
         # Also check for async close methods
         if hasattr(self._model, 'aclose'):
             await self._model.aclose()

@@ -4,10 +4,10 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union, cast
 
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
-from opentelemetry import trace, metrics
+from opentelemetry import metrics, trace
 from opentelemetry.trace import Status, StatusCode
 
 from .base import BaseProvider, ProviderError, SyncProvider
@@ -40,7 +40,7 @@ def clean_json_string(json_str: str) -> str:
 
     for old, new in replacements.items():
         json_str = json_str.replace(old, new)
-    
+
     return json_str
 
 class LangChainProvider(BaseProvider[str]):
@@ -58,7 +58,7 @@ class LangChainProvider(BaseProvider[str]):
         super().__init__(config, **kwargs)
         self.llm = None
         self.parser = JsonOutputParser()
-        
+
     def _initialize_provider(self) -> None:
         """Initialize the LangChain provider with the given configuration."""
         try:
@@ -79,7 +79,7 @@ class LangChainProvider(BaseProvider[str]):
         try:
             # Get the LLM class from configuration or use default
             llm_class_name = self.get_config_value("class_name", "ChatOpenAI")
-            
+
             # Import the module and get the class
             module_name = f"langchain_community.chat_models.{llm_class_name.lower()}"
             try:
@@ -94,15 +94,15 @@ class LangChainProvider(BaseProvider[str]):
                     error_msg = f"Failed to import LLM class: {llm_class_name}"
                     logger.exception(error_msg)
                     raise ImportError(error_msg) from e
-            
+
             # Get model configuration
             model_config = self.get_config_value("model_config", {})
-            
+
             # Create LLM instance
             self.llm = llm_class(**model_config)
-            
+
             logger.info("Initialized LangChain LLM: %s", llm_class_name)
-            
+
         except Exception as e:
             error_msg = f"Failed to initialize LangChain: {str(e)}"
             logger.exception(error_msg)
@@ -129,7 +129,7 @@ class LangChainProvider(BaseProvider[str]):
 
         Returns:
             Generated text or JSON string if output_schema is provided
-            
+
         Raises:
             ProviderError: If there's an error generating the response
         """
@@ -139,7 +139,7 @@ class LangChainProvider(BaseProvider[str]):
                 provider=self.provider_name,
                 error_type="initialization_error"
             )
-            
+
         # Start a new span for the generation
         with self.tracer.start_as_current_span("langchain.generate") as span:
             try:
@@ -155,10 +155,10 @@ class LangChainProvider(BaseProvider[str]):
                 # Prepare the prompt with system message if available
                 system_message = self.get_config_value("system_message")
                 messages = []
-                
+
                 if system_message:
                     messages.append(SystemMessage(content=system_message))
-                
+
                 messages.append(HumanMessage(content=prompt))
 
                 # Log the request
@@ -170,7 +170,7 @@ class LangChainProvider(BaseProvider[str]):
 
                 # Invoke the LLM
                 response = await self.llm.ainvoke(messages, **kwargs)
-                
+
                 # Log the response
                 logger.debug("LangChain response: %s", response.content)
 
@@ -191,17 +191,17 @@ class LangChainProvider(BaseProvider[str]):
             except Exception as e:
                 error_msg = f"Error in LangChain provider: {str(e)}"
                 logger.exception(error_msg)
-                
+
                 # Update error metrics
                 self.error_counter.add(1, {
                     "provider": self.provider_name,
                     "error_type": type(e).__name__
                 })
-                
+
                 # Record the error in the span
                 span.record_exception(e)
                 span.set_status(Status(StatusCode.ERROR, str(e)))
-                
+
                 # Raise a ProviderError with details
                 raise ProviderError(
                     message=error_msg,
@@ -224,7 +224,7 @@ class LangChainProvider(BaseProvider[str]):
 
 class SyncLangChainProvider(SyncProvider[str], LangChainProvider):
     """Synchronous wrapper for the LangChain provider."""
-    
+
     def generate_sync(
         self,
         prompt: str,
@@ -233,7 +233,7 @@ class SyncLangChainProvider(SyncProvider[str], LangChainProvider):
         **kwargs,
     ) -> str:
         """Synchronous version of generate.
-        
+
         Args:
             prompt: The prompt to generate text from
             model: Optional model name override
@@ -242,21 +242,21 @@ class SyncLangChainProvider(SyncProvider[str], LangChainProvider):
 
         Returns:
             Generated text or JSON string if output_schema is provided
-            
+
         Raises:
             ProviderError: If there's an error generating the response
         """
         import asyncio
-        
+
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(
             super().generate(prompt, model, output_schema, **kwargs)
         )
-    
+
     def close_sync(self) -> None:
         """Synchronously close the provider's resources."""
         import asyncio
-        
+
         if hasattr(self, 'llm') and self.llm is not None:
             if hasattr(self.llm, 'aclose'):
                 loop = asyncio.get_event_loop()

@@ -5,7 +5,7 @@ This module allows the package to be run as a script using `python -m myjobspyai
 
 def main() -> None:
     """Run the main application.
-    
+
     This function is defined here to avoid circular imports.
     The actual implementation is imported inside the function.
     """

@@ -8,8 +8,9 @@ import aiohttp
 import openai
 from pydantic import BaseModel, HttpUrl
 
-from .base import AnalysisProvider
 from myjobspyai.models import Job, JobAnalysis, JobMatch
+
+from .base import AnalysisProvider
 
 
 class OpenAIProvider(AnalysisProvider):
@@ -78,7 +79,7 @@ class OpenAIProvider(AnalysisProvider):
         """
         # Create a prompt for job analysis
         prompt = f"""Analyze the following job posting and provide a structured analysis.
-        
+
 Job Title: {job.title}
 Company: {job.company}
 Location: {job.location}
@@ -147,8 +148,8 @@ Please provide analysis in the following JSON format:
         Raises:
             ValueError: If no valid JSON is found.
         """
-        import re
         import json
+        import re
 
         # Look for JSON-like content between ```json ... ```
         match = re.search(r"```(?:json)?\n(.*?)\n```", text, re.DOTALL)

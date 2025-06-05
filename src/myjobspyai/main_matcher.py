@@ -1,27 +1,37 @@
-import logging
-import json
-from myjobspyai.filtering.filter_utils import DateEncoder # Import DateEncoder
-import os
 import argparse
 import asyncio
+import json
+import logging
+import os
 import sys  # Importing sys to resolve undefined variable issue
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from myjobspyai.config import config
-from myjobspyai.parsers.resume_parser import parse_resume
-from myjobspyai.parsers.job_parser import load_job_mandates
-from myjobspyai.analysis.models import ResumeData, AnalyzedJob, JobAnalysisResult # Removed SkillDetail
-from myjobspyai.filtering.filter import apply_filters
-from myjobspyai.analysis.analyzer import ResumeAnalyzer, JobAnalyzer, BaseAnalyzer, create_analyzer # Added BaseAnalyzer and create_analyzer
 # from rich.console import Console # Unused
 # from colorama import Fore, Style # Unused
-from rich.progress import TaskProgressColumn # Others imported in try/except
+from rich.progress import TaskProgressColumn  # Others imported in try/except
+
+from myjobspyai.analysis.analyzer import (  # Added BaseAnalyzer and create_analyzer
+    BaseAnalyzer,
+    JobAnalyzer,
+    ResumeAnalyzer,
+    create_analyzer,
+)
+from myjobspyai.analysis.models import (  # Removed SkillDetail
+    AnalyzedJob,
+    JobAnalysisResult,
+    ResumeData,
+)
+from myjobspyai.config import config
+from myjobspyai.filtering.filter import apply_filters
+from myjobspyai.filtering.filter_utils import DateEncoder  # Import DateEncoder
+from myjobspyai.parsers.job_parser import load_job_mandates
+from myjobspyai.parsers.resume_parser import parse_resume
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
 
 # Import OpenTelemetry trace module and tracer from myjobspyai.utils.logging_utils
-from opentelemetry import trace # Ensure trace module is always imported
+from opentelemetry import trace  # Ensure trace module is always imported
 
 try:
     from myjobspyai.utils.logging_utils import tracer as global_tracer_instance
@@ -45,9 +55,9 @@ logger.info("Main matcher initialized.")
 # Rich for UX (used for progress bar)
 try:
     from rich.progress import (
+        BarColumn,
         Progress,
         SpinnerColumn,
-        BarColumn,
         TextColumn,
         TimeElapsedColumn,
     )
@@ -69,7 +79,7 @@ async def load_and_extract_resume_async(
 
     cache_dir = config.get_setting('output.resume_cache_dir', 'cache/resume_cache/')
     os.makedirs(cache_dir, exist_ok=True)
-    
+
     # Use file modification time for cache key
     try:
         mtime = os.path.getmtime(resume_path)
@@ -119,7 +129,7 @@ async def load_and_extract_resume_async(
         logger.error(f"Error during resume analysis: {e}", exc_info=True)
         trace.get_current_span().record_exception(e)
         return None
-    
+
     if not structured_resume_data: # Check after attempting extraction
         logger.error("Failed to extract structured data from resume.")
         return None
@@ -188,10 +198,10 @@ async def analyze_jobs_async(
             suitability_analysis_task = asyncio.create_task(
                 job_analyzer.analyze_resume_suitability(structured_resume_data, job_dict_item) # Pass full resume_data and job_dict
             )
-        
+
         parsed_job_details = await parsed_job_details_task
         suitability_result = await suitability_analysis_task
-        
+
         return job_dict_item, parsed_job_details, suitability_result
 
     tasks = [process_single_job(job_dict) for job_dict in job_list] # This will create child spans for each job
@@ -230,7 +240,7 @@ async def analyze_jobs_async(
                         education_match_summary="N/A",
                         missing_keywords=[]
                     )
-                
+
                 if parsed_details is None:
                     logger.warning(
                         f"Job detail extraction for '{job_title}' returned None or failed."
@@ -248,18 +258,18 @@ async def analyze_jobs_async(
                 # This catches errors from process_single_job itself or unhandled ones from tasks
                 logger.error(f"Error processing a job: {e}", exc_info=True)
                 # Optionally, create a placeholder AnalyzedJob for jobs that hit this broader error
-            
+
             progress.update(overall_task, advance=1)
-        
+
         progress.update(overall_task, description="[green]Job Processing Complete[/green]") # Keep Rich markup for progress
 
     logger.info(
         f"ASYNC processing complete. Results for {len(analyzed_results)} jobs."
     )
-    
+
     # Log LLM call statistics summary
     BaseAnalyzer.log_llm_call_summary()
-    
+
     return analyzed_results
 
 
@@ -331,7 +341,7 @@ async def main_async():
     )
     # Add arguments as before...
     # For brevity, assuming args are parsed correctly.
-    # Example: args = parser.parse_args() 
+    # Example: args = parser.parse_args()
     # This part needs to be filled in if running standalone, but for library use, it's not critical here.
     # For now, we'll assume args is populated if this __main__ block is hit.
     args = parser.parse_args() # This will fail if not run as script with args.
@@ -361,13 +371,13 @@ async def main_async():
     if not structured_resume:
         logger.error("Exiting due to resume processing failure.")
         return
-    
+
     logger.info(f"Loading jobs from file: {args.jobs}") # Assuming jobs is a path
     job_list = load_job_mandates(args.jobs) # Assumes load_job_mandates handles its own logging
     if not job_list:
         logger.error("No jobs loaded. Exiting.")
         return
-    
+
     analyzed_results = await analyze_jobs_async(structured_resume, job_list)
     filter_args_dict = {}  # Populate from args if needed for standalone
     apply_filters_sort_and_save(analyzed_results, args.output, filter_args_dict)

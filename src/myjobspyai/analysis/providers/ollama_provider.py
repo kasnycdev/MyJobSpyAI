@@ -7,8 +7,9 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 from pydantic import BaseModel, HttpUrl
 
-from .base import AnalysisProvider
 from myjobspyai.models import Job, JobAnalysis, JobMatch
+
+from .base import AnalysisProvider
 
 
 class OllamaProvider(AnalysisProvider):
@@ -85,7 +86,7 @@ class OllamaProvider(AnalysisProvider):
         """
         # Create a prompt for job analysis
         prompt = f"""Analyze the following job posting and provide a structured analysis.
-        
+
 Job Title: {job.title}
 Company: {job.company}
 Location: {job.location}
@@ -153,8 +154,8 @@ Please provide analysis in the following JSON format:
             ValueError: If no valid JSON is found.
         """
         # Simple implementation - in practice, you might want something more robust
-        import re
         import json
+        import re
 
         # Look for JSON-like content between ```json ... ```
         match = re.search(r"```(?:json)?\n(.*?)\n```", text, re.DOTALL)

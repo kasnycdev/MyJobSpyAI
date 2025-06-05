@@ -7,8 +7,9 @@ from typing import Any, Dict, List, Optional
 import google.generativeai as genai
 from pydantic import BaseModel
 
-from .base import AnalysisProvider
 from myjobspyai.models import Job, JobAnalysis
+
+from .base import AnalysisProvider
 
 
 class GeminiProvider(AnalysisProvider):
@@ -87,7 +88,7 @@ class GeminiProvider(AnalysisProvider):
         """
         # Create a prompt for job analysis
         prompt = f"""Analyze the following job posting and provide a structured analysis in JSON format.
-        
+
 Job Title: {job.title}
 Company: {job.company}
 Location: {job.location}

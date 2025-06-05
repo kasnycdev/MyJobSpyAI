@@ -6,7 +6,7 @@ implementations based on the provided configuration.
 
 import importlib
 import logging
-from typing import Dict, Any, Optional, List, TypeVar
+from typing import Any, Dict, List, Optional, TypeVar
 
 from . import BaseJobScraper
 

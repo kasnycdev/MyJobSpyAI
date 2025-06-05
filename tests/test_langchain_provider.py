@@ -5,11 +5,12 @@ This module contains tests to verify that the LangChain provider
 is properly integrated with the application and works as expected.
 """
 
+import asyncio
 import os
 import sys
-import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

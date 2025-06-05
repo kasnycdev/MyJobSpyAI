@@ -1,6 +1,7 @@
+from typing import Any, Dict, List, Optional
+
 import pandas as pd
 from pydantic.v1 import BaseModel, Field
-from typing import List, Optional, Dict, Any
 
 
 class ExperienceDetail(BaseModel):

@@ -10,8 +10,9 @@ project_root = str(Path(__file__).parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from myjobspyai.analysis.analyzer import create_analyzer, ResumeAnalyzer, JobAnalyzer
 from dotenv import load_dotenv
+
+from myjobspyai.analysis.analyzer import JobAnalyzer, ResumeAnalyzer, create_analyzer
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -50,15 +51,15 @@ async def test_resume_analysis():
     sample_resume = """
     John Doe
     Senior Software Engineer
-    
+
     SUMMARY
     Experienced software engineer with 5+ years of experience in Python and web development.
-    
+
     EXPERIENCE
     - Senior Software Engineer at Tech Corp (2020-Present)
       * Led a team of 5 developers
       * Developed microservices using Python and FastAPI
-    
+
     SKILLS
     - Python, FastAPI, Django, JavaScript, React, AWS
     """
@@ -85,15 +86,15 @@ async def test_job_analysis():
 
     sample_job = """
     Job Title: Senior Python Developer
-    
+
     We are looking for a Senior Python Developer with experience in web development.
-    
+
     Requirements:
     - 5+ years of Python experience
     - Experience with FastAPI or Django
     - Knowledge of AWS services
     - Strong problem-solving skills
-    
+
     Benefits:
     - Competitive salary
     - Remote work options
