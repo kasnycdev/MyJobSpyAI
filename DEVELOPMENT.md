@@ -37,7 +37,7 @@
    ```bash
    # Using Poetry (recommended)
    poetry install
-   
+
    # Or using pip
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate

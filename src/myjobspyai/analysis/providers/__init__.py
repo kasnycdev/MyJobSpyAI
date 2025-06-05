@@ -14,7 +14,7 @@ Available Providers:
 Usage:
     ```python
     from myjobspyai.analysis.providers import (
-        ProviderFactory, 
+        ProviderFactory,
         ProviderType,
         LangChainProvider,
         SyncLangChainProvider
@@ -76,11 +76,16 @@ Usage:
 """
 
 from enum import Enum
-from typing import Dict, Type, Any, Optional
+from typing import Any, Dict, Optional, Type
 
-from .base import BaseProvider, SyncProvider, ProviderError
+from .base import BaseProvider, ProviderError, SyncProvider
 from .factory import ProviderFactory
-from .langchain_provider import LangChainProvider, SyncLangChainProvider, clean_json_string
+from .langchain_provider import (
+    LangChainProvider,
+    SyncLangChainProvider,
+    clean_json_string,
+)
+
 
 # Export the ProviderType enum
 class ProviderType(str, Enum):
@@ -98,11 +103,11 @@ __all__ = [
     'ProviderError',
     'ProviderType',
     'ProviderFactory',
-    
+
     # Providers
     'LangChainProvider',
     'SyncLangChainProvider',
-    
+
     # Utilities
     'clean_json_string',
 ]

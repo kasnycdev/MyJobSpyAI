@@ -171,8 +171,8 @@ class TestHTTPClient(TestCase):
     async def test_download_file(self):
         """Test file download."""
         # Create a temporary file
-        import tempfile
         import os
+        import tempfile
 
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(b"test content")

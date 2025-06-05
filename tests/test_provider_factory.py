@@ -5,12 +5,14 @@ This module contains tests to verify that the ProviderFactory
 can create different types of LLM providers correctly.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+
+from myjobspyai.analysis.providers.base import BaseProvider
 
 # Import the modules to test
 from myjobspyai.analysis.providers.factory import ProviderFactory, ProviderType
-from myjobspyai.analysis.providers.base import BaseProvider
 from myjobspyai.analysis.providers.langchain_provider import LangChainProvider
 
 # Test configurations
@@ -42,19 +44,19 @@ TEST_LANGCHAIN_CONFIG = {
 def test_provider_factory_registration():
     """Test that provider types are correctly registered in the factory."""
     factory = ProviderFactory()
-    
+
     # Check that the default providers are registered
     assert "langchain" in factory.providers
     assert factory.providers["langchain"] == LangChainProvider
-    
+
     # Create a test provider class
     class TestProvider(BaseProvider):
         async def generate(self, prompt, **kwargs):
             return "Test response"
-    
+
     # Register a test provider
     factory.register_provider("test_provider", TestProvider)
-    
+
     # Verify it was registered
     assert "test_provider" in factory.providers
     assert factory.providers["test_provider"] == TestProvider
@@ -63,24 +65,24 @@ def test_provider_factory_registration():
 def test_create_openai_provider():
     """Test creating an OpenAI provider."""
     factory = ProviderFactory()
-    
+
     # Create a mock provider class that inherits from BaseProvider
     class MockOpenAIProvider(BaseProvider):
         def __init__(self, config, **kwargs):
             super().__init__(config, **kwargs)
             self.provider_type = "openai"
-            
+
         async def generate(self, prompt, **kwargs):
             return f"Response to: {prompt}"
-    
+
     # Register the mock provider
     factory.register_provider("openai", MockOpenAIProvider)
-    
+
     # Create the provider instance
     provider = factory.create_provider(
         provider_type="openai", config=TEST_OPENAI_CONFIG, name="test_openai"
     )
-    
+
     # Verify the provider was created correctly
     assert provider is not None
     assert isinstance(provider, BaseProvider)
@@ -91,24 +93,24 @@ def test_create_openai_provider():
 def test_create_ollama_provider():
     """Test creating an Ollama provider."""
     factory = ProviderFactory()
-    
+
     # Create a mock provider class that inherits from BaseProvider
     class MockOllamaProvider(BaseProvider):
         def __init__(self, config, **kwargs):
             super().__init__(config, **kwargs)
             self.provider_type = "ollama"
-            
+
         async def generate(self, prompt, **kwargs):
             return f"Response to: {prompt}"
-    
+
     # Register the mock provider
     factory.register_provider("ollama", MockOllamaProvider)
-    
+
     # Create the provider instance
     provider = factory.create_provider(
         provider_type="ollama", config=TEST_OLLAMA_CONFIG, name="test_ollama"
     )
-    
+
     # Verify the provider was created correctly
     assert provider is not None
     assert isinstance(provider, BaseProvider)
@@ -152,7 +154,7 @@ def test_create_langchain_provider():
 def test_register_custom_provider():
     """Test registering a custom provider class."""
     factory = ProviderFactory()
-    
+
     # Define a custom provider class
     class CustomProvider(BaseProvider):
         def __init__(self, config, **kwargs):
@@ -193,7 +195,7 @@ def test_create_provider_invalid_type():
 async def test_provider_generate_method():
     """Test that the generate method works correctly on a provider."""
     factory = ProviderFactory()
-    
+
     # Create a test provider with a mock generate method
     class TestProvider(BaseProvider):
         async def generate(self, prompt, **kwargs):

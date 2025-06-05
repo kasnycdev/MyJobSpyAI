@@ -25,11 +25,11 @@ logging.basicConfig(
 async def test_jobspy_scraper():
     """Test the JobSpy scraper integration."""
     print("Testing JobSpy scraper integration...")
-    
+
     try:
         # Create a JobSpy scraper instance
         scraper = create_scraper('jobspy')
-        
+
         # Test search parameters
         search_params = {
             'query': 'python developer',
@@ -39,16 +39,16 @@ async def test_jobspy_scraper():
             'job_type': 'fulltime',
             'verbose': 2
         }
-        
+
         print(f"Searching for jobs with params: {search_params}")
-        
+
         # Search for jobs
         jobs = await scraper.search_jobs(**search_params)
-        
+
         if not jobs:
             print("No jobs found. This might be expected if there are no matching jobs.")
             return False
-        
+
         print(f"\nFound {len(jobs)} jobs:")
         for i, job in enumerate(jobs, 1):
             print(f"\n{i}. {job.title} at {job.company}")
@@ -56,9 +56,9 @@ async def test_jobspy_scraper():
             print(f"   Type: {job.job_type}")
             print(f"   Remote: {'Yes' if job.remote else 'No'}")
             print(f"   URL: {job.url}")
-        
+
         return True
-        
+
     except Exception as e:
         print(f"Error testing JobSpy scraper: {e}", file=sys.stderr)
         import traceback

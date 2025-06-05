@@ -5,12 +5,12 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, Union, cast
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator, ValidationError
+from pydantic import BaseModel, Field, HttpUrl, ValidationError, field_validator
 
-from myjobspyai.utils.http_client import HTTPClient, HTTPClientError
-from myjobspyai.utils.async_utils import gather_with_concurrency
 from myjobspyai.config import config as app_config
-from myjobspyai.llm.base import BaseLLMProvider, LLMResponse, LLMError, LLMRequestError
+from myjobspyai.llm.base import BaseLLMProvider, LLMError, LLMRequestError, LLMResponse
+from myjobspyai.utils.async_utils import gather_with_concurrency
+from myjobspyai.utils.http_client import HTTPClient, HTTPClientError
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ class OllamaProvider(BaseLLMProvider):
 
     async def _stream_response(self, response: Any):
         """Handle streaming response from the Ollama API.
-        
+
         Yields:
             str: Chunks of the generated text as they become available.
         """

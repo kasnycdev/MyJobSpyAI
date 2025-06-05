@@ -4,15 +4,15 @@ This module provides utilities for instrumenting LangChain with OpenTelemetry
 to collect traces, metrics, and logs.
 """
 
-from typing import Any, Dict, Optional, Callable, TypeVar, cast
-from functools import wraps
 import inspect
 import logging
+from functools import wraps
+from typing import Any, Callable, Dict, Optional, TypeVar, cast
 
-from opentelemetry import trace, metrics
-from opentelemetry.trace import Span, Status, StatusCode
+from opentelemetry import metrics, trace
 from opentelemetry.metrics import Counter, Histogram
 from opentelemetry.semconv.ai import SpanAttributes
+from opentelemetry.trace import Span, Status, StatusCode
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")

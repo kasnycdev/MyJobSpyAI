@@ -11,9 +11,10 @@ Example:
 """
 
 import asyncio
-import os
 import logging
-from typing import Dict, Any
+import os
+from typing import Any, Dict
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
@@ -74,7 +75,7 @@ PROVIDER_CONFIGS = {
 
 async def test_provider(config: Dict[str, Any], provider_name: str):
     """Test a provider with the given configuration.
-    
+
     Args:
         config: Provider configuration
         provider_name: Name of the provider for logging
@@ -82,19 +83,19 @@ async def test_provider(config: Dict[str, Any], provider_name: str):
     logger.info(f"\n{'='*50}")
     logger.info(f"Testing {provider_name.upper()} provider")
     logger.info(f"{'='*50}")
-    
+
     try:
         # Initialize the provider
         logger.info(f"Initializing {provider_name} provider...")
         provider = LangChainProvider(config)
-        
+
         try:
             # Test basic generation
             logger.info("\nTesting basic text generation...")
             response = await provider.generate("Hello, how are you?")
             print(f"\n{provider_name.upper()} Response:")
             print(response.text)
-            
+
             # Test with system message and conversation history
             logger.info("\nTesting with system message and conversation history...")
             response = await provider.generate(
@@ -108,7 +109,7 @@ async def test_provider(config: Dict[str, Any], provider_name: str):
             )
             print(f"\n{provider_name.upper()} Response with context:")
             print(response.text)
-            
+
             # Test streaming
             logger.info("\nTesting streaming...")
             print(f"\n{provider_name.upper()} Streaming Response:")
@@ -119,11 +120,11 @@ async def test_provider(config: Dict[str, Any], provider_name: str):
             ):
                 print(chunk.text, end="", flush=True)
             print("\n")
-            
+
         finally:
             await provider.close()
             logger.info(f"{provider_name} provider closed successfully.")
-            
+
     except Exception as e:
         logger.error(f"Error testing {provider_name} provider: {str(e)}")
         if "API key" in str(e):
@@ -134,16 +135,16 @@ async def main():
     """Run tests for all configured providers."""
     # Only test providers that have their API keys set
     providers_to_test = []
-    
+
     for provider_name, config in PROVIDER_CONFIGS.items():
         # Skip providers that don't have their API key set (except for Ollama which might be local)
         if provider_name == "ollama" or config.get("api_key") or config.get("base_url"):
             providers_to_test.append((provider_name, config))
-    
+
     if not providers_to_test:
         logger.warning("No providers configured with valid API keys. Please set the appropriate environment variables.")
         return
-    
+
     # Test each provider
     for provider_name, config in providers_to_test:
         try:

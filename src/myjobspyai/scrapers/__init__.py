@@ -4,16 +4,18 @@ Scrapers package for MyJobSpy AI.
 This package contains modules for scraping job listings from various job sites.
 """
 
-from typing import Dict, Type, Optional, List, Any, TypeVar, Generic
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 logger = logging.getLogger(__name__)
 
+from ..models.job import Job, JobSource
+from ..models.job import JobType as JobTypeEnum
+
 # Import base classes and types
 from .base import BaseJobScraper
-from ..models.job import Job, JobType as JobTypeEnum, JobSource
 
 # Import scrapers
 from .jobspy_scraper import JobSpyScraper

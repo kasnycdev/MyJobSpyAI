@@ -28,7 +28,7 @@ Update your `config.yaml` to use the new provider structure:
 llm:
   # Default provider to use
   default_provider: "langchain_default"
-  
+
   # Provider configurations
   providers:
     # OpenAI/LM Studio Configuration
@@ -40,7 +40,7 @@ llm:
       request_timeout: 600
       max_retries: 2
       retry_delay: 5
-    
+
     # Ollama Configuration
     ollama:
       type: "ollama"
@@ -49,7 +49,7 @@ llm:
       request_timeout: 600
       max_retries: 2
       retry_delay: 5
-    
+
     # LangChain Provider Configuration
     langchain_default:
       type: "langchain"
@@ -59,7 +59,7 @@ llm:
         temperature: 0.7
         max_tokens: 1000
         openai_api_key: "your-openai-api-key"
-    
+
     # Example of another LangChain provider with a different model
     langchain_ollama:
       type: "langchain"

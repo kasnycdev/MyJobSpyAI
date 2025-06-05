@@ -1,12 +1,12 @@
 """Base classes for LLM providers with common functionality."""
 
-from abc import ABC, abstractmethod
 import asyncio
 import logging
+from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, Optional, Type, TypeVar
 
 from opentelemetry import metrics, trace
-from opentelemetry.trace import Span, StatusCode, Status
+from opentelemetry.trace import Span, Status, StatusCode
 
 # Type variable for the response type
 T = TypeVar('T')
@@ -16,17 +16,17 @@ logger = logging.getLogger(__name__)
 
 class ProviderError(Exception):
     """Base exception for provider-related errors."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         provider: Optional[str] = None,
         error_type: Optional[str] = None,
         status_code: Optional[int] = None,
         details: Optional[Dict[str, Any]] = None
     ) -> None:
         """Initialize the error.
-        
+
         Args:
             message: Error message
             provider: Name of the provider that raised the error
@@ -39,9 +39,9 @@ class ProviderError(Exception):
         self.error_type = error_type or 'provider_error'
         self.status_code = status_code
         self.details = details or {}
-        
+
         super().__init__(self._format_message())
-    
+
     def _format_message(self) -> str:
         """Format the error message."""
         parts = []
@@ -51,7 +51,7 @@ class ProviderError(Exception):
         if self.status_code:
             parts.append(f"(Status: {self.status_code})")
         return " ".join(parts)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert the error to a dictionary."""
         return {
@@ -61,11 +61,11 @@ class ProviderError(Exception):
             'status_code': self.status_code,
             'details': self.details
         }
-    
+
     def __str__(self) -> str:
         """Return a string representation of the error."""
         return self._format_message()
-    
+
     def __repr__(self) -> str:
         """Return a detailed string representation of the error."""
         return (
@@ -81,19 +81,19 @@ class ProviderError(Exception):
 
 class BaseProvider(ABC, Generic[T]):
     """Base class for all LLM providers with common functionality.
-    
+
     This class provides a consistent interface for all LLM providers, including
     configuration management, error handling, and telemetry.
     """
-    
+
     def __init__(
-        self, 
-        config: Dict[str, Any], 
-        provider_name: Optional[str] = None, 
+        self,
+        config: Dict[str, Any],
+        provider_name: Optional[str] = None,
         **kwargs
     ) -> None:
         """Initialize the provider with configuration.
-        
+
         Args:
             config: Provider-specific configuration
             provider_name: Name of the provider for logging and tracing
@@ -104,59 +104,59 @@ class BaseProvider(ABC, Generic[T]):
         self.config = config
         self.provider_name = provider_name or kwargs.get('name') or self.__class__.__name__
         self.provider_type = kwargs.get('provider_type', self.provider_name.lower())
-        
+
         # Initialize telemetry
         self.tracer = trace.get_tracer(__name__)
         self.meter = metrics.get_meter(__name__)
-        
+
         # Initialize metrics
         self._initialize_metrics()
-        
+
         # Initialize the provider
         self._initialize_provider()
-    
+
     @abstractmethod
     async def generate(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         **kwargs: Any
     ) -> T:
         """Generate a response to the given prompt.
-        
+
         Args:
             prompt: The input prompt
             **kwargs: Additional arguments specific to the provider
-            
+
         Returns:
             The generated response
-            
+
         Raises:
             ProviderError: If there's an error generating the response
         """
         pass
-    
+
     def get_config_value(
-        self, 
-        key: str, 
-        default: Any = None, 
+        self,
+        key: str,
+        default: Any = None,
         required: bool = False
     ) -> Any:
         """Get a value from the config, supporting dot notation for nested keys.
-        
+
         Args:
             key: The key to retrieve, can use dot notation for nested keys
             default: Default value to return if key is not found
             required: If True, raises KeyError if the key is not found
-            
+
         Returns:
             The value from the config, or default if not found and not required
-            
+
         Raises:
             KeyError: If the key is not found and required is True
         """
         keys = key.split('.')
         value = self.config
-        
+
         try:
             for k in keys:
                 if not isinstance(value, dict) or k not in value:
@@ -169,7 +169,7 @@ class BaseProvider(ABC, Generic[T]):
             if required:
                 raise KeyError(f"Error accessing config key {key}: {e}") from e
             return default
-    
+
     def _initialize_metrics(self) -> None:
         """Initialize OpenTelemetry metrics for this provider."""
         # Request metrics
@@ -177,45 +177,45 @@ class BaseProvider(ABC, Generic[T]):
             name=f"{self.provider_type}.requests.total",
             description=f"Total number of {self.provider_type} API requests"
         )
-        
+
         self.request_duration = self.meter.create_histogram(
             name=f"{self.provider_type}.request.duration.seconds",
             description=f"Duration of {self.provider_type} API requests in seconds",
             unit="s"
         )
-        
+
         self.error_counter = self.meter.create_counter(
             name=f"{self.provider_type}.errors.total",
             description=f"Total number of {self.provider_type} API errors"
         )
-        
+
         # Token usage metrics
         self.token_counter = self.meter.create_counter(
             name=f"{self.provider_type}.tokens.total",
             description=f"Total number of tokens used by {self.provider_type}",
             unit="tokens"
         )
-    
+
     def _initialize_provider(self) -> None:
         """Initialize the provider with the given configuration.
-        
+
         Subclasses should override this method to perform any necessary
         initialization, such as setting up API clients.
         """
         pass
-    
+
     async def close(self) -> None:
         """Clean up resources used by the provider.
-        
+
         Subclasses should override this method to clean up any resources,
         such as closing HTTP sessions or database connections.
         """
         pass
-    
+
     def __str__(self) -> str:
         """Return a string representation of the provider."""
         return f"{self.__class__.__name__}(name='{self.provider_name}')"
-    
+
     def __repr__(self) -> str:
         """Return a detailed string representation of the provider."""
         return f"<{self.__class__.__name__} name='{self.provider_name}' type='{self.provider_type}'>"
@@ -223,25 +223,25 @@ class BaseProvider(ABC, Generic[T]):
 
 class SyncProvider(BaseProvider[T], ABC):
     """Base class for synchronous LLM providers.
-    
+
     This class provides a synchronous interface that wraps the asynchronous
     methods of the base provider.
     """
-    
+
     def generate_sync(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         **kwargs: Any
     ) -> T:
         """Synchronous version of generate.
-        
+
         Args:
             prompt: The input prompt
             **kwargs: Additional arguments specific to the provider
-            
+
         Returns:
             The generated response
-            
+
         Raises:
             ProviderError: If there's an error generating the response
         """
@@ -251,11 +251,11 @@ class SyncProvider(BaseProvider[T], ABC):
 
 class BaseLLMProvider(BaseProvider[str], ABC):
     """Base class for LLM providers with common functionality.
-    
+
     This class provides a consistent interface for all LLM providers, including
     configuration management, error handling, and telemetry.
     """
-    
+
     @abstractmethod
     async def generate(self, prompt: str, model: Optional[str] = None, **kwargs) -> str:
         """Generate text using the provider's LLM.

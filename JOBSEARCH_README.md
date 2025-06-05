@@ -59,7 +59,7 @@ jobsearch:
   default_location: "Remote"
   default_job_type: "fulltime"
   output_dir: "./job_results"
-  
+
 jobspy:
   max_retries: 3
   request_timeout: 30
@@ -96,7 +96,7 @@ from myjobspyai.scrapers.factory import create_scraper
 async def search_jobs():
     # Create a scraper instance
     scraper = create_scraper('jobspy')
-    
+
     # Search for jobs
     jobs = await scraper.search_jobs(
         query="python developer",
@@ -105,7 +105,7 @@ async def search_jobs():
         job_type="fulltime",
         is_remote=True
     )
-    
+
     # Process results
     for job in jobs:
         print(f"{job.title} at {job.company}")
@@ -114,7 +114,7 @@ async def search_jobs():
         print(f"Remote: {'Yes' if job.remote else 'No'}")
         print(f"URL: {job.url}")
         print("-" * 80)
-    
+
     # Clean up
     await scraper.close()
 ```
@@ -186,11 +186,11 @@ class MyCustomScraper(BaseJobScraper):
     def __init__(self, config=None):
         super().__init__(config)
         # Initialize your scraper
-    
+
     async def search_jobs(self, **kwargs):
         # Implement job search logic
         pass
-    
+
     async def close(self):
         # Clean up resources
         pass

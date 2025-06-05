@@ -4,25 +4,25 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union, ClassVar
+from typing import Any, ClassVar, Dict, List, Optional, Type, Union
 
 import yaml
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
+    field_serializer,
     field_validator,
     model_validator,
-    ConfigDict,
-    field_serializer,
 )
 from pydantic_settings import (
     BaseSettings,
-    SettingsConfigDict,
-    PydanticBaseSettingsSource,
+    DotEnvSettingsSource,
     EnvSettingsSource,
     InitSettingsSource,
-    DotEnvSettingsSource,
+    PydanticBaseSettingsSource,
     SecretsSettingsSource,
+    SettingsConfigDict,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class APIConfig(BaseModel):
 
 class AppConfig(BaseSettings):
     """Main application configuration.
-    
+
     Loads configuration from the following sources in order:
     1. Default values defined in this class
     2. Environment variables (with MYJOBSPYAI_ prefix)
@@ -131,12 +131,12 @@ class AppConfig(BaseSettings):
     version: str = Field("0.1.0", description="Application version")
     debug: bool = Field(False, description="Enable debug mode")
     environment: str = Field("production", description="Runtime environment")
-    
+
     # Core directories
     data_dir: Path = Field(DEFAULT_DATA_DIR, description="Directory for application data")
     cache_dir: Path = Field(DEFAULT_CACHE_DIR, description="Directory for cached data")
     config_dir: Path = Field(DEFAULT_CONFIG_DIR, description="Directory for configuration files")
-    
+
     # Sub-configurations
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
@@ -144,7 +144,7 @@ class AppConfig(BaseSettings):
     llm_providers: Dict[str, LLMProviderConfig] = Field(
         default_factory=dict, description="Configured LLM providers"
     )
-    
+
     # Ensure paths are absolute and expanded
     @model_validator(mode="after")
     def resolve_paths(self) -> 'AppConfig':
@@ -155,16 +155,16 @@ class AppConfig(BaseSettings):
             self.cache_dir = Path(self.cache_dir).expanduser().resolve()
         if self.config_dir:
             self.config_dir = Path(self.config_dir).expanduser().resolve()
-        
+
         # Ensure logging file path is resolved
         if self.logging.file:
             self.logging.file = Path(self.logging.file).expanduser().resolve()
             self.logging.file.parent.mkdir(parents=True, exist_ok=True)
-            
+
         # Ensure data directory exists
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        
+
         return self
 
     @classmethod
@@ -175,41 +175,41 @@ class AppConfig(BaseSettings):
     @classmethod
     def from_file(cls, config_path: Optional[Path] = None) -> "AppConfig":
         """Load configuration from a YAML file.
-        
+
         Args:
             config_path: Path to the configuration file. If None, uses the default location.
-            
+
         Returns:
             Loaded AppConfig instance.
         """
         if config_path is None:
             config_path = DEFAULT_CONFIG_DIR / "config.yaml"
-        
+
         config_path = Path(config_path).expanduser().resolve()
-        
+
         if not config_path.exists():
             logger.warning(f"Config file not found: {config_path}")
             return cls()
-            
+
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 config_data = yaml.safe_load(f) or {}
-            
+
             # Convert string paths to Path objects
             config_data = cls._convert_strings_to_paths(config_data)
-            
+
             # Load environment variables from .env file if present
             dotenv_path = config_path.parent / ".env"
             if dotenv_path.exists():
                 from dotenv import load_dotenv
                 load_dotenv(dotenv_path)
-            
+
             return cls(**config_data)
-            
+
         except Exception as e:
             logger.error(f"Error loading config from {config_path}: {e}")
             return cls()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to a dictionary."""
         # Convert Path objects to strings for serialization
@@ -223,21 +223,21 @@ class AppConfig(BaseSettings):
             elif hasattr(obj, 'model_dump'):
                 return serialize_paths(obj.model_dump())
             return obj
-            
+
         return serialize_paths(self.model_dump())
-    
+
     def save(self, config_path: Optional[Path] = None) -> None:
         """Save configuration to a YAML file.
-        
+
         Args:
             config_path: Path to save the configuration to. If None, uses the default location.
         """
         if config_path is None:
             config_path = DEFAULT_CONFIG_DIR / "config.yaml"
-            
+
         config_path = Path(config_path).expanduser().resolve()
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         try:
             config_data = self.to_dict()
             with open(config_path, "w", encoding="utf-8") as f:
@@ -246,7 +246,7 @@ class AppConfig(BaseSettings):
         except Exception as e:
             logger.error(f"Error saving config to {config_path}: {e}")
             raise
-    
+
     @staticmethod
     def _convert_strings_to_paths(config_data: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively convert string paths to Path objects."""
@@ -256,7 +256,7 @@ class AppConfig(BaseSettings):
                 result[key] = AppConfig._convert_strings_to_paths(value)
             elif isinstance(value, list):
                 result[key] = [
-                    AppConfig._convert_strings_to_paths(v) if isinstance(v, dict) else v 
+                    AppConfig._convert_strings_to_paths(v) if isinstance(v, dict) else v
                     for v in value
                 ]
             elif isinstance(value, str) and "_dir" in key:
@@ -274,30 +274,30 @@ config = AppConfig.load_defaults()
 
 def load_config(config_path: Optional[Union[str, Path]] = None) -> AppConfig:
     """Load configuration from file and update the global config.
-    
+
     Args:
         config_path: Path to the configuration file. If None, uses the default location.
-        
+
     Returns:
         The loaded AppConfig instance.
     """
     global config
     if config_path is not None:
         config_path = Path(config_path).expanduser().resolve()
-    
+
     config = AppConfig.from_file(config_path)
     return config
 
 
 def save_config(config_path: Optional[Union[str, Path]] = None) -> None:
     """Save the current configuration to a file.
-    
+
     Args:
         config_path: Path to save the configuration to. If None, uses the current config path.
     """
     if config_path is not None:
         config_path = Path(config_path).expanduser().resolve()
-    
+
     config.save(config_path)
 
     # Job sources
@@ -342,7 +342,7 @@ def save_config(config_path: Optional[Union[str, Path]] = None) -> None:
         """Resolve file paths to absolute paths."""
         if v is None:
             return None
-            
+
         path = Path(str(v)).expanduser().resolve()
         if path != path.parent and not path.parent.exists():
             path.parent.mkdir(parents=True, exist_ok=True)

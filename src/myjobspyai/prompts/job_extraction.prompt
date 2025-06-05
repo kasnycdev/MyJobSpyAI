@@ -1,12 +1,12 @@
 # Job Information Extraction Prompt
-# 
+#
 # This prompt is used to extract structured information from job descriptions.
-# 
+#
 # Required variables:
 # - job_title: The title of the job
 # - company: The name of the company
 # - job_description: The full job description text
-# 
+#
 # Returns a JSON object with the following structure:
 # {
 #   "job_title": string,

@@ -9,16 +9,16 @@ import pytest
 import yaml
 
 from myjobspyai.config_new import (
+    DEFAULT_CACHE_DIR,
+    DEFAULT_CONFIG_DIR,
+    DEFAULT_DATA_DIR,
+    APIConfig,
     AppConfig,
     DatabaseConfig,
     LLMProviderConfig,
     LoggingConfig,
-    APIConfig,
     load_config,
     save_config,
-    DEFAULT_CONFIG_DIR,
-    DEFAULT_DATA_DIR,
-    DEFAULT_CACHE_DIR,
 )
 
 

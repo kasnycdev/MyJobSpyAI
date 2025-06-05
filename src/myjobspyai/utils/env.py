@@ -4,7 +4,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union, ClassVar
+from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union
 
 import dotenv
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -94,7 +94,7 @@ class EnvConfig(BaseSettings):
         data_dir = str(Path("~/.myjobspyai").expanduser())  # Default DATA_DIR
         if info.data and "DATA_DIR" in info.data:
             data_dir = str(Path(info.data["DATA_DIR"]).expanduser())
-            
+
         v = v.replace("{{DATA_DIR}}", data_dir)
 
         # Expand user and resolve path
