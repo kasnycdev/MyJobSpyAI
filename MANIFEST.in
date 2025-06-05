@@ -1,0 +1,32 @@
+# Include README and license
+include README.md
+include LICENSE
+include CHANGELOG.md
+
+# Include package data
+recursive-include src/myjobspyai/static *
+recursive-include src/myjobspyai/templates *
+recursive-include src/myjobspyai/prompts *
+
+# Include config files
+include *.yaml
+include *.yml
+
+# Exclude tests and development files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *$py.class
+global-exclude .DS_Store
+
+# Exclude virtual environment
+global-exclude .venv
+
+# Exclude IDE specific files
+global-exclude .idea
+global-exclude .vscode
+global-exclude *.swp
+
+# Exclude testing and coverage files
+prune tests
+prune .github
+prune docs/build

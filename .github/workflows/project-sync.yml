@@ -1,0 +1,59 @@
+name: Sync Project Board
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened, labeled, unlabeled, closed, reopened, assigned, unassigned]
+  issue_comment:
+    types: [created, edited, deleted]
+  pull_request:
+    types: [opened, edited, closed, reopened, assigned, unassigned, labeled, unlabeled]
+
+jobs:
+  sync-project-board:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up GitHub CLI
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+          gh --version
+
+      - name: Configure GitHub CLI
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+          gh api user --jq '.login'
+
+      - name: Create project items from issues
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        run: |
+          # This is a placeholder for project board item creation
+          echo "New issue created: ${{ github.event.issue.number }}"
+          echo "Title: ${{ github.event.issue.title }}"
+
+          # Example command to add to project (uncomment when ready)
+          # gh project item-add 1 --owner kasnycdev --url ${{ github.event.issue.html_url }}
+
+      - name: Update project board status
+        if: github.event_name == 'issues' && (github.event.action == 'labeled' || github.event.action == 'unlabeled')
+        run: |
+          # This is a placeholder for project board status updates
+          echo "Issue labels updated: ${{ github.event.issue.number }}"
+          echo "Labels: ${{ join(github.event.issue.labels.*.name, ', ') }}"
+
+          # Example command to move between columns (uncomment when ready)
+          # if [[ "${{ contains(github.event.issue.labels.*.name, 'in-progress') }}" == "true" ]]; then
+          #   echo "Moving to In Progress column"
+          #   # Command to move to In Progress column
+          # elif [[ "${{ contains(github.event.issue.labels.*.name, 'done') }}" == "true" ]]; then
+          #   echo "Moving to Done column"
+          #   # Command to move to Done column
+          # fi

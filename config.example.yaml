@@ -1,0 +1,202 @@
+# MyJobSpy AI Configuration Example
+# Copy this file to config.yaml and adjust the settings as needed.
+
+# Application settings
+app:
+  name: "MyJobSpy AI"
+  version: "0.1.0"
+  debug: false
+  data_dir: "~/.myjobspyai"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  file: "{{ app.data_dir }}/logs/myjobspyai.log"
+  max_size: 10  # MB
+  backup_count: 5
+
+# Job sources to monitor
+job_sources:
+  # Example: LinkedIn job search
+  linkedin_search:
+    name: "LinkedIn Python Jobs"
+    type: "linkedin"
+    enabled: true
+    params:
+      keywords: "Python Developer"
+      location: "United States"
+      distance: 25  # miles
+      limit: 50
+  
+  # Example: Direct company job board
+  company_board:
+    name: "Example Company Jobs"
+    type: "custom"
+    enabled: true
+    url: "https://example.com/careers"
+    params:
+      department: "Engineering"
+
+# Analysis provider configuration
+provider:
+  # Supported providers: openai, ollama, gemini
+  type: "ollama"
+  
+  # Provider-specific settings
+  settings:
+    # OpenAI settings (when provider=openai)
+    openai:
+      api_key: "your-openai-api-key"
+      model: "gpt-4-turbo-preview"
+      temperature: 0.7
+    
+    # Ollama settings (when provider=ollama)
+    ollama:
+      base_url: "http://localhost:11434"
+      model: "llama3"
+      temperature: 0.7
+    
+    # Google Gemini settings (when provider=gemini)
+    gemini:
+      api_key: "your-gemini-api-key"
+      model: "gemini-pro"
+      temperature: 0.7
+
+# Web interface settings
+web:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  secret_key: "change-this-to-a-random-secret"
+  allowed_hosts:
+    - "localhost"
+    - "127.0.0.1"
+
+# Notification settings
+notifications:
+  email:
+    enabled: false
+    smtp_host: "smtp.example.com"
+    smtp_port: 587
+    smtp_user: "user@example.com"
+    smtp_password: "your-smtp-password"
+    from_email: "noreply@example.com"
+    to_emails:
+      - "your-email@example.com"
+  
+  # Webhook notifications (e.g., for Slack, Discord)
+  webhook:
+    enabled: false
+    url: "https://hooks.slack.com/services/..."
+    template: """
+    New job match: {{ job.title }} at {{ job.company }}
+    Location: {{ job.location }}
+    Match Score: {{ "%.1f"|format(job.match.score) }}%
+    {{ job.url }}
+    """
+
+# Job matching criteria
+matching:
+  required_skills:
+    - "Python"
+    - "Django"
+    - "Flask"
+    - "FastAPI"
+    - "SQL"
+  
+  preferred_skills:
+    - "AWS"
+    - "Docker"
+    - "Kubernetes"
+    - "CI/CD"
+    - "TDD"
+  
+  experience_level: "mid"  # junior, mid, senior, lead
+  min_salary: 80000  # USD
+  remote_ok: true
+  relocation_ok: false
+
+# Search filters
+filters:
+  exclude_companies:
+    - "Revature"
+    - "FDM Group"
+    - "Wipro"
+    - "Infosys"
+    - "Tata Consultancy Services"
+  
+  exclude_keywords:
+    - "senior"
+    - "lead"
+    - "principal"
+    - "staff"
+    - "director"
+    - "vp"
+    - "vice president"
+  
+  exclude_titles:
+    - "manager"
+    - "architect"
+    - "devops"
+    - "sre"
+    - "data"
+    - "machine learning"
+    - "ml"
+    - "ai"
+
+# Database settings
+database:
+  # SQLite (default)
+  engine: "sqlite"
+  name: "{{ app.data_dir }}/myjobspyai.db"
+  
+  # PostgreSQL example (uncomment and configure as needed)
+  # engine: "postgresql"
+  # name: "myjobspyai"
+  # user: "postgres"
+  # password: "your-password"
+  # host: "localhost"
+  # port: 5432
+
+# API keys (alternative to environment variables)
+api_keys:
+  openai: "your-openai-api-key"
+  gemini: "your-gemini-api-key"
+  linkedin_username: "your-linkedin-email"
+  linkedin_password: "your-linkedin-password"  # Consider using environment variables for sensitive data
+
+# Schedule for automatic job searches (cron syntax)
+schedule: "0 9 * * 1-5"  # 9 AM on weekdays
+
+# Enable/disable features
+features:
+  email_notifications: false
+  web_interface: true
+  api_server: true
+  headless_browser: true  # Required for some job boards
+
+# Proxy settings (if needed)
+proxy:
+  enabled: false
+  http: "http://user:pass@proxy:port"
+  https: "http://user:pass@proxy:port"
+  no_proxy: "localhost,127.0.0.1"
+
+# Rate limiting
+rate_limit:
+  enabled: true
+  requests_per_minute: 30
+  max_retries: 3
+  backoff_factor: 1.5
+
+# Data retention settings
+retention:
+  keep_jobs_days: 30
+  keep_logs_days: 7
+  compress_old_jobs: true
+
+# Debugging
+debug:
+  log_http_requests: false
+  log_sql_queries: false
+  show_sensitive_data: false
