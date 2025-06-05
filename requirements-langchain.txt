@@ -1,0 +1,28 @@
+# Core LangChain dependencies
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+
+# Provider integrations
+langchain-openai>=0.0.5
+langchain-anthropic>=0.0.4
+langchain-google-genai>=0.0.5
+langchain-community[all]>=0.0.10  # Includes many community integrations
+
+# Optional but recommended for better JSON handling
+pydantic>=2.0.0
+pyyaml>=6.0.0
+
+# For testing
+pytest>=7.0.0
+pytest-asyncio>=0.20.0
+pytest-cov>=4.0.0
+
+# For development
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.0.0
+flake8>=6.0.0
+
+# For documentation
+mkdocs>=1.4.0
+mkdocs-material>=9.0.0

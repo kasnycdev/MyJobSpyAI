@@ -1,0 +1,41 @@
+# Job Information Extraction Prompt
+# 
+# This prompt is used to extract structured information from job descriptions.
+# 
+# Required variables:
+# - job_title: The title of the job
+# - company: The name of the company
+# - job_description: The full job description text
+# 
+# Returns a JSON object with the following structure:
+# {
+#   "job_title": string,
+#   "company": string,
+#   "location": string,
+#   "job_type": "full_time" | "part_time" | "contract" | "temporary" | "internship" | "other",
+#   "is_remote": boolean,
+#   "required_skills": string[],
+#   "preferred_skills": string[],
+#   "required_education": string,
+#   "required_experience": string,
+#   "salary_range": {
+#     "min": number | null,
+#     "max": number | null,
+#     "currency": string | null,
+#     "period": "yearly" | "monthly" | "hourly" | null
+#   },
+#   "benefits": string[],
+#   "application_deadline": string | null,
+#   "application_url": string | null,
+#   "source_url": string | null
+# }
+
+Extract the following information from the job description below in JSON format.
+
+Job Title: {job_title}
+Company: {company}
+
+Job Description:
+{job_description}
+
+Extracted Information (JSON):

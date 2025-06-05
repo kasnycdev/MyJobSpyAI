@@ -11,7 +11,7 @@ This project enhances job searching by combining the scraping power of **[JobSpy
     *   Compare your structured resume profile against each scraped job description.
     *   Generate a suitability score (0-100%), detailed justification, and skill/experience match assessment based on enhanced comparison logic.
 4.  **Filter & Rank:** Filters the analyzed jobs based on a wide range of criteria including salary, job type, work model, company names (include/exclude), title keywords, date posted, location (remote country or proximity), and minimum suitability score. Ranks the final list by suitability score.
-5.  **Output:** Saves the detailed analysis results (including original job data) to a JSON file and prints a summary table of top matches to the console using `rich`. Geocoding results are cached to disk.
+5.  **Output:** Saves the detailed analysis results (including original job data) to a JSON file and prints a summary table of top matches to the console using `rich`. 
 
 ## Features
 
@@ -33,8 +33,6 @@ This project enhances job searching by combining the scraping power of **[JobSpy
     *   Company Name inclusion or exclusion lists.
     *   Job Title keyword matching (any keyword).
     *   Date Posted range (after/before YYYY-MM-DD).
-    *   Remote jobs within a specific country (uses Geopy).
-    *   Hybrid/On-site jobs within a specific mileage range of a location (uses Geopy).
     *   Minimum Suitability Score (0-100).
 *   **JobSpy Native Filter Configuration:** Exposes and allows configuration of several native JobSpy scraping filters via `config.yaml` and command-line arguments, including:
     *   Google search term
@@ -48,7 +46,6 @@ This project enhances job searching by combining the scraping power of **[JobSpy
     Command-line arguments override `config.yaml` settings for these filters.
 *   **Caching:**
     *   **Resume Analysis:** Caches structured resume data based on file hash to speed up subsequent runs with the same resume (`output/.resume_cache/`). Use `--force-resume-reparse` to override.
-    *   **Geocoding:** Caches geocoding results to disk (`output/.geocode_cache.json` - **Note: Implementation pending**) to minimize API calls to Nominatim and improve speed on repeated runs or similar locations.
 *   **Robustness:**
     *   More specific error handling for scraping, analysis, file I/O, and network issues.
     *   Retry logic for LLM API calls tailored to each provider.
@@ -110,7 +107,6 @@ Once your application runs with a collector active, you can view:
 *   **Logs:** Standard Python logs are automatically enriched with trace context and exported via OTLP.
 *   **Metrics:** Initial metrics for LLM calls (counts, duration, errors) are collected and can be visualized in backends like Prometheus/Grafana if your collector is configured to export them.
 
-**❗ Disclaimer:** Web scraping is inherently fragile. Job boards change frequently, implement anti-scraping measures (CAPTCHAs, blocks), and may forbid automated scraping in their Terms of Service. Scraping success (especially for sites like Glassdoor or non-cookied LinkedIn) is **NOT guaranteed.** This tool relies heavily on the `JobSpy` library; its effectiveness depends on `JobSpy`'s maintenance state and the current behavior of target websites. Geocoding relies on the Nominatim service, which has usage limits. Use responsibly and ethically.
 
 ## Prerequisites
 
@@ -125,7 +121,6 @@ Once your application runs with a collector active, you can view:
     ```bash
     playwright install
     ```
-*   **Geocoding User Agent:** Nominatim (used by Geopy) requires a unique user agent. Set the `GEOPY_USER_AGENT` environment variable OR edit the `geocoding.user_agent` value in `config.yaml`. **Using the default placeholder will likely result in geocoding errors.** Example format: `MyAppName/1.0 (myemail@example.com)`.
 
 ## Setup
 
@@ -160,7 +155,6 @@ Once your application runs with a collector active, you can view:
         *   **`openai`:** Set `base_url` (e.g., for LM Studio), `model` identifier, and `api_key` (if needed).
         *   **`ollama`:** Set `base_url` and `model` name (must be pulled in Ollama).
         *   **`gemini`:** Set `model` name and provide your `api_key` (or set `GOOGLE_API_KEY` environment variable).
-    *   **Crucially, set `geocoding.user_agent`** to a unique value representing your application/email.
     *   Adjust other settings (scraping, analysis, logging) as needed.
 
 6.  **Configure LinkedIn Cookies (Optional but Recommended):**
@@ -202,7 +196,6 @@ The `config.yaml` file allows for detailed configuration of the job scraping and
 
 *   `llm_provider`: Specifies the LLM provider ("openai", "ollama", or "gemini").
 *   `openai`, `ollama`, or `gemini` sections: Configure the specific settings for the chosen LLM provider, including API keys, model names, and base URLs.
-*   `geocoding.user_agent`: Set a unique user agent for geocoding requests.
 *   `linkedin`: Configure LinkedIn cookie values.
 *   JobSpy Native Filter Configuration:
     *   `google_search_term`
@@ -226,7 +219,7 @@ This project enhances job searching by combining the scraping power of **[JobSpy
     *   Compare your structured resume profile against each scraped job description.
     *   Generate a suitability score (0-100%), detailed justification, and skill/experience match assessment based on enhanced comparison logic.
 4.  **Filter & Rank:** Filters the analyzed jobs based on a wide range of criteria including salary, job type, work model, company names (include/exclude), title keywords, date posted, location (remote country or proximity), and minimum suitability score. Ranks the final list by suitability score.
-5.  **Output:** Saves the detailed analysis results (including original job data) to a JSON file and prints a summary table of top matches to the console using `rich`. Geocoding results are cached to disk.
+5.  **Output:** Saves the detailed analysis results (including original job data) to a JSON file and prints a summary table of top matches to the console using `rich`. 
 
 ## Features
 
@@ -248,8 +241,6 @@ This project enhances job searching by combining the scraping power of **[JobSpy
     *   Company Name inclusion or exclusion lists.
     *   Job Title keyword matching (any keyword).
     *   Date Posted range (after/before YYYY-MM-DD).
-    *   Remote jobs within a specific country (uses Geopy).
-    *   Hybrid/On-site jobs within a specific mileage range of a location (uses Geopy).
     *   Minimum Suitability Score (0-100).
 *   **JobSpy Native Filter Configuration:** Exposes and allows configuration of several native JobSpy scraping filters via `config.yaml` and command-line arguments, including:
     *   Google search term
@@ -263,7 +254,6 @@ This project enhances job searching by combining the scraping power of **[JobSpy
     Command-line arguments override `config.yaml` settings for these filters.
 *   **Caching:**
     *   **Resume Analysis:** Caches structured resume data based on file hash to speed up subsequent runs with the same resume (`output/.resume_cache/`). Use `--force-resume-reparse` to override.
-    *   **Geocoding:** Caches geocoding results to disk (`output/.geocode_cache.json` - **Note: Implementation pending**) to minimize API calls to Nominatim and improve speed on repeated runs or similar locations.
 *   **Robustness:**
     *   More specific error handling for scraping, analysis, file I/O, and network issues.
     *   Retry logic for LLM API calls tailored to each provider.
@@ -273,7 +263,6 @@ This project enhances job searching by combining the scraping power of **[JobSpy
 *   **Configuration:** Centralized settings via `config.yaml` with environment variable overrides for key parameters.
 *   **Rich Output:** Provides detailed JSON output and a configurable summary table in the console.
 
-**❗ Disclaimer:** Web scraping is inherently fragile. Job boards change frequently, implement anti-scraping measures (CAPTCHAs, blocks), and may forbid automated scraping in their Terms of Service. Scraping success (especially for sites like Glassdoor or non-cookied LinkedIn) is **NOT guaranteed.** This tool relies heavily on the `JobSpy` library; its effectiveness depends on `JobSpy`'s maintenance state and the current behavior of target websites. Geocoding relies on the Nominatim service, which has usage limits. Use responsibly and ethically.
 
 ## Prerequisites
 
@@ -288,7 +277,6 @@ This project enhances job searching by combining the scraping power of **[JobSpy
     ```bash
     playwright install
     ```
-*   **Geocoding User Agent:** Nominatim (used by Geopy) requires a unique user agent. Set the `GEOPY_USER_AGENT` environment variable OR edit the `geocoding.user_agent` value in `config.yaml`. **Using the default placeholder will likely result in geocoding errors.** Example format: `MyAppName/1.0 (myemail@example.com)`.
 
 ## Setup
 
@@ -323,7 +311,6 @@ This project enhances job searching by combining the scraping power of **[JobSpy
         *   **`openai`:** Set `base_url` (e.g., for LM Studio), `model` identifier, and `api_key` (if needed).
         *   **`ollama`:** Set `base_url` and `model` name (must be pulled in Ollama).
         *   **`gemini`:** Set `model` name and provide your `api_key` (or set `GOOGLE_API_KEY` environment variable).
-    *   **Crucially, set `geocoding.user_agent`** to a unique value representing your application/email.
     *   Adjust other settings (scraping, analysis, logging) as needed.
 
 6.  **Configure LinkedIn Cookies (Optional but Recommended):**

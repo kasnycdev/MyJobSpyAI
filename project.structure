@@ -1,37 +1,134 @@
-MyJobSpy/
-│
-├── .gitignore             # Git ignore configuration
-├── config.yaml            # Main user configuration (SEARCH, SCRAPING, AI, OUTPUT, USER_PROFILE)
-├── LICENSE                # Your project's license file (e.g., MIT)
-├── README.md              # Project overview, setup, usage (Needs update)
-├── requirements.txt       # Project dependencies (Needs update)
-├── run_pipeline.py        # Main script to execute the scraping and analysis pipeline
-│
-├── analysis/              # Code related to AI analysis
-│   ├── __init__.py
-│   └── analyzer.py        # Class for interacting with Ollama, loading prompts
-│
-├── models/                # Pydantic models for data validation and structure
-│   ├── __init__.py
-│   └── models.py          # Defines OriginalJobData, JobAnalysisResult, CombinedJobResult etc.
-│
-├── prompts/               # Prompt templates for the LLM
-│   ├── resume_extraction.prompt  # Prompt for parsing resume text
-│   └── job_suitability.prompt    # Prompt for analyzing job suitability
-│
-├── scrapers/              # Modules for scraping specific job sites (using JobSpy or custom)
-│   ├── __init__.py
-│   ├── linkedin.py        # Example: Specific logic/overrides for LinkedIn (if needed beyond base JobSpy)
-│   └── indeed.py          # Example: Specific logic/overrides for Indeed (if needed beyond base JobSpy)
-│   └── ...                # Other scraper modules if custom scraping is added
-│
-├── utils/                 # Utility functions and helper modules
-│   ├── __init__.py
-│   ├── file_operations.py # Functions for saving data (e.g., save_analysis_results)
-│   ├── logging_setup.py   # Logging configuration function (setup_logging)
-│   └── driver_setup.py    # (Optional) If using custom Selenium setup beyond JobSpy (e.g., setup_driver)
-│   └── ...                # Other utility modules
-│
+MyJobSpyAI/
+|
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── DEVELOPMENT.md
+├── LANGCHAIN_README.md
+├── MIGRATION_GUIDE.md
+├── Makefile
+├── MyJobSpyAI.code-workspace
+├── README.md
+├── config.example.yaml
+├── config.yaml
+├── docker-compose.yml
+├── mcp_config.json
+├── package-lock.json
+├── package.json
+├── project.structure
+├── pyproject.toml
+├── pytest.ini
+├── requirements-langchain.txt
+├── requirements-test.txt
+├── requirements.txt
+├── run_tests.sh
+├── setup.cfg
+├── test_langchain_chat.py
+├── test_langchain_integration.py
+├── test_langchain_provider.py
+|
+├── src/
+|   ├── myjobspyai
+|   │   ├── __init__.py
+|   │   ├── __main__.py
+|   │   ├── config.py
+|   │   ├── main.py
+|   │   ├── main_matcher.py
+|   │   ├── analysis
+|   │   │   ├── __init__.py
+|   │   │   ├── analyzer.py
+|   │   │   ├── analyzer_new.py
+|   │   │   ├── chunking_utils.py
+|   │   │   ├── models.py
+|   │   │   ├── prompts
+|   │   │   │   ├── job_extraction.prompt
+|   │   │   │   ├── resume_extraction.prompt
+|   │   │   │   └── suitability_analysis.prompt
+|   │   │   ├── providers
+|   │   │   │   ├── README.md
+|   │   │   │   ├── __init__.py
+|   │   │   │   ├── base.py
+|   │   │   │   ├── factory.py
+|   │   │   │   ├── gemini_provider.py
+|   │   │   │   ├── langchain_provider.py
+|   │   │   │   ├── ollama_provider.py
+|   │   │   │   └── openai_provider.py
+|   │   │   └── utils
+|   │   │       ├── __init__.py
+|   │   │       ├── chunking.py
+|   │   │       └── langchain_otel.py
+|   │   ├── filtering
+|   │   │   ├── __init__.py
+|   │   │   ├── filter.py
+|   │   │   └── filter_utils.py
+|   │   ├── llm
+|   │   │   ├── __init__.py
+|   │   │   ├── base.py
+|   │   │   └── providers
+|   │   │       ├── __init__.py
+|   │   │       ├── langchain.py
+|   │   │       ├── langchain_chat.py
+|   │   │       └── ollama.py
+|   │   ├── models
+|   │   │   ├── __init__.py
+|   │   │   └── job.py
+|   │   ├── parsers
+|   │   │   ├── __init__.py
+|   │   │   ├── job_parser.py
+|   │   │   └── resume_parser.py
+|   │   ├── prompts
+|   │   │   ├── README.md
+|   │   │   ├── __init__.py
+|   │   │   ├── job_extraction.prompt
+|   │   │   ├── resume_extraction.prompt
+|   │   │   └── suitability_analysis.prompt
+|   │   ├── scrapers
+|   │   │   ├── README.md
+|   │   │   ├── __init__.py
+|   │   │   ├── factory.py
+|   │   │   ├── indeed.py
+|   │   │   └── linkedin.py
+|   │   └── utils
+|   │       ├── __init__.py
+|   │       ├── async_utils.py
+|   │       ├── env.py
+|   │       ├── files.py
+|   │       ├── http_client.py
+|   │       ├── logging.py
+|   │       ├── logging_utils.py
+|   │       ├── prompts.py
+|   │       └── validation.py
+|   └── myjobspyai.egg-info
+|       ├── PKG-INFO
+|       ├── SOURCES.txt
+|       ├── dependency_links.txt
+|       ├── requires.txt
+|       └── top_level.txt
+|
+├── cache
+|   └── ...
+|
+├── docs
+|   └── ...
+|
+├── examples
+|   └── ...
+|
+├── node_modules
+|   └── ...
+|
+├── tests
+|   ├── README.md
+|   ├── __init__.py
+|   ├── conftest.py
+|   ├── test_analyzer_async.py
+|   ├── test_base_provider.py
+|   ├── test_config.py
+|   ├── test_http_client.py
+|   ├── test_langchain_integration.py
+|   ├── test_langchain_provider.py
+|   ├── test_llm_provider.py
+|   └── test_provider_factory.py
+|
 ├── data/                  # (Optional) Directory for input data like resumes
 │   └── resume/
 │       └── Kenneth.A.Santoro.MyJobSpy.Resume.pdf # Example resume file (ensure path matches config.yaml)
@@ -40,5 +137,8 @@ MyJobSpy/
 ├── output/                # Directory for generated output files (ignored by gitignore)
 │   └── .gitkeep           # To keep the directory structure in Git if desired
 │
-└── venv/                  # Python virtual environment directory (ignored by gitignore)
-    └── ...
+├── logs/                  # Directory for log files (ignored by gitignore)
+│   └── .gitkeep           # To keep the directory structure in Git if desired
+│
+├── venv/                  # Python virtual environment directory (ignored by gitignore)
+│    └── ...

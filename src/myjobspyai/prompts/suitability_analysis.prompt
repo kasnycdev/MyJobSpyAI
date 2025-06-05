@@ -1,0 +1,59 @@
+# Job Suitability Analysis Prompt
+# 
+# This prompt is used to analyze how well a candidate's resume matches a job description.
+# 
+# Required variables:
+# - job_title: The title of the job
+# - company: The name of the company
+# - job_description: The full job description text
+# - resume_text: The full text content of the resume/CV
+# 
+# Returns a JSON object with the following structure:
+# {
+#   "overall_score": number (0-100),
+#   "category_scores": {
+#     "skills": {
+#       "score": number (0-100),
+#       "explanation": string,
+#       "matches": string[],
+#       "missing": string[]
+#     },
+#     "experience": {
+#       "score": number (0-100),
+#       "explanation": string,
+#       "strengths": string[],
+#       "weaknesses": string[]
+#     },
+#     "education": {
+#       "score": number (0-100),
+#       "explanation": string,
+#       "meets_requirements": boolean,
+#       "notes": string | null
+#     },
+#     "culture_fit": {
+#       "score": number (0-100),
+#       "explanation": string,
+#       "alignment": string[]
+#     }
+#   },
+#   "summary": {
+#     "strengths": string[],
+#     "weaknesses": string[],
+#     "recommendation": "strong" | "moderate" | "weak",
+#     "suggested_improvements": string[],
+#     "interview_questions": string[]
+#   }
+# }
+
+Analyze how well the following resume matches the job description and provide a suitability assessment.
+
+Job Title: {job_title}
+Company: {company}
+
+Job Description:
+{job_description}
+
+Resume:
+{resume_text}
+
+Analysis (JSON):

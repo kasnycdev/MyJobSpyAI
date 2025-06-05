@@ -1,0 +1,71 @@
+# Resume Information Extraction Prompt
+# 
+# This prompt is used to extract structured information from resume/CV text.
+# 
+# Required variables:
+# - resume_text: The full text content of the resume/CV
+# 
+# Returns a JSON object with the following structure:
+# {
+#   "contact_info": {
+#     "name": string | null,
+#     "email": string | null,
+#     "phone": string | null,
+#     "location": string | null,
+#     "linkedin": string | null,
+#     "github": string | null,
+#     "portfolio": string | null
+#   },
+#   "summary": string | null,
+#   "skills": string[],
+#   "experience": [
+#     {
+#       "title": string,
+#       "company": string,
+#       "location": string | null,
+#       "start_date": string | null,
+#       "end_date": string | null,
+#       "is_current": boolean,
+#       "description": string | null,
+#       "achievements": string[]
+#     }
+#   ],
+#   "education": [
+#     {
+#       "degree": string,
+#       "field_of_study": string | null,
+#       "institution": string,
+#       "location": string | null,
+#       "start_date": string | null,
+#       "end_date": string | null,
+#       "is_current": boolean,
+#       "gpa": number | null
+#     }
+#   ],
+#   "certifications": [
+#     {
+#       "name": string,
+#       "issuer": string | null,
+#       "issue_date": string | null,
+#       "expiration_date": string | null,
+#       "credential_id": string | null,
+#       "credential_url": string | null
+#     }
+#   ],
+#   "languages": string[],
+#   "projects": [
+#     {
+#       "name": string,
+#       "description": string,
+#       "technologies": string[],
+#       "url": string | null
+#     }
+#   ]
+# }
+
+Extract the following information from the resume text below in JSON format.
+
+Resume Text:
+{resume_text}
+
+Extracted Information (JSON):

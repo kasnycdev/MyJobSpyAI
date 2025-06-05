@@ -1,8 +1,12 @@
 # === Core Functionality ===
 python-jobspy >= 1.1.80 # Job scraping
-geopy >= 2.4.0          # Geocoding for location filtering
 python-docx >= 1.1.0    # Resume parsing (.docx)
-pypdf >= 3.0.0         # Resume parsing (.pdf) - Changed from PyPDF2
+pypdf >= 3.0.0         # Resume parsing (.pdf) - Changed from PyDF2
+playwright >= 1.40.0    # Required by jobspy for browser automation
+beautifulsoup4 >= 4.12.0 # Required by jobspy for HTML parsing
+lxml >= 4.9.0          # Required by jobspy for HTML parsing
+requests >= 2.31.0      # Required by jobspy for HTTP requests
+httpx >= 0.24.0         # Required by jobspy for async HTTP requests
 # pdfminer.six >= 20221105 # Alternative/dependency for PDF parsing if needed
 
 # === LLM / GenAI Integration ===
@@ -10,6 +14,10 @@ pydantic >= 2.5.0       # Data validation for LLM outputs
 openai >= 1.0.0         # For OpenAI-compatible APIs (LM Studio, etc.)
 google-generativeai     # For Google Gemini API
 ollama >= 0.2.0         # For Ollama local server
+langchain >= 0.3.25     # LangChain core functionality
+langchain-community >= 0.3.24  # Community-contributed LangChain integrations
+langchain-core >= 0.3.63  # Core LangChain functionality
+langchain-ollama >= 0.3.3  # Ollama integration for LangChain
 
 # === Configuration & Utilities ===
 PyYAML >= 6.0           # For loading config.yaml
@@ -34,7 +42,7 @@ opentelemetry-instrumentation-logging ~= 0.43b0 # Logging instrumentation
 
 # === Important Transitive Dependencies (Usually installed by above) ===
 # httpx                 # Used by openai, ollama, jobspy
-# requests              # Used by geopy, potentially jobspy
+# requests              # Used by jobspy
 # beautifulsoup4       # Used by jobspy for parsing
 # lxml                  # Used by python-docx
 # python-dateutil       # Used by pandas

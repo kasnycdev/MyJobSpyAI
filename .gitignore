@@ -29,6 +29,9 @@ __pycache__/
 logs/
 cache/
 output/
+data/
+.windsurf/
+.vscode/
 server-logs/ # If it can appear at the root
 # More general patterns that might cover the above but good to be explicit
 */server-logs/*
@@ -36,6 +39,10 @@ server-logs/ # If it can appear at the root
 *.output # Specific output extension
 */output/*
 */cache/*
+*/data/*
+*/.windsurf/*
+*/.vscode/*
+
 # config.yaml # Generally, config files are versioned. If it has secrets, use .env or a gitignored local override.
 
 # Distribution / packaging
