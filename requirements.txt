@@ -1,44 +1,31 @@
-# === Core Functionality ===
-python-jobspy >= 1.1.80 # Job scraping
-python-docx >= 1.1.0    # Resume parsing (.docx)
-pypdf >= 3.0.0         # Resume parsing (.pdf) - Changed from PyDF2
-playwright >= 1.40.0    # Required by jobspy for browser automation
-beautifulsoup4 >= 4.12.0 # Required by jobspy for HTML parsing
-lxml >= 4.9.0          # Required by jobspy for HTML parsing
-requests >= 2.31.0      # Required by jobspy for HTTP requests
-httpx >= 0.24.0         # Required by jobspy for async HTTP requests
-# pdfminer.six >= 20221105 # Alternative/dependency for PDF parsing if needed
+# === Core Dependencies ===
+python-jobspy>=1.1.80     # Job scraping
+python-docx>=1.1.0       # Resume parsing (.docx)
+pypdf>=3.0.0            # Resume parsing (.pdf)
+beautifulsoup4>=4.12.0   # HTML parsing
+lxml>=4.9.0              # HTML parsing
+requests>=2.31.0         # HTTP requests
+httpx>=0.24.0            # Async HTTP requests
 
-# === LLM / GenAI Integration ===
-pydantic >= 2.5.0       # Data validation for LLM outputs
-openai >= 1.0.0         # For OpenAI-compatible APIs (LM Studio, etc.)
-google-generativeai     # For Google Gemini API
-ollama >= 0.2.0         # For Ollama local server
-langchain >= 0.3.25     # LangChain core functionality
-langchain-community >= 0.3.24  # Community-contributed LangChain integrations
-langchain-core >= 0.3.63  # Core LangChain functionality
-langchain-ollama >= 0.3.3  # Ollama integration for LangChain
+# === LLM Integration ===
+pydantic>=2.5.0          # Data validation
+langchain>=0.3.25        # LangChain core
+langchain-community>=0.0.10  # LangChain community integrations
+langchain-openai>=0.0.5     # OpenAI integration for LangChain
+langchain-anthropic>=0.0.4  # Anthropic integration for LangChain
+langchain-google-genai>=0.0.5  # Google AI integration for LangChain
+langchain-community[all]>=0.0.10  # All community integrations
 
-# === Configuration & Utilities ===
-PyYAML >= 6.0           # For loading config.yaml
-Jinja2 >= 3.1.0         # For loading prompt templates
+# === Core Utilities ===
+PyYAML>=6.0             # Configuration
+Jinja2>=3.1.0           # Template processing
+rich>=13.0.0            # Console output
+pandas>=2.0.0           # Data manipulation
+numpy>=1.26.3           # Required by jobspy
 
-# === UX / Console Output ===
-rich >= 13.0.0          # Enhanced console output (tables, progress, logging)
-colorama                # Cross-platform colored terminal text (used by rich)
-pytrail                 # For interactive debugging and tracing
-scalene                 # Required by pytrail for profiling
-
-# === Data Handling ===
-pandas >= 2.0.0         # Data manipulation (primarily after scraping)
-numpy >= 1.26.3         # Required by jobspy 1.1.80, also used by pandas
-
-# === Observability / Telemetry ===
-opentelemetry-api ~= 1.22 # Core API for OpenTelemetry
-opentelemetry-sdk ~= 1.22 # Core SDK for OpenTelemetry
-opentelemetry-exporter-otlp-proto-grpc ~= 1.22 # OTLP exporter using gRPC
-opentelemetry-exporter-otlp-proto-http ~= 1.22 # OTLP exporter using HTTP/protobuf
-opentelemetry-instrumentation-logging ~= 0.43b0 # Logging instrumentation
+# === Observability ===
+opentelemetry-api~=1.22  # OpenTelemetry API
+opentelemetry-sdk~=1.22  # OpenTelemetry SDK
 
 # === Important Transitive Dependencies (Usually installed by above) ===
 # httpx                 # Used by openai, ollama, jobspy

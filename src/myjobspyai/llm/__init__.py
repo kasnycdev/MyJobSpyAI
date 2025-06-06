@@ -1,6 +1,7 @@
-"""LLM provider implementations for MyJobSpy AI."""
+"""LLM provider implementations for MyJobSpy AI.
 
-from .base import BaseLLMProvider, LLMError, LLMRequestError, LLMResponse
+This module provides the base classes and implementations for various LLM providers.
+"""
 
 __all__ = [
     "BaseLLMProvider",

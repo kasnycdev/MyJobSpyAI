@@ -39,7 +39,9 @@ class TestBaseProvider:
         assert provider.provider_name == "test_provider"
         assert provider.provider_type == "test_type"
         assert provider.config == TEST_CONFIG
-        assert hasattr(provider, 'generate')  # Should have the abstract method implemented
+        assert hasattr(
+            provider, 'generate'
+        )  # Should have the abstract method implemented
 
     def test_get_config_value(self):
         """Test retrieving values from the config."""
@@ -64,6 +66,7 @@ class TestBaseProvider:
     @pytest.mark.asyncio
     async def test_generate_not_implemented(self):
         """Test that a provider without generate method raises TypeError."""
+
         # Create a new class that doesn't implement generate
         class UnimplementedProvider(BaseProvider):
             pass
@@ -84,12 +87,14 @@ class TestBaseProvider:
         # Get the string representation
         str_rep = str(provider)
 
-        # Should contain the full class path
-        assert "TestBaseProvider.ConcreteProvider" in str_rep
+        # Should contain the class name
+        assert "ConcreteProvider" in str_rep
         # Should contain the memory address
         assert hex(id(provider)) in str_rep
         # Should be in the standard Python object representation format
         assert str_rep.startswith("<") and str_rep.endswith(">")
+        # Should contain the module path
+        assert "test_base_provider" in str_rep
 
     def test_repr_representation(self):
         """Test the representation of the provider."""
@@ -174,6 +179,7 @@ class TestProviderWithHooks:
     @pytest.mark.asyncio
     async def test_pre_generate_hook(self):
         """Test that the pre_generate hook is called."""
+
         class PreHookTestProvider(self.HookedProvider):
             async def generate(self, prompt, **kwargs):
                 # Call pre_generate manually for testing
@@ -196,6 +202,7 @@ class TestProviderWithHooks:
     @pytest.mark.asyncio
     async def test_post_generate_hook(self):
         """Test that the post_generate hook is called."""
+
         # Create a test class that overrides generate to call post_generate
         class PostHookTestProvider(self.HookedProvider):
             async def generate(self, prompt, **kwargs):

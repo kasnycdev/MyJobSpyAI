@@ -9,26 +9,22 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import aiohttp
 import pandas as pd
-import yaml
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from myjobspyai.analysis.analyzer import JobAnalyzer, ResumeAnalyzer
-from myjobspyai.analysis.models import JobAnalysisResult, ResumeData
+from myjobspyai.analysis.models import ResumeData
 from myjobspyai.config import config as app_config
 from myjobspyai.main_matcher import load_and_extract_resume_async
 
 # Import application components
-from myjobspyai.scrapers import JobType
 from myjobspyai.scrapers.factory import create_scraper
 
 # Import JobSpy if available
 try:
-    from jobspy import scrape_jobs
     JOBSPY_AVAILABLE = True
 except ImportError:
     JOBSPY_AVAILABLE = False
@@ -38,7 +34,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[RichHandler(rich_tracebacks=True, markup=False)]
+    handlers=[RichHandler(rich_tracebacks=True, markup=False)],
 )
 logger = logging.getLogger("myjobspyai")
 
@@ -95,13 +91,301 @@ def setup_logging_custom(debug: bool = False) -> None:
     Args:
         debug: Enable debug logging if True.
     """
+    import logging
+    import logging.config
+    import os
+    from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+    from pathlib import Path
+    from typing import Any, Dict
+
+    # Set up basic logging first to capture any errors
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("myjobspyai")
+
+    # Set log level based on debug flag
     log_level = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)],
-    )
+
+    try:
+        # Get logging config from app_config
+        log_config = app_config.logging
+
+        # Set up log directory - use the configured log_dir or default to 'logs' in the current directory
+        log_dir = (
+            Path(str(getattr(log_config, 'log_dir', 'logs'))).expanduser().absolute()
+        )
+
+        # Try to create the log directory with appropriate permissions
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)  # rwxr-xr-x
+            # Ensure the directory is writable by the current user
+            if not os.access(log_dir, os.W_OK):
+                logger.warning(
+                    f"Log directory {log_dir} is not writable. Falling back to default location."
+                )
+                log_dir = Path.cwd() / 'logs'
+                log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+        except Exception as e:
+            logger.warning(
+                f"Failed to create log directory at {log_dir}: {e}. Using default location."
+            )
+            log_dir = Path.cwd() / 'logs'
+            log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+
+        logger.info(f"Log directory: {log_dir}")
+
+        # Set default log level based on config or debug flag
+        default_log_level = (
+            logging.DEBUG
+            if debug
+            else getattr(
+                logging,
+                str(getattr(log_config, 'log_level', 'INFO')).upper(),
+                logging.INFO,
+            )
+        )
+
+        # Define log format
+        log_format = str(
+            getattr(
+                log_config,
+                'format',
+                '%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s',
+            )
+        )
+        date_format = str(getattr(log_config, 'date_format', "%Y-%m-%d %H:%M:%S"))
+
+        # Check if using new files configuration or legacy
+        if hasattr(log_config, 'files') and log_config.files:
+            # New configuration with separate files
+            log_files = {}
+            for log_name, log_spec in log_config.files.items():
+                log_files[log_name] = {
+                    'path': log_dir / str(log_spec.get('path', f"{log_name}.log")),
+                    'level': getattr(
+                        logging,
+                        str(log_spec.get('level', 'INFO')).upper(),
+                        logging.INFO,
+                    ),
+                }
+        else:
+            # Legacy configuration for backward compatibility
+            log_files = {
+                'app': {
+                    'path': log_dir
+                    / str(getattr(log_config, 'info_log_file', 'app.log')),
+                    'level': default_log_level,
+                },
+                'debug': {
+                    'path': log_dir
+                    / str(getattr(log_config, 'debug_log_file', 'debug.log')),
+                    'level': logging.DEBUG,
+                },
+                'error': {
+                    'path': log_dir
+                    / str(getattr(log_config, 'error_log_file', 'error.log')),
+                    'level': logging.WARNING,
+                },
+                'llm': {
+                    'path': log_dir
+                    / str(getattr(log_config, 'model_output_log_file', 'llm.log')),
+                    'level': logging.INFO,
+                },
+            }
+
+        # Log file configuration
+        log_file_mode = str(
+            getattr(log_config, 'log_file_mode', 'a')
+        )  # 'w' for overwrite, 'a' for append
+        max_size = int(
+            getattr(log_config, 'max_size', 10 * 1024 * 1024)
+        )  # 10MB default
+        backup_count = int(
+            getattr(log_config, 'backup_count', 5)
+        )  # Number of backup files to keep
+
+        # Rolling strategy configuration
+        rolling_strategy = str(
+            getattr(log_config, 'rolling_strategy', 'size')
+        ).lower()  # 'size' or 'time'
+        when = str(getattr(log_config, 'when', 'midnight'))  # For time-based rotation
+        interval = int(
+            getattr(log_config, 'interval', 1)
+        )  # Interval for time-based rotation
+        utc = bool(getattr(log_config, 'utc', False))  # Use UTC for time-based rotation
+        at_time = getattr(
+            log_config, 'at_time', None
+        )  # Specific time for time-based rotation
+
+        # Helper function to create file handler config
+        def create_file_handler_config(name, level, log_path, mode=log_file_mode):
+            handler_config = {
+                'level': level,
+                'formatter': 'standard',
+                'filename': str(log_path),
+                'encoding': 'utf-8',
+                'delay': True,  # Delay file opening until first write
+                'mode': mode,  # 'w' for overwrite, 'a' for append
+            }
+
+            if rolling_strategy == 'size':
+                handler_config.update(
+                    {
+                        'class': 'logging.handlers.RotatingFileHandler',
+                        'maxBytes': max_size,
+                        'backupCount': backup_count,
+                    }
+                )
+            else:  # time-based rotation
+                handler_config.update(
+                    {
+                        'class': 'logging.handlers.TimedRotatingFileHandler',
+                        'when': when,
+                        'interval': interval,
+                        'backupCount': backup_count,
+                        'utc': utc,
+                    }
+                )
+                if at_time:
+                    handler_config['atTime'] = at_time
+
+            return handler_config
+
+        # Create formatters dictionary with JSON support
+        formatters = {
+            'standard': {'format': log_format, 'datefmt': date_format, 'style': '%'},
+            'detailed': {
+                'format': '%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s',
+                'datefmt': date_format,
+            },
+            'simple': {'format': '%(levelname)-8s %(message)s'},
+            'json': {
+                '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+                'format': '''{
+                    "timestamp": "%(asctime)s",
+                    "level": "%(levelname)s",
+                    "logger": "%(name)s",
+                    "module": "%(module)s",
+                    "function": "%(funcName)s",
+                    "line": %(lineno)d,
+                    "message": "%(message)s",
+                    "process": %(process)d,
+                    "thread": %(thread)d,
+                    "process_name": "%(processName)s",
+                    "thread_name": "%(threadName)s"
+                }''',
+                'datefmt': date_format,
+            },
+        }
+
+        # Create handlers dictionary
+        handlers = {
+            'console': {
+                'class': 'rich.logging.RichHandler',
+                'level': log_level,
+                'formatter': 'standard',
+                'rich_tracebacks': True,
+                'show_path': debug,
+                'markup': True,
+                'show_time': True,
+                'show_level': True,
+            }
+        }
+
+        # Add file handlers based on configuration
+        if hasattr(log_config, 'info_log_file') and getattr(
+            log_config, 'info_log_file', None
+        ):
+            handlers['info_file'] = create_file_handler_config(
+                'info_file', 'INFO', 'standard', log_files['info']
+            )
+
+        # File handlers for each log type
+        for name, log_spec in log_files.items():
+            handlers[f'file_{name}'] = create_file_handler_config(
+                name=name, level=log_spec['level'], log_path=log_spec['path']
+            )
+
+        # Configure loggers
+        loggers = {
+            '': {  # root logger
+                'handlers': ['console'] + [f'file_{name}' for name in log_files.keys()],
+                'level': 'DEBUG' if debug else 'INFO',
+                'propagate': True,
+            },
+            'myjobspyai': {
+                'handlers': ['console', 'file_app', 'file_error', 'file_debug'],
+                'level': 'DEBUG' if debug else 'INFO',
+                'propagate': False,
+            },
+            'llm': {
+                'handlers': ['file_llm'],
+                'level': 'DEBUG' if debug else 'INFO',
+                'propagate': False,
+            },
+            'debug': {'handlers': ['file_debug'], 'level': 'DEBUG', 'propagate': False},
+            'error': {
+                'handlers': ['file_error'],
+                'level': 'WARNING',
+                'propagate': False,
+            },
+        }
+
+        # Configure logging
+        logging_config = {
+            'version': 1,
+            'disable_existing_loggers': False,
+            'formatters': formatters,
+            'handlers': handlers,
+            'loggers': loggers,
+            'root': {'handlers': ['console'], 'level': 'DEBUG' if debug else 'INFO'},
+        }
+
+        # Apply the logging configuration
+        logging.config.dictConfig(logging_config)
+
+        # Set up error tracking for uncaught exceptions
+        def handle_exception(exc_type, exc_value, exc_traceback):
+            if issubclass(exc_type, KeyboardInterrupt):
+                # Call the default excepthook for keyboard interrupts
+                sys.__excepthook__(exc_type, exc_value, exc_traceback)
+                return
+
+            # Log the exception
+            logger.critical(
+                "Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback)
+            )
+
+        # Set the exception handler
+        sys.excepthook = handle_exception
+
+        # Log Python warnings
+        logging.captureWarnings(True)
+
+        # Log the configuration
+        logger.info("=" * 50)
+        logger.info(f"Logging configured. Log directory: {log_dir.absolute()}")
+        logger.info(f"Log level: {'DEBUG' if debug else 'INFO'}")
+        log_files_str = ', '.join(
+            [f"{name}: {log_spec['path'].name}" for name, log_spec in log_files.items()]
+        )
+        logger.info(f"Log files: {log_files_str}")
+
+        # Log the configuration file location if it exists
+        config_path = Path('~/.config/myjobspyai/config.yaml').expanduser()
+        if config_path.exists():
+            logger.info(f"Using configuration from: {config_path}")
+        else:
+            logger.warning(
+                f"Configuration file not found at {config_path}. Using default settings."
+            )
+        logger.info("-" * 50)
+
+    except Exception as e:
+        # Fallback to basic config if logging setup fails
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger("myjobspyai")
+        logger.error(f"Failed to configure logging: {e}", exc_info=True)
+        logger.info("Falling back to basic logging configuration")
 
 
 def parse_args(args: list[str]) -> argparse.Namespace:
@@ -148,7 +432,15 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         '--site-name',
         type=str,
         nargs='+',
-        choices=['linkedin', 'indeed', 'glassdoor', 'google', 'zip_recruiter', 'bayt', 'naukri'],
+        choices=[
+            'linkedin',
+            'indeed',
+            'glassdoor',
+            'google',
+            'zip_recruiter',
+            'bayt',
+            'naukri',
+        ],
         help='Job sites to search (default: all supported sites)',
     )
     search_group.add_argument(
@@ -288,13 +580,15 @@ def parse_args(args: list[str]) -> argparse.Namespace:
     runtime_group = parser.add_argument_group('Runtime Options')
     verbose_group = runtime_group.add_mutually_exclusive_group()
     verbose_group.add_argument(
-        '-v', '--verbose',
+        '-v',
+        '--verbose',
         action='count',
         default=2,
         help='Increase verbosity (can be used multiple times, e.g., -vv for debug)',
     )
     verbose_group.add_argument(
-        '-q', '--quiet',
+        '-q',
+        '--quiet',
         action='store_true',
         help='Suppress all output except errors',
     )
@@ -348,7 +642,7 @@ async def initialize_llm_provider(
                     temperature=config.get("temperature", 0.7),
                     max_tokens=config.get("max_tokens", 1000),
                     streaming=config.get("streaming", True),
-                    request_timeout=config.get("timeout", 60)
+                    request_timeout=config.get("timeout", 60),
                 )
             # Standard OpenAI configuration
             return ChatOpenAI(
@@ -358,24 +652,26 @@ async def initialize_llm_provider(
                 max_tokens=config.get("max_tokens", 1000),
                 streaming=config.get("streaming", True),
                 request_timeout=config.get("timeout", 60),
-                organization=config.get("organization") or os.getenv("OPENAI_ORG_ID")
+                organization=config.get("organization") or os.getenv("OPENAI_ORG_ID"),
             )
 
         elif provider_type == "anthropic":
             from langchain_anthropic import ChatAnthropic
+
             return ChatAnthropic(
                 model=config.get("model", "claude-3-opus-20240229"),
                 api_key=config.get("api_key") or os.getenv("ANTHROPIC_API_KEY"),
                 temperature=config.get("temperature", 0.7),
-                max_tokens=config.get("max_tokens", 1000)
+                max_tokens=config.get("max_tokens", 1000),
             )
 
         elif provider_type == "google":
             from langchain_google_genai import ChatGoogleGenerativeAI
+
             return ChatGoogleGenerativeAI(
                 model=config.get("model", "gemini-pro"),
                 google_api_key=config.get("api_key") or os.getenv("GOOGLE_API_KEY"),
-                temperature=config.get("temperature", 0.7)
+                temperature=config.get("temperature", 0.7),
             )
 
         elif provider_type == "langchain":
@@ -398,18 +694,24 @@ async def initialize_llm_provider(
                 # Initialize Ollama with the specified configuration
                 return Ollama(
                     base_url=config.get("base_url", "http://localhost:11434"),
-                    model=config.get("model", "llama2"),  # Default to llama2 if not specified
+                    model=config.get(
+                        "model", "llama2"
+                    ),  # Default to llama2 if not specified
                     temperature=config.get("temperature", 0.7),
                     top_p=config.get("top_p", 1.0),
                     callback_manager=CallbackManager(callbacks) if callbacks else None,
                     timeout=config.get("timeout", 60),
-                    num_predict=config.get("max_tokens", 1000)
+                    num_predict=config.get("max_tokens", 1000),
                 )
             except ImportError as e:
-                logger.error("Failed to import Ollama dependencies. Install with: pip install langchain-community")
+                logger.error(
+                    "Failed to import Ollama dependencies. Install with: pip install langchain-community"
+                )
                 return None
             except Exception as e:
-                logger.error(f"Failed to initialize Ollama provider: {e}", exc_info=True)
+                logger.error(
+                    f"Failed to initialize Ollama provider: {e}", exc_info=True
+                )
                 return None
 
         else:
@@ -428,7 +730,9 @@ async def initialize_llm_provider(
         return None
 
     except Exception as e:
-        logger.error(f"Failed to initialize {provider_type} provider: {e}", exc_info=True)
+        logger.error(
+            f"Failed to initialize {provider_type} provider: {e}", exc_info=True
+        )
         return None
 
 
@@ -472,7 +776,10 @@ def display_jobs_table(jobs: list, title: str = "Job Search Results"):
             match_score = ""
             if has_analysis and '_analysis' in job and job['_analysis']:
                 analysis = job['_analysis']
-                if 'suitability_score' in analysis and analysis['suitability_score'] is not None:
+                if (
+                    'suitability_score' in analysis
+                    and analysis['suitability_score'] is not None
+                ):
                     score = analysis['suitability_score']
                     # Color code the score
                     if score >= 75:
@@ -503,7 +810,7 @@ def display_jobs_table(jobs: list, title: str = "Job Search Results"):
             str(location)[:20] + ("..." if len(str(location)) > 20 else ""),
             str(job_type),
             is_remote,
-            str(posted_date)
+            str(posted_date),
         ]
 
         # Add match score if available
@@ -522,7 +829,9 @@ def display_jobs_table(jobs: list, title: str = "Job Search Results"):
         console.print("  [yellow]50-74%:[/yellow] Moderate match")
         console.print("  [red]0-49%:[/red] Weak match")
 
-    console.print(f"\n[yellow]Found {len(jobs)} jobs. Use the job number to view details.[/yellow]")
+    console.print(
+        f"\n[yellow]Found {len(jobs)} jobs. Use the job number to view details.[/yellow]"
+    )
 
 
 def display_job_details(job):
@@ -538,7 +847,9 @@ def display_job_details(job):
     location = job.get('location') if is_dict else getattr(job, 'location', 'N/A')
     job_type = job.get('job_type') if is_dict else getattr(job, 'job_type', 'N/A')
     remote = job.get('is_remote') if is_dict else getattr(job, 'is_remote', False)
-    posted_date = job.get('posted_date') if is_dict else getattr(job, 'posted_date', None)
+    posted_date = (
+        job.get('posted_date') if is_dict else getattr(job, 'posted_date', None)
+    )
     description = job.get('description') if is_dict else getattr(job, 'description', '')
     url = job.get('url') if is_dict else getattr(job, 'url', '')
 
@@ -557,7 +868,11 @@ def display_job_details(job):
     console.print(f"{job_type_str} • {remote_status}")
 
     # Display match score if analysis is available
-    if analysis and 'suitability_score' in analysis and analysis['suitability_score'] is not None:
+    if (
+        analysis
+        and 'suitability_score' in analysis
+        and analysis['suitability_score'] is not None
+    ):
         score = analysis['suitability_score']
         # Color code the score
         if score >= 75:
@@ -592,15 +907,35 @@ def display_job_details(job):
         console.print(description[:1000] + ("..." if len(description) > 1000 else ""))
 
     # Salary information if available
-    salary = job.get('salary') if is_dict else (getattr(job, 'salary', None) if hasattr(job, 'salary') else None)
+    salary = (
+        job.get('salary')
+        if is_dict
+        else (getattr(job, 'salary', None) if hasattr(job, 'salary') else None)
+    )
     if salary:
         salary_str = []
 
         # Handle both dict and object salary formats
-        min_amount = salary.get('min_amount') if isinstance(salary, dict) else getattr(salary, 'min_amount', None)
-        max_amount = salary.get('max_amount') if isinstance(salary, dict) else getattr(salary, 'max_amount', None)
-        currency = salary.get('currency') if isinstance(salary, dict) else getattr(salary, 'currency', None)
-        period = salary.get('period') if isinstance(salary, dict) else getattr(salary, 'period', None)
+        min_amount = (
+            salary.get('min_amount')
+            if isinstance(salary, dict)
+            else getattr(salary, 'min_amount', None)
+        )
+        max_amount = (
+            salary.get('max_amount')
+            if isinstance(salary, dict)
+            else getattr(salary, 'max_amount', None)
+        )
+        currency = (
+            salary.get('currency')
+            if isinstance(salary, dict)
+            else getattr(salary, 'currency', None)
+        )
+        period = (
+            salary.get('period')
+            if isinstance(salary, dict)
+            else getattr(salary, 'period', None)
+        )
 
         if min_amount is not None:
             salary_str.append(f"${min_amount:,.0f}")
@@ -623,7 +958,9 @@ def display_job_details(job):
     console.print(f"[bold blue]{'=' * 80}[/bold blue]\n")
 
 
-async def analyze_jobs_with_resume(jobs: List[Any], resume_data: ResumeData) -> List[Dict[str, Any]]:
+async def analyze_jobs_with_resume(
+    jobs: List[Any], resume_data: ResumeData
+) -> List[Dict[str, Any]]:
     """Analyze jobs against a resume.
 
     Args:
@@ -636,7 +973,31 @@ async def analyze_jobs_with_resume(jobs: List[Any], resume_data: ResumeData) -> 
     if not jobs:
         return []
 
-    job_analyzer = JobAnalyzer()
+    # Initialize LLM provider if configured
+    llm_provider = None
+    try:
+        from myjobspyai.config import config as app_config
+
+        if hasattr(app_config, 'llm') and app_config.llm:
+            llm_config = app_config.llm
+            default_provider = llm_config.get('default_provider')
+            providers = llm_config.get('providers', {})
+
+            if default_provider and default_provider in providers:
+                provider_config = providers[default_provider]
+                if provider_config.get('enabled', False):
+                    llm_provider = await initialize_llm_provider(provider_config)
+                    if llm_provider:
+                        logger.info(f"Initialized LLM provider: {default_provider}")
+                    else:
+                        logger.warning(
+                            f"Failed to initialize LLM provider: {default_provider}"
+                        )
+    except Exception as e:
+        logger.warning(f"Error initializing LLM provider: {e}")
+
+    # Initialize job analyzer with the LLM provider
+    job_analyzer = JobAnalyzer(llm_provider=llm_provider)
     analyzed_jobs = []
 
     for job in jobs:
@@ -646,22 +1007,31 @@ async def analyze_jobs_with_resume(jobs: List[Any], resume_data: ResumeData) -> 
 
             # Add analysis results
             analysis = await job_analyzer.analyze_resume_suitability(
-                resume_data=resume_data,
-                job_data=job_dict
+                resume_data=resume_data, job_data=job_dict
             )
 
             # Add analysis to job data
-            job_dict['_analysis'] = analysis.dict() if hasattr(analysis, 'dict') else analysis
+            if hasattr(analysis, 'dict'):
+                job_dict['_analysis'] = analysis.dict()
+            elif isinstance(analysis, dict):
+                job_dict['_analysis'] = analysis
+            else:
+                job_dict['_analysis'] = {'error': 'Invalid analysis result format'}
+
             analyzed_jobs.append(job_dict)
 
         except Exception as e:
-            logger.error(f"Error analyzing job {getattr(job, 'title', 'Unknown')}: {e}")
+            logger.error(
+                f"Error analyzing job {getattr(job, 'title', 'Unknown')}: {e}",
+                exc_info=True,
+            )
             # Add job without analysis if analysis fails
             job_dict = job.model_dump() if hasattr(job, 'model_dump') else dict(job)
             job_dict['_analysis'] = {'error': str(e)}
             analyzed_jobs.append(job_dict)
 
     return analyzed_jobs
+
 
 async def search_jobs(args) -> int:
     """Search for jobs using the specified scraper."""
@@ -674,10 +1044,14 @@ async def search_jobs(args) -> int:
             console.print(f"[blue]Loading and analyzing resume: {args.resume}[/blue]")
             resume_data = await load_and_extract_resume_async(args.resume)
             if not resume_data:
-                console.print("[yellow]Warning: Could not parse resume. Analysis will be limited.[/yellow]")
+                console.print(
+                    "[yellow]Warning: Could not parse resume. Analysis will be limited.[/yellow]"
+                )
         except Exception as e:
             logger.error(f"Error loading resume: {e}", exc_info=True)
-            console.print(f"[yellow]Warning: Error loading resume: {e}. Analysis will be limited.[/yellow]")
+            console.print(
+                f"[yellow]Warning: Error loading resume: {e}. Analysis will be limited.[/yellow]"
+            )
 
     try:
         # Get search query from args
@@ -691,7 +1065,9 @@ async def search_jobs(args) -> int:
 
         # Check if JobSpy is available if that's the selected scraper
         if scraper_type == 'jobspy' and not JOBSPY_AVAILABLE:
-            console.print("[yellow]Warning: JobSpy is not installed. Falling back to default scraper.[/yellow]")
+            console.print(
+                "[yellow]Warning: JobSpy is not installed. Falling back to default scraper.[/yellow]"
+            )
             console.print("  Install with: pip install python-jobspy")
             scraper_type = 'linkedin'  # Fall back to LinkedIn scraper
 
@@ -707,14 +1083,22 @@ async def search_jobs(args) -> int:
             TextColumn("[progress.description]{task.description}"),
             transient=True,
         ) as progress:
-            progress.add_task(description=f"Initializing {scraper_type} scraper...", total=None)
+            progress.add_task(
+                description=f"Initializing {scraper_type} scraper...", total=None
+            )
             try:
                 scraper = create_scraper(scraper_type, scraper_config)
             except Exception as e:
-                logger.error(f"Failed to create {scraper_type} scraper: {e}", exc_info=True)
-                console.print(f"[red]Error: Failed to initialize {scraper_type} scraper: {str(e)}[/red]")
+                logger.error(
+                    f"Failed to create {scraper_type} scraper: {e}", exc_info=True
+                )
+                console.print(
+                    f"[red]Error: Failed to initialize {scraper_type} scraper: {str(e)}[/red]"
+                )
                 if scraper_type == 'jobspy' and 'No module named' in str(e):
-                    console.print("\n[bold]JobSpy is not installed. Please install it with:[/bold]")
+                    console.print(
+                        "\n[bold]JobSpy is not installed. Please install it with:[/bold]"
+                    )
                     console.print("pip install python-jobspy")
                 return 1
 
@@ -723,35 +1107,65 @@ async def search_jobs(args) -> int:
 
         # Add query, location, and max_results from args, falling back to config
         search_params['query'] = getattr(args, 'search', search_query)
-        search_params['location'] = getattr(args, 'location', scraper_config.get('location', ''))
-        search_params['max_results'] = getattr(args, 'results_wanted', scraper_config.get('max_results', 15))
+        search_params['location'] = getattr(
+            args, 'location', scraper_config.get('location', '')
+        )
+        search_params['max_results'] = getattr(
+            args, 'results_wanted', scraper_config.get('max_results', 15)
+        )
 
         # Add JobSpy specific parameters if using JobSpy
         if scraper_type == 'jobspy':
             # Define JobSpy parameters with defaults from config, overridden by command-line args
             jobspy_params = {
-                'site_name': getattr(args, 'site_name', scraper_config.get('site_name')),
-                'distance': getattr(args, 'distance', scraper_config.get('distance', 50)),
+                'site_name': getattr(
+                    args, 'site_name', scraper_config.get('site_name')
+                ),
+                'distance': getattr(
+                    args, 'distance', scraper_config.get('distance', 50)
+                ),
                 'job_type': getattr(args, 'job_type', scraper_config.get('job_type')),
-                'is_remote': getattr(args, 'is_remote', scraper_config.get('is_remote', False)),
-                'easy_apply': getattr(args, 'easy_apply', scraper_config.get('easy_apply', False)),
+                'is_remote': getattr(
+                    args, 'is_remote', scraper_config.get('is_remote', False)
+                ),
+                'easy_apply': getattr(
+                    args, 'easy_apply', scraper_config.get('easy_apply', False)
+                ),
                 'offset': getattr(args, 'offset', scraper_config.get('offset', 0)),
-                'hours_old': getattr(args, 'hours_old', scraper_config.get('hours_old')),
-                'country_indeed': getattr(args, 'country_indeed', scraper_config.get('country_indeed')),
-                'description_format': getattr(args, 'description_format',
-                                           scraper_config.get('description_format', 'markdown')),
-                'linkedin_fetch_description': getattr(args, 'linkedin_fetch_description',
-                                                   scraper_config.get('linkedin_fetch_description', False)),
-                'linkedin_company_ids': getattr(args, 'linkedin_company_ids',
-                                             scraper_config.get('linkedin_company_ids')),
+                'hours_old': getattr(
+                    args, 'hours_old', scraper_config.get('hours_old')
+                ),
+                'country_indeed': getattr(
+                    args, 'country_indeed', scraper_config.get('country_indeed')
+                ),
+                'description_format': getattr(
+                    args,
+                    'description_format',
+                    scraper_config.get('description_format', 'markdown'),
+                ),
+                'linkedin_fetch_description': getattr(
+                    args,
+                    'linkedin_fetch_description',
+                    scraper_config.get('linkedin_fetch_description', False),
+                ),
+                'linkedin_company_ids': getattr(
+                    args,
+                    'linkedin_company_ids',
+                    scraper_config.get('linkedin_company_ids'),
+                ),
                 'proxies': getattr(args, 'proxies', scraper_config.get('proxies')),
                 'ca_cert': getattr(args, 'ca_cert', scraper_config.get('ca_cert')),
-                'enforce_annual_salary': getattr(args, 'enforce_annual_salary',
-                                              scraper_config.get('enforce_annual_salary', False)),
-                'verbose': getattr(args, 'verbose', scraper_config.get('verbose', 2))
+                'enforce_annual_salary': getattr(
+                    args,
+                    'enforce_annual_salary',
+                    scraper_config.get('enforce_annual_salary', False),
+                ),
+                'verbose': getattr(args, 'verbose', scraper_config.get('verbose', 2)),
             }
             # Remove None values
-            search_params.update({k: v for k, v in jobspy_params.items() if v is not None and v != ''})
+            search_params.update(
+                {k: v for k, v in jobspy_params.items() if v is not None and v != ''}
+            )
 
         # Filter out None values
         search_params = {k: v for k, v in search_params.items() if v is not None}
@@ -768,7 +1182,37 @@ async def search_jobs(args) -> int:
                 jobs = await scraper.search_jobs(**search_params)
 
                 # Convert jobs to dicts for easier handling
-                jobs_list = [job.model_dump() if hasattr(job, 'model_dump') else dict(job) for job in jobs]
+                jobs_list = []
+                for job in jobs:
+                    if hasattr(job, 'model_dump'):
+                        # Pydantic v2 model
+                        job_dict = job.model_dump()
+                    elif hasattr(job, 'dict'):
+                        # Pydantic v1 model (fallback)
+                        job_dict = job.dict()
+                    elif isinstance(job, dict):
+                        # Already a dictionary
+                        job_dict = job
+                    else:
+                        # For other objects, convert to dict safely
+                        job_dict = {}
+                        for attr in dir(job):
+                            if not attr.startswith('_') and not callable(
+                                getattr(job, attr)
+                            ):
+                                try:
+                                    value = getattr(job, attr)
+                                    # Handle nested Pydantic models
+                                    if hasattr(value, 'model_dump'):
+                                        value = value.model_dump()
+                                    elif hasattr(value, 'dict'):
+                                        value = value.dict()
+                                    job_dict[attr] = value
+                                except Exception as e:
+                                    logger.warning(
+                                        f"Could not get attribute {attr} from job object: {e}"
+                                    )
+                    jobs_list.append(job_dict)
 
                 # Apply min-salary filter if specified
                 min_salary = getattr(args, 'min_salary', None)
@@ -786,8 +1230,12 @@ async def search_jobs(args) -> int:
                     filtered_count = original_count - len(filtered_jobs)
                     jobs_list = filtered_jobs
                     if filtered_count > 0:
-                        logger.info(f"Filtered out {filtered_count} jobs with confirmed salaries below ${min_salary:,.0f}")
-                        logger.info(f"Kept {len(jobs_list)} jobs (including {len([j for j in jobs_list if not j.get('salary') or not j['salary'].get('min_amount')])} with unknown salaries)")
+                        logger.info(
+                            f"Filtered out {filtered_count} jobs with confirmed salaries below ${min_salary:,.0f}"
+                        )
+                        logger.info(
+                            f"Kept {len(jobs_list)} jobs (including {len([j for j in jobs_list if not j.get('salary') or not j['salary'].get('min_amount')])} with unknown salaries)"
+                        )
 
                 # Analyze jobs against resume if resume is provided
                 if resume_data:
@@ -795,8 +1243,15 @@ async def search_jobs(args) -> int:
                     jobs_list = await analyze_jobs_with_resume(jobs_list, resume_data)
 
                     # Sort by analysis score if available
-                    if jobs_list and '_analysis' in jobs_list[0] and 'suitability_score' in jobs_list[0]['_analysis']:
-                        jobs_list.sort(key=lambda x: x['_analysis'].get('suitability_score', 0), reverse=True)
+                    if (
+                        jobs_list
+                        and '_analysis' in jobs_list[0]
+                        and 'suitability_score' in jobs_list[0]['_analysis']
+                    ):
+                        jobs_list.sort(
+                            key=lambda x: x['_analysis'].get('suitability_score', 0),
+                            reverse=True,
+                        )
 
                 progress.update(task, description=f"Found {len(jobs_list)} jobs")
 
@@ -825,7 +1280,9 @@ async def search_jobs(args) -> int:
         if getattr(args, 'interactive', False):
             while True:
                 try:
-                    console.print("\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]")
+                    console.print(
+                        "\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]"
+                    )
                     choice = input("> ").strip().lower()
 
                     if choice == 'q':
@@ -839,9 +1296,13 @@ async def search_jobs(args) -> int:
                         if 0 <= job_index < len(analyzed_jobs):
                             display_job_details(analyzed_jobs[job_index])
                         else:
-                            console.print("[yellow]Invalid job number. Please try again.[/yellow]")
+                            console.print(
+                                "[yellow]Invalid job number. Please try again.[/yellow]"
+                            )
                     else:
-                        console.print("[yellow]Invalid input. Please enter a job number, 's' to save, or 'q' to quit.[/yellow]")
+                        console.print(
+                            "[yellow]Invalid input. Please enter a job number, 's' to save, or 'q' to quit.[/yellow]"
+                        )
                 except (KeyboardInterrupt, EOFError):
                     console.print("\n[yellow]Exiting interactive mode...[/yellow]")
                     return 0
@@ -855,11 +1316,12 @@ async def search_jobs(args) -> int:
 
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             output_format = getattr(args, 'output_format', 'json')
-            output_file = os.path.join(output_dir, f'job_search_results_{timestamp}.{output_format}')
+            output_file = os.path.join(
+                output_dir, f'job_search_results_{timestamp}.{output_format}'
+            )
 
             try:
                 # Convert jobs to DataFrame for saving
-                import pandas as pd
                 jobs_data = []
                 for job in analyzed_jobs:
                     if hasattr(job, 'model_dump'):
@@ -873,9 +1335,17 @@ async def search_jobs(args) -> int:
                         if 'suitability_score' in analysis:
                             job_dict['match_score'] = analysis['suitability_score']
                         if 'pros' in analysis:
-                            job_dict['strengths'] = "; ".join(analysis['pros'][:3]) if analysis['pros'] else ""
+                            job_dict['strengths'] = (
+                                "; ".join(analysis['pros'][:3])
+                                if analysis['pros']
+                                else ""
+                            )
                         if 'cons' in analysis:
-                            job_dict['areas_for_improvement'] = "; ".join(analysis['cons'][:3]) if analysis['cons'] else ""
+                            job_dict['areas_for_improvement'] = (
+                                "; ".join(analysis['cons'][:3])
+                                if analysis['cons']
+                                else ""
+                            )
 
                     jobs_data.append(job_dict)
 
@@ -889,18 +1359,24 @@ async def search_jobs(args) -> int:
                     with open(output_file, 'w', encoding='utf-8') as f:
                         f.write(df.to_markdown(index=False))
                 else:  # default to json
-                    df.to_json(output_file, orient='records', indent=2, force_ascii=False)
+                    df.to_json(
+                        output_file, orient='records', indent=2, force_ascii=False
+                    )
 
                 console.print(f"\n[green]Results saved to: {output_file}[/green]")
             except Exception as e:
                 logger.error(f"Failed to save results: {e}")
-                console.print(f"[yellow]Warning: Failed to save results: {str(e)}[/yellow]")
+                console.print(
+                    f"[yellow]Warning: Failed to save results: {str(e)}[/yellow]"
+                )
 
         # If interactive mode, allow viewing details
         if getattr(args, 'interactive', False) and analyzed_jobs:
             while True:
                 try:
-                    choice = console.input("\n[bold]Enter job number to view details, or 'q' to quit: [/bold]")
+                    choice = console.input(
+                        "\n[bold]Enter job number to view details, or 'q' to quit: [/bold]"
+                    )
                     if choice.lower() == 'q':
                         break
 
@@ -908,9 +1384,13 @@ async def search_jobs(args) -> int:
                     if 0 <= job_idx < len(analyzed_jobs):
                         display_job_details(analyzed_jobs[job_idx])
                     else:
-                        console.print("[red]Invalid job number. Please try again.[/red]")
+                        console.print(
+                            "[red]Invalid job number. Please try again.[/red]"
+                        )
                 except ValueError:
-                    console.print("[red]Please enter a valid number or 'q' to quit.[/red]")
+                    console.print(
+                        "[red]Please enter a valid number or 'q' to quit.[/red]"
+                    )
 
         return 0
 
@@ -933,7 +1413,9 @@ async def search_jobs(args) -> int:
         if getattr(args, 'interactive', False):
             while True:
                 try:
-                    console.print("\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]")
+                    console.print(
+                        "\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]"
+                    )
                     choice = input("> ").strip().lower()
 
                     if choice == 'q':
@@ -947,9 +1429,13 @@ async def search_jobs(args) -> int:
                         if 0 <= job_index < len(analyzed_jobs):
                             display_job_details(analyzed_jobs[job_index])
                         else:
-                            console.print("[yellow]Invalid job number. Please try again.[/yellow]")
+                            console.print(
+                                "[yellow]Invalid job number. Please try again.[/yellow]"
+                            )
                     else:
-                        console.print("[yellow]Invalid input. Please enter a job number, 's' to save, or 'q' to quit.[/yellow]")
+                        console.print(
+                            "[yellow]Invalid input. Please enter a job number, 's' to save, or 'q' to quit.[/yellow]"
+                        )
                 except (KeyboardInterrupt, EOFError):
                     console.print("\n[yellow]Exiting interactive mode...[/yellow]")
                     return 0
@@ -965,11 +1451,12 @@ async def search_jobs(args) -> int:
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_format = getattr(args, 'output_format', 'json')
-        output_file = os.path.join(output_dir, f'job_search_results_{timestamp}.{output_format}')
+        output_file = os.path.join(
+            output_dir, f'job_search_results_{timestamp}.{output_format}'
+        )
 
         try:
             # Convert jobs to DataFrame for saving
-            import pandas as pd
             jobs_data = []
             for job in analyzed_jobs:
                 if hasattr(job, 'model_dump'):
@@ -983,9 +1470,13 @@ async def search_jobs(args) -> int:
                     if 'suitability_score' in analysis:
                         job_dict['match_score'] = analysis['suitability_score']
                     if 'pros' in analysis:
-                        job_dict['strengths'] = "; ".join(analysis['pros'][:3]) if analysis['pros'] else ""
+                        job_dict['strengths'] = (
+                            "; ".join(analysis['pros'][:3]) if analysis['pros'] else ""
+                        )
                     if 'cons' in analysis:
-                        job_dict['areas_for_improvement'] = "; ".join(analysis['cons'][:3]) if analysis['cons'] else ""
+                        job_dict['areas_for_improvement'] = (
+                            "; ".join(analysis['cons'][:3]) if analysis['cons'] else ""
+                        )
 
                 jobs_data.append(job_dict)
 
@@ -1010,7 +1501,9 @@ async def search_jobs(args) -> int:
     if getattr(args, 'interactive', False) and jobs:
         while True:
             try:
-                choice = console.input("\n[bold]Enter job number to view details, or 'q' to quit: [/bold]")
+                choice = console.input(
+                    "\n[bold]Enter job number to view details, or 'q' to quit: [/bold]"
+                )
                 if choice.lower() == 'q':
                     break
 
@@ -1046,8 +1539,12 @@ async def main_async() -> int:
             logger.setLevel(logging.WARNING)
 
         # Log command line arguments (safely, without sensitive data)
-        safe_args = {k: v for k, v in vars(args).items()
-                    if k not in ['linkedin_password', 'proxy', 'api_key'] and not k.startswith('_')}
+        safe_args = {
+            k: v
+            for k, v in vars(args).items()
+            if k not in ['linkedin_password', 'proxy', 'api_key']
+            and not k.startswith('_')
+        }
         logger.debug(f"Command line arguments: {safe_args}")
 
         logger.info("Starting MyJobSpy AI")
@@ -1066,30 +1563,75 @@ def main() -> int:
     Returns:
         int: Exit code (0 for success, non-zero for error)
     """
+    # Set up initial console logging
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    console.setFormatter(formatter)
+    logging.basicConfig(handlers=[console], level=logging.INFO)
+
+    # Get logger
+    logger = logging.getLogger(__name__)
+
     try:
         # Parse command line arguments
         args = parse_args(sys.argv[1:])
 
-        # Configure logging
-        debug_mode = getattr(args, 'debug', False)
+        # Set up debug mode from args or environment
+        debug_mode = getattr(args, 'debug', False) or os.environ.get(
+            'MYJOBSPYAI_DEBUG', ''
+        ).lower() in ('1', 'true', 'yes')
+
+        # Configure logging with debug mode
         setup_logging_custom(debug_mode)
+
+        # Get logger after setup
+        logger = logging.getLogger(__name__)
+
+        # Log startup information
+        logger.info("=" * 50)
+        logger.info(f"Starting MyJobSpy AI (Debug: {debug_mode})")
+        logger.info("-" * 50)
+
+        # Log configuration paths
+        config_paths = [
+            Path('~/.config/myjobspyai/config.yaml').expanduser(),
+            Path('config.yaml').absolute(),
+            Path('/etc/myjobspyai/config.yaml'),
+        ]
+
+        config_loaded = False
+        for config_path in config_paths:
+            if config_path.exists():
+                logger.info(f"Using configuration from: {config_path}")
+                config_loaded = True
+                break
+
+        if not config_loaded:
+            logger.warning("No configuration file found. Using default settings.")
 
         # Set log level based on verbosity
         verbose_level = getattr(args, 'verbose', 0)
-        if verbose_level > 1:
-            logger.setLevel(logging.DEBUG)
+        if debug_mode or verbose_level > 1:
+            logging.getLogger().setLevel(logging.DEBUG)
+            logger.debug("Debug logging enabled")
         elif verbose_level == 1:
-            logger.setLevel(logging.INFO)
+            logging.getLogger().setLevel(logging.INFO)
+            logger.info("Verbose logging enabled")
         else:
-            logger.setLevel(logging.WARNING)
+            logging.getLogger().setLevel(logging.WARNING)
 
-        logger.debug("Starting MyJobSpy AI")
+        # Log environment information
+        logger.debug(f"Python version: {sys.version}")
+        logger.debug(f"Platform: {sys.platform}")
+        logger.debug(f"Working directory: {os.getcwd()}")
+        logger.debug(f"Command line arguments: {sys.argv}")
 
         # Run the async main function
         return asyncio.run(main_async())
 
     except KeyboardInterrupt:
-        logger.info("Application interrupted by user")
+        logger.info("\nApplication interrupted by user")
         return 0
     except Exception as e:
         logger.exception("Fatal error in main function")
@@ -1099,4 +1641,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

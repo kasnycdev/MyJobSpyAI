@@ -2,7 +2,6 @@
 
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Type, Union
 
@@ -44,9 +43,13 @@ class DatabaseConfig(BaseModel):
         default="sqlite:///" + str(DEFAULT_DATA_DIR / "myjobspyai.db"),
         description="Database connection URL",
     )
-    echo: bool = Field(default=False, description="Enable SQLAlchemy engine echo output")
+    echo: bool = Field(
+        default=False, description="Enable SQLAlchemy engine echo output"
+    )
     pool_size: int = Field(default=5, description="Connection pool size")
-    max_overflow: int = Field(default=10, description="Maximum overflow for connection pool")
+    max_overflow: int = Field(
+        default=10, description="Maximum overflow for connection pool"
+    )
 
 
 class LLMProviderConfig(BaseModel):
@@ -54,18 +57,21 @@ class LLMProviderConfig(BaseModel):
 
     name: str = Field(..., description="Name of the LLM provider")
     enabled: bool = Field(True, description="Whether this provider is enabled")
-    type: str = Field(..., description="Type of provider (e.g., 'openai', 'ollama', 'langchain')")
+    type: str = Field(
+        ..., description="Type of provider (e.g., 'openai', 'ollama', 'langchain')"
+    )
     model: str = Field("gpt-3.5-turbo", description="Default model to use")
     api_key: Optional[str] = Field(None, description="API key for the provider")
     base_url: Optional[str] = Field(None, description="Base URL for the API")
     timeout: int = Field(600, description="Request timeout in seconds")
     max_retries: int = Field(3, description="Maximum number of retries")
     temperature: float = Field(0.7, description="Default temperature")
-    max_tokens: Optional[int] = Field(None, description="Maximum number of tokens to generate")
-
-    model_config = ConfigDict(
-        extra="allow"  # Allow provider-specific settings
+    max_tokens: Optional[int] = Field(
+        None, description="Maximum number of tokens to generate"
     )
+
+    class Config:
+        extra = "allow"  # Allow provider-specific settings
 
 
 class LoggingConfig(BaseModel):
@@ -76,7 +82,9 @@ class LoggingConfig(BaseModel):
         DEFAULT_DATA_DIR / "logs" / "myjobspyai.log", description="Path to log file"
     )
     file_level: str = Field("DEBUG", description="Logging level for file output")
-    max_size: int = Field(10 * 1024 * 1024, description="Maximum log file size in bytes")
+    max_size: int = Field(
+        10 * 1024 * 1024, description="Maximum log file size in bytes"
+    )
     backup_count: int = Field(5, description="Number of backup log files to keep")
     format: str = Field(
         "%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
@@ -103,6 +111,46 @@ class APIConfig(BaseModel):
     rate_limit: str = Field("100/minute", description="Rate limiting configuration")
 
 
+class AnalysisConfig(BaseModel):
+    """Analysis configuration."""
+
+    # Cover letter generation settings
+    enable_cover_letter_generation: bool = Field(
+        True,
+        description="Enable automatic cover letter generation during resume analysis",
+    )
+    default_cover_letter_style: str = Field(
+        "PROFESSIONAL",
+        description="Default style for generated cover letters (PROFESSIONAL, CREATIVE, TECHNICAL, etc.)",
+    )
+    default_cover_letter_tone: str = Field(
+        "professional",
+        description="Default tone for generated cover letters (professional, enthusiastic, formal, etc.)",
+    )
+    max_cover_letter_length: int = Field(
+        1000, description="Maximum length for generated cover letters in characters"
+    )
+
+    # Training recommendations settings
+    enable_training_recommendations: bool = Field(
+        True,
+        description="Enable training resource recommendations during resume analysis",
+    )
+    max_training_recommendations: int = Field(
+        5, description="Maximum number of training recommendations to generate"
+    )
+    training_resources_file: Optional[Path] = Field(
+        None,
+        description="Path to a JSON file containing training resources. If not provided, uses built-in resources.",
+    )
+
+    # Performance settings
+    enable_caching: bool = Field(True, description="Enable caching of analysis results")
+    cache_ttl_seconds: int = Field(
+        3600, description="Time-to-live for cached analysis results in seconds"
+    )
+
+
 class AppConfig(BaseSettings):
     """Main application configuration.
 
@@ -112,19 +160,17 @@ class AppConfig(BaseSettings):
     3. YAML configuration file
     """
 
-    # Pydantic v2 configuration
-    model_config = SettingsConfigDict(
-        env_prefix="MYJOBSPYAI_",
-        env_nested_delimiter="__",
-        case_sensitive=False,
-        env_file=None,  # Load .env file manually to control loading
-        env_file_encoding="utf-8",
-        extra="ignore",
-        validate_default=True,
-        json_encoders={
+    class Config:
+        env_prefix = "MYJOBSPYAI_"
+        env_nested_delimiter = "__"
+        case_sensitive = False
+        env_file = None  # Load .env file manually to control loading
+        env_file_encoding = "utf-8"
+        extra = "ignore"
+        validate_default = True
+        json_encoders = {
             Path: str,
-        },
-    )
+        }
 
     # Application metadata
     name: str = Field("MyJobSpy AI", description="Application name")
@@ -133,14 +179,19 @@ class AppConfig(BaseSettings):
     environment: str = Field("production", description="Runtime environment")
 
     # Core directories
-    data_dir: Path = Field(DEFAULT_DATA_DIR, description="Directory for application data")
+    data_dir: Path = Field(
+        DEFAULT_DATA_DIR, description="Directory for application data"
+    )
     cache_dir: Path = Field(DEFAULT_CACHE_DIR, description="Directory for cached data")
-    config_dir: Path = Field(DEFAULT_CONFIG_DIR, description="Directory for configuration files")
+    config_dir: Path = Field(
+        DEFAULT_CONFIG_DIR, description="Directory for configuration files"
+    )
 
     # Sub-configurations
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     api: APIConfig = Field(default_factory=APIConfig)
+    analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
     llm_providers: Dict[str, LLMProviderConfig] = Field(
         default_factory=dict, description="Configured LLM providers"
     )
@@ -202,6 +253,7 @@ class AppConfig(BaseSettings):
             dotenv_path = config_path.parent / ".env"
             if dotenv_path.exists():
                 from dotenv import load_dotenv
+
                 load_dotenv(dotenv_path)
 
             return cls(**config_data)
@@ -212,6 +264,7 @@ class AppConfig(BaseSettings):
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to a dictionary."""
+
         # Convert Path objects to strings for serialization
         def serialize_paths(obj: Any) -> Any:
             if isinstance(obj, Path):
@@ -241,7 +294,9 @@ class AppConfig(BaseSettings):
         try:
             config_data = self.to_dict()
             with open(config_path, "w", encoding="utf-8") as f:
-                yaml.safe_dump(config_data, f, default_flow_style=False, sort_keys=False)
+                yaml.safe_dump(
+                    config_data, f, default_flow_style=False, sort_keys=False
+                )
             logger.info(f"Configuration saved to {config_path}")
         except Exception as e:
             logger.error(f"Error saving config to {config_path}: {e}")
@@ -402,6 +457,8 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> AppConfig:
     Returns:
         Loaded AppConfig instance.
     """
+    import yaml
+
     # Default config paths to check
     default_paths = [
         Path("config.yaml"),
@@ -414,12 +471,16 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> AppConfig:
         config_path = Path(config_path).expanduser().resolve()
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
-        return AppConfig.from_yaml(config_path)
+        with open(config_path, "r") as f:
+            config_data = yaml.safe_load(f)
+            return AppConfig.model_validate(config_data)
 
     # Otherwise, try default paths
     for path in default_paths:
         if path.exists():
-            return AppConfig.from_yaml(path)
+            with open(path, "r") as f:
+                config_data = yaml.safe_load(f)
+                return AppConfig.model_validate(config_data)
 
     # If no config file found, use defaults
     return AppConfig()

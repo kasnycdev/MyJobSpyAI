@@ -1,5 +1,8 @@
 # Contributing to MyJobSpy AI
 
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![Open Source Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
+
 Thank you for your interest in contributing to MyJobSpy AI! We welcome contributions from the community to help improve this project.
 
 ## Table of Contents
@@ -9,11 +12,11 @@ Thank you for your interest in contributing to MyJobSpy AI! We welcome contribut
 - [Development Environment](#development-environment)
 - [Making Changes](#making-changes)
 - [Testing](#testing)
+- [Code Style](#code-style)
+- [Documentation](#documentation)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Reporting Issues](#reporting-issues)
 - [Feature Requests](#feature-requests)
-- [Code Style](#code-style)
-- [Documentation](#documentation)
 - [License](#license)
 
 ## Code of Conduct
@@ -40,10 +43,11 @@ This project and everyone participating in it is governed by our [Code of Conduc
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.9 or higher
 - [Poetry](https://python-poetry.org/) (recommended) or pip
 - [Git](https://git-scm.com/)
-- [pre-commit](https://pre-commit.com/) (optional but recommended)
+- [pre-commit](https://pre-commit.com/) (recommended)
+- [Docker](https://www.docker.com/) (for local development with dependencies)
 
 ### Setup
 
@@ -90,6 +94,8 @@ This project and everyone participating in it is governed by our [Code of Conduc
 
 ## Testing
 
+### Running Tests
+
 Run the test suite to ensure your changes don't break existing functionality:
 
 ```bash
@@ -98,6 +104,45 @@ pytest
 
 # Run tests with coverage
 pytest --cov=src --cov-report=term-missing
+
+# Run a specific test file
+pytest tests/test_module.py
+
+# Run tests with verbose output
+pytest -v
+
+# Run tests and stop after first failure
+pytest -x
+```
+
+### Test Structure
+
+- Unit tests are located in the `tests/unit` directory
+- Integration tests are in `tests/integration`
+- End-to-end tests are in `tests/e2e`
+
+### Writing Tests
+
+- Follow the Arrange-Act-Assert pattern
+- Use descriptive test names
+- Keep tests focused and independent
+- Use fixtures for common setup/teardown
+- Mock external dependencies
+
+### Test Coverage
+
+We aim to maintain high test coverage. Before submitting a PR, ensure:
+
+1. New code has appropriate test coverage
+2. Existing tests still pass
+3. Coverage doesn't decrease significantly
+
+To generate a coverage report:
+
+```bash
+pytest --cov=src --cov-report=html
+open htmlcov/index.html  # View coverage report in browser
+```
 
 # Run a specific test file
 pytest tests/unit/test_feature.py
@@ -140,18 +185,6 @@ We welcome feature requests! Please open an issue and use the "Feature Request" 
 - Any alternative solutions you've considered
 - Additional context or examples
 
-## Code Style
-
-This project follows the [PEP 8](https://www.python.org/dev/peps/pep-0008/) style guide with the following tools:
-
-- **Black** for code formatting
-- **isort** for import sorting
-- **Flake8** for linting
-- **Mypy** for static type checking
-
-Run the following commands to ensure your code adheres to the style guidelines:
-
-```bash
 # Format code with Black
 black .
 

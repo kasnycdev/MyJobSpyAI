@@ -2,15 +2,12 @@
 
 import os
 import re
-import sys
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union
 
 import dotenv
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
-
-from .files import find_files
 
 T = TypeVar("T")
 
@@ -18,14 +15,13 @@ T = TypeVar("T")
 class EnvConfig(BaseSettings):
     """Configuration loaded from environment variables."""
 
-    model_config = ConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",  # Ignore extra environment variables
-        env_prefix="",
-        case_sensitive=False,
-        use_enum_values=True,
-    )
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "ignore"  # Ignore extra environment variables
+        env_prefix = ""
+        case_sensitive = False
+        use_enum_values = True
 
     # Debug and logging
     DEBUG: bool = Field(False, description="Enable debug mode")

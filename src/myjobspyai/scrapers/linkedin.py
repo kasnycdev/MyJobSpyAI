@@ -5,8 +5,6 @@ from typing import Any, Dict, List, Optional
 
 from . import BaseJobScraper, JobListing
 
-logger = logging.getLogger(__name__)
-
 
 class LinkedInScraper(BaseJobScraper):
     """Scraper for LinkedIn job listings."""
@@ -43,11 +41,7 @@ class LinkedInScraper(BaseJobScraper):
             )
 
     async def search_jobs(
-        self,
-        query: str,
-        location: str,
-        max_results: int = 10,
-        **kwargs: Any
+        self, query: str, location: str, max_results: int = 10, **kwargs: Any
     ) -> List[JobListing]:
         """Search for jobs on LinkedIn.
 
@@ -73,7 +67,7 @@ class LinkedInScraper(BaseJobScraper):
                     'keywords': query,
                     'location': location,
                     'start': start,
-                    'count': results_per_page
+                    'count': results_per_page,
                 }
 
                 # Make request to LinkedIn job search
@@ -82,8 +76,8 @@ class LinkedInScraper(BaseJobScraper):
                     params=params,
                     headers={
                         'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                 )
 
                 if response.status_code != 200:
@@ -104,11 +98,16 @@ class LinkedInScraper(BaseJobScraper):
                         job = {
                             'title': job_data.get('title', 'No Title'),
                             'company': job_data.get('companyName', 'Unknown Company'),
-                            'location': job_data.get('formattedLocation', 'Location not specified'),
-                            'description': job_data.get('description', {'text': 'No description available'}).get('text', 'No description available'),
+                            'location': job_data.get(
+                                'formattedLocation', 'Location not specified'
+                            ),
+                            'description': job_data.get(
+                                'description', {'text': 'No description available'}
+                            ).get('text', 'No description available'),
                             'url': f"https://www.linkedin.com/jobs/view/{job_data.get('jobPostingId', '')}",
-                            'posted_date': job_data.get('listedAt', 0) / 1000,  # Convert to Unix timestamp
-                            'job_posting_id': job_data.get('jobPostingId', '')
+                            'posted_date': job_data.get('listedAt', 0)
+                            / 1000,  # Convert to Unix timestamp
+                            'job_posting_id': job_data.get('jobPostingId', ''),
                         }
 
                         job_listings.append(JobListing(**job))

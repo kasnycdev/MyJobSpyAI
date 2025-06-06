@@ -85,7 +85,6 @@ def validate_prompt_parameters(template: str, params: Dict[str, Any]) -> Dict[st
         {'company'}
     """
     import string
-    from collections import defaultdict
 
     # Parse the template to find all format placeholders
     formatter = string.Formatter()

@@ -4,18 +4,15 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union, cast
 
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import PromptTemplate
-from opentelemetry import metrics, trace
 from opentelemetry.trace import Status, StatusCode
 
 from .base import BaseProvider, ProviderError, SyncProvider
 
 # Type variable for the response type
-T = TypeVar('T')
 
 logger = logging.getLogger(__name__)
+
 
 def clean_json_string(json_str: str) -> str:
     """Clean JSON string by handling escape sequences and invalid characters."""
@@ -24,24 +21,24 @@ def clean_json_string(json_str: str) -> str:
 
     # Common problematic unicode characters
     replacements = {
-        "\x2013": "-",    # en-dash
-        "\x2014": "--",   # em-dash
-        "\x2018": "'",    # left single quote
-        "\x2019": "'",    # right single quote
-        "\x201c": '"',   # left double quote
-        "\x201d": '"',   # right double quote
+        "\x2013": "-",  # en-dash
+        "\x2014": "--",  # em-dash
+        "\x2018": "'",  # left single quote
+        "\x2019": "'",  # right single quote
+        "\x201c": '"',  # left double quote
+        "\x201d": '"',  # right double quote
         "\x2026": "...",  # ellipsis
-        "\u2013": "-",    # en-dash (unicode)
-        "\u2014": "--",   # em-dash (unicode)
-        "\u2018": "'",    # left single quote (unicode)
-        "\u2019": "'"     # right single quote (unicode)
+        "\u2013": "-",  # en-dash (unicode)
+        "\u2014": "--",  # em-dash (unicode)
+        "\u2018": "'",  # left single quote (unicode)
+        "\u2019": "'",  # right single quote (unicode)
     }
-
 
     for old, new in replacements.items():
         json_str = json_str.replace(old, new)
 
     return json_str
+
 
 class LangChainProvider(BaseProvider[str]):
     """Provider for LangChain LLM integration with OTEL support."""
@@ -71,7 +68,7 @@ class LangChainProvider(BaseProvider[str]):
                 message=error_msg,
                 provider=self.provider_name,
                 error_type="initialization_error",
-                details={"config_keys": list(self.config.keys())}
+                details={"config_keys": list(self.config.keys())},
             ) from e
 
     def _initialize_langchain(self) -> None:
@@ -88,7 +85,9 @@ class LangChainProvider(BaseProvider[str]):
             except (ImportError, AttributeError):
                 # Fall back to langchain_community if direct import fails
                 try:
-                    module = __import__("langchain_community.chat_models", fromlist=[llm_class_name])
+                    module = __import__(
+                        "langchain_community.chat_models", fromlist=[llm_class_name]
+                    )
                     llm_class = getattr(module, llm_class_name)
                 except (ImportError, AttributeError) as e:
                     error_msg = f"Failed to import LLM class: {llm_class_name}"
@@ -109,7 +108,7 @@ class LangChainProvider(BaseProvider[str]):
             raise ProviderError(
                 message=error_msg,
                 provider=self.provider_name,
-                error_type="initialization_error"
+                error_type="initialization_error",
             ) from e
 
     async def generate(
@@ -137,7 +136,7 @@ class LangChainProvider(BaseProvider[str]):
             raise ProviderError(
                 message="LLM not initialized. Call _initialize_langchain() first.",
                 provider=self.provider_name,
-                error_type="initialization_error"
+                error_type="initialization_error",
             )
 
         # Start a new span for the generation
@@ -165,7 +164,7 @@ class LangChainProvider(BaseProvider[str]):
                 logger.debug(
                     "LangChain request - model: %s, messages: %s",
                     current_model,
-                    [str(m) for m in messages]
+                    [str(m) for m in messages],
                 )
 
                 # Invoke the LLM
@@ -193,10 +192,9 @@ class LangChainProvider(BaseProvider[str]):
                 logger.exception(error_msg)
 
                 # Update error metrics
-                self.error_counter.add(1, {
-                    "provider": self.provider_name,
-                    "error_type": type(e).__name__
-                })
+                self.error_counter.add(
+                    1, {"provider": self.provider_name, "error_type": type(e).__name__}
+                )
 
                 # Record the error in the span
                 span.record_exception(e)
@@ -210,8 +208,8 @@ class LangChainProvider(BaseProvider[str]):
                     details={
                         "model": current_model,
                         "prompt_length": len(prompt),
-                        "error": str(e)
-                    }
+                        "error": str(e),
+                    },
                 ) from e
 
     async def close(self) -> None:

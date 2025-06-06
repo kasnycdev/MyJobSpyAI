@@ -3,10 +3,7 @@
 import importlib
 import logging
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, Optional, Type, TypeVar, Union, cast
-
-from pydantic import ValidationError
 
 from myjobspyai.config import config
 
@@ -24,10 +21,6 @@ class ProviderType(str, Enum):
     This enum defines the standard provider types that are supported out of the box.
     Additional provider types can be registered at runtime.
     """
-    LANGCHAIN = "langchain"
-    OPENAI = "openai"
-    OLLAMA = "ollama"
-    GEMINI = "gemini"
 
 
 class ProviderFactory:
@@ -38,6 +31,7 @@ class ProviderFactory:
     from configuration and provides a consistent interface for creating provider
     instances.
     """
+
     _instance: Optional['ProviderFactory'] = None
     _providers: Dict[str, Type[BaseProvider]] = {}
     _initialized: bool = False
@@ -59,17 +53,13 @@ class ProviderFactory:
         # Register built-in providers
         try:
             from .langchain_provider import LangChainProvider
-            from .ollama_provider import OllamaProvider
-            from .openai_provider import OpenAIProvider
 
             self.register(ProviderType.LANGCHAIN, LangChainProvider)
-            self.register(ProviderType.OPENAI, OpenAIProvider)
-            self.register(ProviderType.OLLAMA, OllamaProvider)
-
-            logger.info("Registered built-in providers: %s",
-                       ", ".join(self._providers.keys()))
+            logger.info(
+                "Registered built-in providers: %s", ", ".join(self._providers.keys())
+            )
         except ImportError as e:
-            logger.warning("Failed to register some built-in providers: %s", e)
+            logger.warning("Failed to register built-in providers: %s", e)
 
     @property
     def available_providers(self) -> Dict[str, Type[BaseProvider]]:
@@ -95,8 +85,13 @@ class ProviderFactory:
         Raises:
             ValueError: If the provider class is invalid or already registered
         """
-        if not (isinstance(provider_class, type) and issubclass(provider_class, BaseProvider)):
-            raise ValueError(f"Provider class must be a subclass of BaseProvider, got {provider_class}")
+        if not (
+            isinstance(provider_class, type)
+            and issubclass(provider_class, BaseProvider)
+        ):
+            raise ValueError(
+                f"Provider class must be a subclass of BaseProvider, got {provider_class}"
+            )
 
         name_str = name.value if isinstance(name, ProviderType) else str(name).lower()
 
@@ -138,10 +133,7 @@ class ProviderFactory:
         return self._providers[name_str]
 
     def create(
-        self,
-        provider_name: str,
-        config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        self, provider_name: str, config: Optional[Dict[str, Any]] = None, **kwargs
     ) -> BaseProvider:
         """Create a provider instance.
 
@@ -174,11 +166,12 @@ class ProviderFactory:
 
         except Exception as e:
             logger.exception("Failed to create provider %s: %s", provider_name, str(e))
-            raise ValueError(f"Failed to create provider {provider_name}: {str(e)}") from e
+            raise ValueError(
+                f"Failed to create provider {provider_name}: {str(e)}"
+            ) from e
 
     def create_from_config(
-        self,
-        config: Dict[str, Dict[str, Any]]
+        self, config: Dict[str, Dict[str, Any]]
     ) -> Dict[str, BaseProvider]:
         """Create multiple provider instances from a configuration dictionary.
 

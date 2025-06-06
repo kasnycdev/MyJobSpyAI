@@ -5,8 +5,6 @@ from typing import Any, Dict, List, Optional
 
 from . import BaseJobScraper, JobListing
 
-logger = logging.getLogger(__name__)
-
 
 class IndeedScraper(BaseJobScraper):
     """Scraper for Indeed job listings."""
@@ -40,11 +38,7 @@ class IndeedScraper(BaseJobScraper):
             )
 
     async def search_jobs(
-        self,
-        query: str,
-        location: str,
-        max_results: int = 10,
-        **kwargs: Any
+        self, query: str, location: str, max_results: int = 10, **kwargs: Any
     ) -> List[JobListing]:
         """Search for jobs on Indeed.
 

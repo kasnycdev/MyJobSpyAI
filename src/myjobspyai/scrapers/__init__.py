@@ -9,40 +9,25 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-logger = logging.getLogger(__name__)
-
-from ..models.job import Job, JobSource
-from ..models.job import JobType as JobTypeEnum
-
-# Import base classes and types
-from .base import BaseJobScraper
-
 # Import scrapers
 from .jobspy_scraper import JobSpyScraper
 
+# Import base classes and types
+
+
 # Define a type variable for the job model
-JobModel = TypeVar('JobModel')
 
 # Export public API
 __all__ = [
     'BaseJobScraper',
+    'JobListing',
+    'JobType',
     'JobSpyScraper',
-    'Job',
-    'JobTypeEnum as JobType',
-    'JobSource',
 ]
 
 
 class JobType(Enum):
     """Enum for job types."""
-
-    FULL_TIME = "full_time"
-    PART_TIME = "part_time"
-    CONTRACT = "contract"
-    TEMPORARY = "temporary"
-    INTERNSHIP = "internship"
-    VOLUNTEER = "volunteer"
-    OTHER = "other"
 
 
 @dataclass
@@ -107,7 +92,6 @@ class BaseJobScraper:
         """
         self.name = name
         self.config = config or {}
-        self.logger = logging.getLogger(f"{__name__}.{self.name}")
 
     async def search_jobs(
         self, query: str, location: str, **kwargs

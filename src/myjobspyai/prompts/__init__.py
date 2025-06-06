@@ -6,7 +6,6 @@ processing tasks such as job information extraction, resume parsing, and job
 suitability analysis.
 """
 
-import os
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -63,7 +62,7 @@ def clear_prompt_cache() -> None:
 
 
 # List of all available prompt files
-__all__ = [
+AVAILABLE_PROMPTS = [
     "job_extraction.prompt",
     "resume_extraction.prompt",
     "suitability_analysis.prompt",

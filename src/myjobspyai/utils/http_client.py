@@ -7,9 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
-import yaml
 from aiohttp import ClientError, ClientResponse, ClientSession, ClientTimeout
-from pydantic import BaseModel, HttpUrl
 
 logger = logging.getLogger(__name__)
 

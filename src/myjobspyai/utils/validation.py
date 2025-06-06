@@ -1,10 +1,7 @@
 """Configuration validation utilities."""
 
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-
-from pydantic import BaseModel, HttpUrl, ValidationError, validator
 
 
 def validate_config(config: Dict[str, Any]) -> Dict[str, Any]:
