@@ -1,218 +1,177 @@
-################################################################################
-# Python Project .gitignore
-#
-# This file specifies intentionally untracked files that Git should ignore.
-# Files already tracked by Git are not affected.
-# See: https://git-scm.com/docs/gitignore
-################################################################################
+# Project exclude paths
+*/.venv/*
+.ruff
+*/.ruff_cache/
+*/.history/*
+.history
+.history/
+*/.vscode/*
 
-# ==============================================================================
-# Python
-# ==============================================================================
-# Byte-compiled / optimized / DLL files
-__pycache__/          # Python 3 bytecode cache
-*.py[cod]             # Python 3 compiled files
-*$py.class            # Python 3 optimized bytecode
-*.pyd                 # Python dynamic modules (C extensions)
-*.so                  # Shared object files (C extensions)
+# Environments & Dependencies
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+*.pyenv
+__pypackages__/
+node_modules/
+
+# Python cache & compiled files
+*/__pycache__/*
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Project-specific generated directories
+logs/
+cache/
+output/
+data/
+.windsurf/
+.vscode/
+server-logs/ # If it can appear at the root
+# More general patterns that might cover the above but good to be explicit
+*/server-logs/*
+# *.json # This is too broad, many projects use JSON for non-generated data
+*.output # Specific output extension
+*/output/*
+*/cache/*
+*/data/*
+*/.windsurf/*
+*/.vscode/*
+
+# config.yaml # Generally, config files are versioned. If it has secrets, use .env or a gitignored local override.
 
 # Distribution / packaging
-.Python               # Python version file
-build/                # Build output directory
-dist/                 # Distribution packages
-eggs/                 # Python eggs
-.eggs/                # Python eggs (alternative location)
-lib/                  # Library files
-lib64/                # 64-bit library files
-parts/                # Parts of a larger package
-sdist/                # Source distribution
-egg-info/             # Egg metadata
-*.egg-info/           # Package metadata
-.installed.cfg        # Installation configuration
-*.egg                 # Python egg file
-MANIFEST              # File list for source distribution
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Installer logs
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs & temp files
 pip-log.txt
 pip-delete-this-directory.txt
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+.#*
 
-# Unit test / coverage
-htmlcov/              # HTML coverage report
-.tox/                 # tox testing framework
-.nox/                 # nox testing framework
-.coverage             # Coverage data
-.coverage.*           # Coverage data files
-.cache/               # Pytest cache
-nosetests.xml         # Nose test results
-coverage.xml          # Coverage results in XML format
-*.cover               # Coverage data files
-.hypothesis/          # Hypothesis testing framework
-.pytest_cache/        # Pytest cache directory
-coverage/             # Coverage.py output directory
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
 
-# Jupyter Notebook
-.ipynb_checkpoints/   # Jupyter notebook checkpoints
+# Type checker cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# Type checkers
-.mypy_cache/          # mypy type checker cache
-.dmypy.json           # mypy daemon configuration
-dmypy.json            # mypy daemon configuration (alternative)
-.pyre/                # Pyre type checker
-.pytype/              # pytype static type analyzer
-
-# Cython
-cython_debug/         # Cython debug symbols
-
-# ==============================================================================
-# Environments / Dependencies
-# ==============================================================================
-# Virtual environments
-.venv/                # Virtual environment (PEP 405)
-venv/                # Virtual environment (legacy)
-env/                  # Virtual environment (alternative)
-ENV/                 # Virtual environment (alternative)
-env.bak/             # Backup of virtual environment
-venv.bak/            # Backup of virtual environment
-
-# Python version
-.python-version       # Python version file (pyenv)
-
-# pipenv
-Pipfile               # pipenv package management
-Pipfile.lock          # pipenv lock file
-
-# poetry
-poetry.lock           # Poetry lock file
-poetry.toml           # Poetry configuration
-
-# pip
-requirements/         # Requirements directory
-!requirements/base.txt # Base requirements (keep this file)
-requirements-*.txt    # Other requirements files
-dev-requirements.txt  # Development requirements
-requirements-dev.txt   # Alternative development requirements
-
-# ==============================================================================
-# Project Files
-# ==============================================================================
-# Project directories
-data/                 # Data files
-output/               # Output files
-cache/                # Cache directory
-logs/                 # Log files
+# Translations
+*.mo
+*.pot
 
 # Database files
-*.sqlite3             # SQLite database
-*.sqlite3-journal     # SQLite journal files
+*.sqlite3
+*.sqlite3-journal
 
-# Configuration files with secrets
-.env                  # Environment variables (sensitive)
-.env.*                # Environment-specific variables
-!.env.example         # Example environment file (keep this)
-config.toml           # Configuration file
-config/*.toml         # Additional config files
-!config/example.toml  # Example config (keep this)
+# IDE files & settings
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+nbproject/
+*.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
 
-# Project-specific source directories
-src/myjobspyai/logs/   # Application logs
-src/myjobspyai/output/ # Application output
-src/myjobspyai/parsers/ # Parser output
+# Project Output / Logs / Configs with Secrets
+# output/ # Already covered by top-level specific and */output/*
+# *.log # This is covered by the generic *.log under "Installer logs & temp files"
+config.toml # For potential JobSpy cookies/credentials
+.env # For environment variables (like API keys, GEOPY_USER_AGENT)
 
-# Test artifacts
-test-results/         # Test result files
-*.xml                 # Test result files (JUnit)
-*.junit              # JUnit test results
+# Operating system & miscellaneous files
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
 
-# Documentation build
-docs/_build/          # Sphinx build output
-docs/_generated/      # Generated documentation
+# Specific tools
+.ropeproject
+.spyderproject
+.spyproject
+celerybeat-schedule
+celerybeat.pid
+*.sage.py
+profile_default/
+ipython_config.py
 
-# ==============================================================================
-# IDEs and Editors
-# ==============================================================================
-# VS Code
-.vscode/             # VS Code workspace settings
-!.vscode/settings.json # Keep workspace settings
-!.vscode/tasks.json   # Keep task configurations
-!.vscode/launch.json  # Keep debug configurations
-!.vscode/extensions.json # Keep recommended extensions
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
 
-# PyCharm/IntelliJ
-.idea/               # IntelliJ IDEA project files
-*.iml                # IntelliJ IDEA module file
-.idea_modules/       # IntelliJ IDEA modules
+# Test Resume
+*.Resume.pdf
+qodana.yaml
+myjobspy.commandline.txt
 
-# Sublime Text
-*.sublime-workspace  # Sublime Text workspace
-*.sublime-project    # Sublime Text project
+# Version number folders / build artifacts
+[0-9]*.[0-9]*.[0-9]*/
+[0-9]*.[0-9]*/
+[0-9]*/
+20221105/
+profile.html
+profile.json
+.gitignore
+config.yaml
+scraped_*.json
 
-# Vim/NVim
-*.swp                # Swap files
-*.swo                # Swap files (older)
-*~                   # Backup files
+# Node.js dependencies
+node_modules/
+package-lock.json
+package.json
 
-# ==============================================================================
-# System Files
-# ==============================================================================
-# macOS
-.DS_Store            # macOS folder attributes
-.DS_Store?           # macOS folder attributes
-._*                  # macOS resource fork
-.Spotlight-V100      # macOS Spotlight
-.Trashes             # macOS trash
+# Windsurf rules and configuration
+.windsurf/
+.windsurf/*
+!.windsurf/.gitkeep
 
-# Windows
-Thumbs.db            # Windows thumbnail cache
-ehthumbs.db          # Windows thumbnail database
-*.cab                # Windows cabinet files
-*.msi                # Windows installer
-*.msm                # Windows installer merge module
-*.msp                # Windows installer patch
-*.lnk                # Windows shortcuts
-*.thn                # Windows thumbnail cache
-
-# ==============================================================================
-# Project Specific
-# ==============================================================================
-# Resume files
-*.Resume.pdf         # Resume PDFs (sensitive)
-
-# Command line outputs
-myjobspy.commandline.txt  # Command line output logs
-
-# Qodana
-qodana/              # Qodana analysis results
-qodana.yaml          # Qodana configuration
-
-# Project management scripts
-add_issues_commands.sh
-scripts/project/add_enhancement_view.sh
-scripts/project/add_issues_to_board.py
-scripts/project/add_issues_to_project_v2.sh
-scripts/project/create_enhancement_view_*.py
-scripts/project/generate_issue_commands.py
-scripts/project/setup_enhancement_view_*.sh
-scripts/project/setup_enhancement_view_*.py
-
-# Node.js
-node_modules/        # Node.js dependencies
-package-lock.json    # NPM lock file
-package.json         # NPM package file
-
-# Windsurf
-.windsurf/           # Windsurf configuration
-.windsurf/*          # All Windsurf files
-!.windsurf/.gitkeep  # Keep .gitkeep in Windsurf directory
-
-# Scraped data
-scraped_*.json       # JSON files with scraped data
-
-# Version number directories
-[0-9]*/              # Version directories (e.g., 1/)
-[0-9]*.[0-9]*/       # Version directories (e.g., 1.2/)
-[0-9]*.[0-9]*.[0-9]*/ # Version directories (e.g., 1.2.3/)
-20221105/            # Specific version directory
-
-# Profile files
-profile.html         # Profiling output
-profile.json         # Profile data
+# Project specific directories to ignore
+src/myjobspyai/logs/
+src/myjobspyai/output/
+src/myjobspyai/parsers/
+*.egg-info/
