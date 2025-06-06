@@ -1,6 +1,5 @@
 """Ollama LLM provider implementation using the enhanced HTTP client."""
 
-import asyncio
 import json
 import logging
 from typing import Any, Dict, List, Optional, Union, cast
@@ -11,8 +10,6 @@ from myjobspyai.config import config as app_config
 from myjobspyai.llm.base import BaseLLMProvider, LLMError, LLMRequestError, LLMResponse
 from myjobspyai.utils.async_utils import gather_with_concurrency
 from myjobspyai.utils.http_client import HTTPClient, HTTPClientError
-
-logger = logging.getLogger(__name__)
 
 
 class OllamaConfig(BaseModel):

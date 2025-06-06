@@ -1,7 +1,7 @@
-"""LLM provider implementations for MyJobSpy AI."""
+"""LLM provider implementations for MyJobSpy AI.
 
-# Import provider implementations here
-from .langchain_chat import LangChainChatProvider, LangChainProvider  # noqa: F401
+This module contains the implementations of various LLM providers.
+"""
 
 __all__ = [
     "LangChainChatProvider",

@@ -13,7 +13,6 @@ from . import BaseJobScraper
 logger = logging.getLogger(__name__)
 
 # Type variable for the scraper class
-T = TypeVar("T", bound=BaseJobScraper)
 
 # Mapping of built-in scraper names to their module and class names
 BUILTIN_SCRAPERS = {

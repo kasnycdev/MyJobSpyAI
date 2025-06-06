@@ -1,202 +1,233 @@
-# MyJobSpy AI Configuration Example
-# Copy this file to config.yaml and adjust the settings as needed.
+# ==============================================
+# MyJobSpyAI Configuration
+# ==============================================
+# This is the main configuration file for MyJobSpyAI.
+# Environment variables can be used with ${VARIABLE_NAME} syntax.
+# Default values are shown below.
 
-# Application settings
-app:
-  name: "MyJobSpy AI"
-  version: "0.1.0"
-  debug: false
-  data_dir: "~/.myjobspyai"
+# ==============================================
+# Job Search Configuration
+# ==============================================
+jobspy:
+  # Basic search parameters
+  search_term: ''           # Job title or keywords to search for
+  location: ''              # Location for job search (city, state, or remote)
 
-# Logging configuration
+  # Job sites to search (supported: linkedin, glassdoor, google, indeed, etc.)
+  site_name:
+    - linkedin
+    - glassdoor
+    - google
+
+  # Advanced search parameters
+  google_search_term: ''    # Custom search query for Google Jobs
+  distance: 50              # Search radius in miles (0-100)
+  job_type: ''              # Filter by job type (full-time, part-time, contract, etc.)
+  is_remote: true          # Only show remote jobs
+  easy_apply: false         # Only show jobs with 'Easy Apply' option
+  hours_old: 336            # Maximum age of job postings in hours (14 days)
+  results_wanted: 5         # Maximum number of results to return per site
+  description_format: markdown  # Format for job descriptions (markdown or html)
+  offset: 0                 # Pagination offset for search results
+
+  # Timeout settings for job sites (in seconds)
+  timeouts:
+    default: 30
+    sites:
+      linkedin: 45
+      glassdoor: 30
+      google: 30
+      naukri: 10
+      indeed: 30
+      ziprecruiter: 30
+
+  # LinkedIn specific settings
+  linkedin:
+    fetch_description: true  # Fetch full job descriptions from LinkedIn
+    company_ids: []          # Filter by specific company LinkedIn IDs
+
+  # Proxy and networking
+  proxies: []               # List of proxy servers to use for requests
+  ca_cert: ''               # Path to custom CA certificate bundle
+
+  # Country settings
+  country_indeed: usa       # Country code for Indeed searches
+
+# ==============================================
+# Output Configuration
+# ==============================================
+output:
+  output_dir: output                 # Base directory for output files
+  scraped_jobs_filename: scraped_jobs.json    # Raw scraped jobs data
+  analysis_filename: analyzed_jobs.json       # Analyzed jobs output
+  debug_output_file: debug_info.json          # Debug information
+  detailed_analysis_count: 3                  # Number of jobs to analyze in detail
+
+# ==============================================
+# LLM Configuration
+# ==============================================
+llm:
+  default_provider: langchain_default  # Default LLM provider to use
+
+  # Configure multiple LLM providers
+  providers:
+    # Unified LangChain provider (recommended)
+    langchain_default:
+      type: langchain
+      enabled: true
+      config:
+        # General LLM settings
+        provider: ollama               # LLM provider (ollama, openai, anthropic, etc.)
+        model: hermes3:3b             # Model name specific to the provider
+
+        # Generation parameters
+        temperature: 0.7              # 0.0 (deterministic) to 2.0 (creative)
+        max_tokens: 1000              # Maximum tokens to generate
+        top_p: 1.0                    # Nucleus sampling (0.0 to 1.0)
+        frequency_penalty: 0.0         # Penalize new tokens based on frequency
+        presence_penalty: 0.0          # Penalize new tokens based on presence
+
+        # Execution settings
+        streaming: true               # Stream responses as they're generated
+        timeout: 60                   # Request timeout in seconds
+        max_retries: 3                # Number of retries for failed requests
+        stop: null                    # Stop sequences for generation
+
+        # Provider-specific configurations
+        provider_config:
+          # Ollama (Local Models)
+          ollama:
+            base_url: http://localhost:11434
+
+          # OpenAI / Azure OpenAI
+          openai:
+            api_key: ${OPENAI_API_KEY}        # Set via environment variable
+            organization: ${OPENAI_ORG_ID:}       # Optional organization ID
+
+          # Anthropic (Claude)
+          anthropic:
+            api_key: ${ANTHROPIC_API_KEY}
+            max_tokens_to_sample: 1000
+
+          # Google AI (Gemini)
+          google:
+            api_key: ${GOOGLE_API_KEY}
+            model_name: gemini-pro
+
+          # Other supported providers (commented out by default)
+          # Uncomment and configure as needed
+          # lmstudio:
+          #   base_url: http://localhost:1234/v1
+          #   model: local-model
+          # openrouter:
+          #   api_key: ${OPENROUTER_API_KEY}
+          #   base_url: https://openrouter.ai/api/v1
+          # together:
+          #   api_key: ${TOGETHER_API_KEY}
+          #   base_url: https://api.together.xyz/v1
+          # fireworks:
+          #   api_key: ${FIREWORKS_API_KEY}
+          # deepinfra:
+          #   api_key: ${DEEPINFRA_API_TOKEN}
+          # perplexity:
+          #   api_key: ${PERPLEXITY_API_KEY}
+          # cohere:
+          #   api_key: ${COHERE_API_KEY}
+          # huggingface:
+          #   api_key: ${HUGGINGFACEHUB_API_TOKEN}
+          # jina:
+          #   api_key: ${JINACHAT_API_KEY}
+          # vertexai:
+          #   project: ${GOOGLE_CLOUD_PROJECT}
+          #   location: us-central1
+          # tongyi:
+          #   api_key: ${DASHSCOPE_API_KEY}
+          # yandexgpt:
+          #   api_key: ${YANDEX_API_KEY}
+          # zhipuai:
+          #   api_key: ${ZHIPUAI_API_KEY}
+
+# ==============================================
+# Logging Configuration
+# ==============================================
 logging:
-  level: "INFO"
-  file: "{{ app.data_dir }}/logs/myjobspyai.log"
-  max_size: 10  # MB
-  backup_count: 5
+  # File destinations for different log levels
+  log_dir: logs
+  files:
+    app:
+      path: myjobspyai.log
+      level: INFO
+    debug:
+      path: myjobspyai.debug.log
+      level: DEBUG
+    error:
+      path: myjobspyai.error.log
+      level: WARNING
+    llm:
+      path: myjobspyai.llm.log
+      level: DEBUG
 
-# Job sources to monitor
-job_sources:
-  # Example: LinkedIn job search
-  linkedin_search:
-    name: "LinkedIn Python Jobs"
-    type: "linkedin"
-    enabled: true
-    params:
-      keywords: "Python Developer"
-      location: "United States"
-      distance: 25  # miles
-      limit: 50
+  # General logging settings
+  log_level: DEBUG                  # Minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  log_file_mode: w                  # File mode ('w' for overwrite, 'a' for append)
 
-  # Example: Direct company job board
-  company_board:
-    name: "Example Company Jobs"
-    type: "custom"
-    enabled: true
-    url: "https://example.com/careers"
-    params:
-      department: "Engineering"
+  # Log rotation settings
+  rolling_strategy: size            # 'size' or 'time' based rotation
+  max_size: 10485760                # 10MB max file size before rotation
+  backup_count: 5                   # Number of backup files to keep
+  when: midnight                    # Time-based rotation: midnight, h(ourly), d(aily), etc.
+  interval: 1                       # Rotation interval (e.g., every 1 day)
+  utc: true                        # Use UTC for timestamps
+  at_time: null                     # Specific time for rotation (HH:MM)
 
-# Analysis provider configuration
-provider:
-  # Supported providers: openai, ollama, gemini
-  type: "ollama"
+  # Log format settings
+  json_format: true                 # Output logs in JSON format
+  json_fields:                      # Field mapping for JSON logs
+    timestamp: '%(asctime)s'
+    level: '%(levelname)s'
+    logger: '%(name)s'
+    module: '%(module)s'
+    function: '%(funcName)s'
+    line: '%(lineno)d'
+    message: '%(message)s'
+    process: '%(process)d'
+    thread: '%(thread)d'
+    process_name: '%(processName)s'
+    thread_name: '%(threadName)s'
+    application: myjobspyai
+    environment: ${ENVIRONMENT:development}
 
-  # Provider-specific settings
-  settings:
-    # OpenAI settings (when provider=openai)
-    openai:
-      api_key: "your-openai-api-key"
-      model: "gpt-4-turbo-preview"
-      temperature: 0.7
+  # Fallback text format (used when json_format is false)
+  format: '%(asctime)s.%(msecs)03dZ | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d | %(message)s'
+  date_format: '%Y-%m-%dT%H:%M:%S'  # Timestamp format
 
-    # Ollama settings (when provider=ollama)
-    ollama:
-      base_url: "http://localhost:11434"
-      model: "llama3"
-      temperature: 0.7
+  # Error handling
+  capture_warnings: true           # Capture Python warnings as logs
+  capture_exceptions: true         # Log uncaught exceptions
 
-    # Google Gemini settings (when provider=gemini)
-    gemini:
-      api_key: "your-gemini-api-key"
-      model: "gemini-pro"
-      temperature: 0.7
+# ==============================================
+# Analysis Configuration
+# ==============================================
+analysis:
+  prompts_dir: src/myjobspyai/analysis/prompts  # Directory containing prompt templates
+  resume_prompt_file: resume_extraction.prompt   # Resume analysis prompt template
+  suitability_prompt_file: suitability_analysis.prompt  # Job suitability analysis template
+  max_concurrent_requests: 5                    # Maximum parallel analysis requests
 
-# Web interface settings
-web:
-  host: "0.0.0.0"
-  port: 8000
-  debug: false
-  secret_key: "change-this-to-a-random-secret"
-  allowed_hosts:
-    - "localhost"
-    - "127.0.0.1"
-
-# Notification settings
-notifications:
-  email:
-    enabled: false
-    smtp_host: "smtp.example.com"
-    smtp_port: 587
-    smtp_user: "user@example.com"
-    smtp_password: "your-smtp-password"
-    from_email: "noreply@example.com"
-    to_emails:
-      - "your-email@example.com"
-
-  # Webhook notifications (e.g., for Slack, Discord)
-  webhook:
-    enabled: false
-    url: "https://hooks.slack.com/services/..."
-    template: """
-    New job match: {{ job.title }} at {{ job.company }}
-    Location: {{ job.location }}
-    Match Score: {{ "%.1f"|format(job.match.score) }}%
-    {{ job.url }}
-    """
-
-# Job matching criteria
-matching:
-  required_skills:
-    - "Python"
-    - "Django"
-    - "Flask"
-    - "FastAPI"
-    - "SQL"
-
-  preferred_skills:
-    - "AWS"
-    - "Docker"
-    - "Kubernetes"
-    - "CI/CD"
-    - "TDD"
-
-  experience_level: "mid"  # junior, mid, senior, lead
-  min_salary: 80000  # USD
-  remote_ok: true
-  relocation_ok: false
-
-# Search filters
-filters:
-  exclude_companies:
-    - "Revature"
-    - "FDM Group"
-    - "Wipro"
-    - "Infosys"
-    - "Tata Consultancy Services"
-
-  exclude_keywords:
-    - "senior"
-    - "lead"
-    - "principal"
-    - "staff"
-    - "director"
-    - "vp"
-    - "vice president"
-
-  exclude_titles:
-    - "manager"
-    - "architect"
-    - "devops"
-    - "sre"
-    - "data"
-    - "machine learning"
-    - "ml"
-    - "ai"
-
-# Database settings
-database:
-  # SQLite (default)
-  engine: "sqlite"
-  name: "{{ app.data_dir }}/myjobspyai.db"
-
-  # PostgreSQL example (uncomment and configure as needed)
-  # engine: "postgresql"
-  # name: "myjobspyai"
-  # user: "postgres"
-  # password: "your-password"
-  # host: "localhost"
-  # port: 5432
-
-# API keys (alternative to environment variables)
-api_keys:
-  openai: "your-openai-api-key"
-  gemini: "your-gemini-api-key"
-  linkedin_username: "your-linkedin-email"
-  linkedin_password: "your-linkedin-password"  # Consider using environment variables for sensitive data
-
-# Schedule for automatic job searches (cron syntax)
-schedule: "0 9 * * 1-5"  # 9 AM on weekdays
-
-# Enable/disable features
-features:
-  email_notifications: false
-  web_interface: true
-  api_server: true
-  headless_browser: true  # Required for some job boards
-
-# Proxy settings (if needed)
-proxy:
-  enabled: false
-  http: "http://user:pass@proxy:port"
-  https: "http://user:pass@proxy:port"
-  no_proxy: "localhost,127.0.0.1"
-
-# Rate limiting
-rate_limit:
-  enabled: true
-  requests_per_minute: 30
-  max_retries: 3
-  backoff_factor: 1.5
-
-# Data retention settings
-retention:
-  keep_jobs_days: 30
-  keep_logs_days: 7
-  compress_old_jobs: true
-
-# Debugging
-debug:
-  log_http_requests: false
-  log_sql_queries: false
-  show_sensitive_data: false
+# ==============================================
+# OpenTelemetry Configuration
+# ==============================================
+opentelemetry:
+  OTEL_ENABLED: true                           # Enable/disable OpenTelemetry
+  OTEL_SERVICE_NAME: MyJobSpyAI                # Service name for tracing
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317  # OTLP collector endpoint
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc            # Protocol for OTLP export
+  OTEL_EXPORTER_OTLP_HEADERS: {}                # Additional headers for OTLP
+  OTEL_EXPORTER_MAX_RETRIES: 3                  # Max retries for export
+  OTEL_EXPORTER_RETRY_DELAY_SECONDS: 5          # Delay between retries
+  OTEL_TRACES_SAMPLER: always_on                # Sampling strategy
+  OTEL_TRACES_SAMPLER_CONFIG:
+    ratio: 0.5                                 # Sample 50% of traces
+  OTEL_RESOURCE_ATTRIBUTES:
+    environment: development                   # Deployment environment
+    version: 1.0.0                             # Application version

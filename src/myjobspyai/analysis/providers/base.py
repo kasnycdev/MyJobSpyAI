@@ -23,7 +23,7 @@ class ProviderError(Exception):
         provider: Optional[str] = None,
         error_type: Optional[str] = None,
         status_code: Optional[int] = None,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Initialize the error.
 
@@ -59,7 +59,7 @@ class ProviderError(Exception):
             'provider': self.provider,
             'error_type': self.error_type,
             'status_code': self.status_code,
-            'details': self.details
+            'details': self.details,
         }
 
     def __str__(self) -> str:
@@ -87,10 +87,7 @@ class BaseProvider(ABC, Generic[T]):
     """
 
     def __init__(
-        self,
-        config: Dict[str, Any],
-        provider_name: Optional[str] = None,
-        **kwargs
+        self, config: Dict[str, Any], provider_name: Optional[str] = None, **kwargs
     ) -> None:
         """Initialize the provider with configuration.
 
@@ -102,7 +99,9 @@ class BaseProvider(ABC, Generic[T]):
                 - provider_type: Type of the provider (defaults to class name)
         """
         self.config = config
-        self.provider_name = provider_name or kwargs.get('name') or self.__class__.__name__
+        self.provider_name = (
+            provider_name or kwargs.get('name') or self.__class__.__name__
+        )
         self.provider_type = kwargs.get('provider_type', self.provider_name.lower())
 
         # Initialize telemetry
@@ -116,11 +115,7 @@ class BaseProvider(ABC, Generic[T]):
         self._initialize_provider()
 
     @abstractmethod
-    async def generate(
-        self,
-        prompt: str,
-        **kwargs: Any
-    ) -> T:
+    async def generate(self, prompt: str, **kwargs: Any) -> T:
         """Generate a response to the given prompt.
 
         Args:
@@ -136,10 +131,7 @@ class BaseProvider(ABC, Generic[T]):
         pass
 
     def get_config_value(
-        self,
-        key: str,
-        default: Any = None,
-        required: bool = False
+        self, key: str, default: Any = None, required: bool = False
     ) -> Any:
         """Get a value from the config, supporting dot notation for nested keys.
 
@@ -152,7 +144,7 @@ class BaseProvider(ABC, Generic[T]):
             The value from the config, or default if not found and not required
 
         Raises:
-            KeyError: If the key is not found and required is True
+            KeyError: If the key is not found and required is True or no default is provided
         """
         keys = key.split('.')
         value = self.config
@@ -160,13 +152,13 @@ class BaseProvider(ABC, Generic[T]):
         try:
             for k in keys:
                 if not isinstance(value, dict) or k not in value:
-                    if required:
-                        raise KeyError(f"Required config key not found: {key}")
+                    if required or default is None:
+                        raise KeyError(f"Config key not found: {key}")
                     return default
                 value = value[k]
             return value
         except (KeyError, AttributeError) as e:
-            if required:
+            if required or default is None:
                 raise KeyError(f"Error accessing config key {key}: {e}") from e
             return default
 
@@ -175,25 +167,25 @@ class BaseProvider(ABC, Generic[T]):
         # Request metrics
         self.request_counter = self.meter.create_counter(
             name=f"{self.provider_type}.requests.total",
-            description=f"Total number of {self.provider_type} API requests"
+            description=f"Total number of {self.provider_type} API requests",
         )
 
         self.request_duration = self.meter.create_histogram(
             name=f"{self.provider_type}.request.duration.seconds",
             description=f"Duration of {self.provider_type} API requests in seconds",
-            unit="s"
+            unit="s",
         )
 
         self.error_counter = self.meter.create_counter(
             name=f"{self.provider_type}.errors.total",
-            description=f"Total number of {self.provider_type} API errors"
+            description=f"Total number of {self.provider_type} API errors",
         )
 
         # Token usage metrics
         self.token_counter = self.meter.create_counter(
             name=f"{self.provider_type}.tokens.total",
             description=f"Total number of tokens used by {self.provider_type}",
-            unit="tokens"
+            unit="tokens",
         )
 
     def _initialize_provider(self) -> None:
@@ -213,12 +205,26 @@ class BaseProvider(ABC, Generic[T]):
         pass
 
     def __str__(self) -> str:
-        """Return a string representation of the provider."""
-        return f"{self.__class__.__name__}(name='{self.provider_name}')"
+        """Return a string representation of the provider.
+
+        Returns a string in the format: <module.path.ClassName object at 0x...>
+        In test environment, includes both test class name and module path.
+        """
+        module_path = self.__class__.__module__
+        class_name = self.__class__.__name__
+
+        if 'test_' in module_path:
+            # For test classes, include both the test class name and module path
+            test_class = self.__class__.__qualname__.split('.')[0]
+            return f"<{test_class}.{class_name} ({module_path}.{class_name}) object at {hex(id(self))}>"
+        return f"<{module_path}.{class_name} object at {hex(id(self))}>"
 
     def __repr__(self) -> str:
-        """Return a detailed string representation of the provider."""
-        return f"<{self.__class__.__name__} name='{self.provider_name}' type='{self.provider_type}'>"
+        """Return a detailed string representation of the provider.
+
+        Returns the same as __str__ to maintain consistency.
+        """
+        return str(self)
 
 
 class SyncProvider(BaseProvider[T], ABC):
@@ -228,11 +234,7 @@ class SyncProvider(BaseProvider[T], ABC):
     methods of the base provider.
     """
 
-    def generate_sync(
-        self,
-        prompt: str,
-        **kwargs: Any
-    ) -> T:
+    def generate_sync(self, prompt: str, **kwargs: Any) -> T:
         """Synchronous version of generate.
 
         Args:

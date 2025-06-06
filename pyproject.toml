@@ -30,18 +30,34 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "jobspy>=1.0.0",
-    "pydantic>=2.0.0",
-    "python-dotenv>=1.0.0",
-    "rich>=13.0.0",
-    "PyYAML>=6.0.0",
-    "requests>=2.28.0",
-    "aiohttp>=3.8.0",
-    "pandas>=1.5.0",
-    "numpy>=1.23.0",
-    "tqdm>=4.65.0",
-    "python-dateutil>=2.8.2",
-    "python-multipart>=0.0.6",
+    # Core Dependencies
+    "python-jobspy>=1.1.80",      # Job scraping
+    "python-docx>=1.1.0",         # Resume parsing (.docx)
+    "pypdf>=3.0.0",              # Resume parsing (.pdf)
+    "beautifulsoup4>=4.12.0",     # HTML parsing
+    "lxml>=4.9.0",                # HTML parsing
+    "requests>=2.31.0",           # HTTP requests
+    "httpx>=0.24.0",              # Async HTTP requests
+
+    # LLM Integration
+    "pydantic>=2.5.0",            # Data validation
+    "langchain>=0.3.25",          # LangChain core
+    "langchain-community>=0.0.10", # LangChain community integrations
+    "langchain-openai>=0.0.5",    # OpenAI integration for LangChain
+    "langchain-anthropic>=0.0.4", # Anthropic integration for LangChain
+    "langchain-google-genai>=0.0.5", # Google AI integration for LangChain
+
+    # Core Utilities
+    "PyYAML>=6.0.0",              # Configuration
+    "Jinja2>=3.1.0",              # Template processing
+    "rich>=13.0.0",               # Console output
+    "pandas>=2.0.0",              # Data manipulation
+    "numpy>=1.26.3",              # Required by jobspy
+    "python-dotenv>=1.0.0",        # Environment variable management
+
+    # Observability
+    "opentelemetry-api~=1.22.0",  # OpenTelemetry API
+    "opentelemetry-sdk~=1.22.0",  # OpenTelemetry SDK
 ]
 
 [project.optional-dependencies]
@@ -104,8 +120,8 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
-check_untyped_defs = true
 disallow_untyped_decorators = true
+check_untyped_defs = true
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
@@ -126,21 +142,20 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 python_classes = ["Test*"]
 pythonpath = [".", "src"]
-addopts = "-v --cov=myjobspyai --cov-report=term-missing"
-testpaths = ["tests"]
+addopts = "-v -s --cov=src --cov-report=term-missing"
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning",
 ]
 
-[coverage:run]
+[coverage.run]
 source = ["myjobspyai"]
 omit = [
     "**/__init__.py",
     "**/tests/**",
 ]
 
-[coverage:report]
+[coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -160,25 +175,6 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
-
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-disallow_untyped_decorators = true
-check_untyped_defs = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-addopts = "-v -s --cov=src --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["src"]

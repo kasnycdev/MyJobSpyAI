@@ -265,7 +265,7 @@ analysis:
 
 ### Versioning
 - Update version number following semantic versioning
-- Update changelog.md
+- Update [CHANGELOG.md](../../CHANGELOG.md)
 
 ### Rollout Strategy
 1. Deploy to staging environment

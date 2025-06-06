@@ -76,10 +76,7 @@ Usage:
 """
 
 from enum import Enum
-from typing import Any, Dict, Optional, Type
 
-from .base import BaseProvider, ProviderError, SyncProvider
-from .factory import ProviderFactory
 from .langchain_provider import (
     LangChainProvider,
     SyncLangChainProvider,
@@ -90,12 +87,11 @@ from .langchain_provider import (
 # Export the ProviderType enum
 class ProviderType(str, Enum):
     """Enumeration of supported provider types."""
-    LANGCHAIN = "langchain"
-    OPENAI = "openai"
-    OLLAMA = "ollama"
-    GEMINI = "gemini"
 
-# Export the main classes
+    LANGCHAIN = "langchain"  # LangChain provider that supports multiple LLM backends
+
+
+# Define __all__ to specify what gets imported with 'from myjobspyai.analysis.providers import *'
 __all__ = [
     # Base classes
     'BaseProvider',
@@ -103,11 +99,9 @@ __all__ = [
     'ProviderError',
     'ProviderType',
     'ProviderFactory',
-
     # Providers
     'LangChainProvider',
     'SyncLangChainProvider',
-
     # Utilities
     'clean_json_string',
 ]

@@ -10,11 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 class JobSource(str, Enum):
     """Enumeration of possible job sources."""
 
+    OTHER = "other"
     LINKEDIN = "linkedin"
     INDEED = "indeed"
     GLASSDOOR = "glassdoor"
-    ZIPRECRUITER = "ziprecruiter"
-    OTHER = "other"
+    JOBSPY = "jobspy"
+    CUSTOM = "custom"
 
 
 class JobType(str, Enum):
@@ -95,12 +96,11 @@ class JobAnalysis(BaseModel):
 class Job(BaseModel):
     """Model representing a job posting."""
 
-    model_config = ConfigDict(
-        json_encoders={
+    class Config:
+        json_encoders = {
             datetime: lambda v: v.isoformat() if v else None,
-        },
-        use_enum_values=True,
-    )
+        }
+        use_enum_values = True
 
     # Core fields
     id: str = Field(
