@@ -175,3 +175,6 @@ src/myjobspyai/logs/
 src/myjobspyai/output/
 src/myjobspyai/parsers/
 *.egg-info/
+
+# Local .env file
+.env
