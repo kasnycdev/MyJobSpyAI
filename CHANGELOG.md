@@ -6,6 +6,13 @@
 - Support for multiple LLM providers through a single configuration
 - Comprehensive documentation for the new provider system
 - Migration guide for transitioning from direct providers to LangChain
+- Added `langchain-ollama` package as a dependency for Ollama provider support
+- Enhanced debug logging for Ollama provider connections and requests
+
+### Changed
+- Updated Ollama provider to use the new `OllamaLLM` class from `langchain-ollama`
+- Improved error handling and logging in the Ollama provider
+- Updated requirements-langchain.txt to include langchain-ollama>=0.1.0
 
 ### Changed
 - Removed direct provider implementations (OpenAI, Ollama, Gemini)

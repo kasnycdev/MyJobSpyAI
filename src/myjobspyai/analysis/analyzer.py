@@ -12,11 +12,13 @@ import time
 from collections import defaultdict
 from typing import Any, Dict, Optional
 
+# Import config
+from myjobspyai import config as settings
+from myjobspyai.analysis.providers.base import BaseProvider as LLMProvider
+
 # Import provider factory and base provider
 from myjobspyai.analysis.providers.factory import ProviderFactory
-
-# Import config
-from myjobspyai.config import config as settings
+from myjobspyai.config import config
 
 # Import LLM providers
 
@@ -106,18 +108,29 @@ class BaseAnalyzer:
             provider_name: Optional name of the provider to use. If not specified,
                          uses the default provider from settings.
         """
-        # Get provider configuration from settings
-        llm_providers = settings.llm_providers or {}
+        # Get provider configuration from config
+        llm_providers = config.llm_providers or {}
 
-        # Use specified provider or default from settings
-        self.provider_name = provider_name or next(
-            (
-                name
-                for name, provider in llm_providers.items()
-                if provider.enabled and provider.type == "langchain"
-            ),
-            "langchain_default",
+        # Use specified provider or default from config
+        self.provider_name = (
+            provider_name
+            or getattr(config, 'default_llm_provider', None)
+            or next(
+                (
+                    name
+                    for name, provider in llm_providers.items()
+                    if getattr(
+                        provider, 'enabled', True
+                    )  # Default to True if enabled attribute doesn't exist
+                ),
+                None,
+            )
         )
+
+        if not self.provider_name:
+            raise ValueError(
+                "No LLM provider specified and no default provider found in settings"
+            )
         self.provider_type = None
         self.llm_provider: Optional[LLMProvider] = None
 
@@ -206,53 +219,240 @@ class BaseAnalyzer:
                 )
 
     def _initialize_llm_provider(self):
-        """Initialize the LLM provider from configuration."""
+        """Initialize the LLM provider from configuration.
+
+        Raises:
+            ValueError: If no providers are configured, the specified provider is not found,
+                      or if the provider configuration is invalid.
+        """
         try:
-            # Get the provider configuration
-            providers_config = settings.llm_providers or {}
+            logger.debug("[LLM INIT] Starting LLM provider initialization")
+            logger.debug(f"[LLM INIT] Provider name: {self.provider_name}")
+
+            # Get the provider configuration using the model_dump() method for Pydantic v2
+            providers_config = {}
+
+            # First try to get from model_dump() if available
+            if hasattr(config, 'model_dump'):
+                try:
+                    config_dict = config.model_dump()
+                    logger.debug(
+                        f"[LLM INIT] Config dump keys: {list(config_dict.keys())}"
+                    )
+
+                    # Try to get llm_providers from the dump
+                    if (
+                        'llm_providers' in config_dict
+                        and config_dict['llm_providers'] is not None
+                    ):
+                        providers_config = config_dict['llm_providers']
+                        logger.debug(
+                            "[LLM INIT] Got providers from config.model_dump()['llm_providers']"
+                        )
+                    # Try to get from llm.providers if it exists
+                    elif 'llm' in config_dict and isinstance(config_dict['llm'], dict):
+                        llm_section = config_dict['llm']
+                        if (
+                            'providers' in llm_section
+                            and llm_section['providers'] is not None
+                        ):
+                            providers_config = llm_section['providers']
+                            logger.debug(
+                                "[LLM INIT] Got providers from config.model_dump()['llm']['providers']"
+                            )
+                except Exception as e:
+                    logger.error(
+                        f"[LLM INIT] Error getting providers from model_dump: {e}",
+                        exc_info=True,
+                    )
+
+            # If still no providers, try direct attribute access
+            if not providers_config:
+                try:
+                    providers_config = getattr(config, 'llm_providers', None) or {}
+                    if providers_config:
+                        logger.debug(
+                            "[LLM INIT] Got providers from direct attribute access"
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"[LLM INIT] Error getting providers from direct attribute: {e}",
+                        exc_info=True,
+                    )
+
+            # If still no providers, try getting from _raw_llm_providers
+            if not providers_config and hasattr(config, '_raw_llm_providers'):
+                try:
+                    providers_config = getattr(config, '_raw_llm_providers', {}) or {}
+                    if providers_config:
+                        logger.debug("[LLM INIT] Got providers from _raw_llm_providers")
+                except Exception as e:
+                    logger.error(
+                        f"[LLM INIT] Error getting providers from _raw_llm_providers: {e}",
+                        exc_info=True,
+                    )
+
+            # If still no providers, try to load the config file directly
+            if not providers_config:
+                try:
+                    from pathlib import Path
+
+                    import yaml
+
+                    # Try to find the config file in standard locations
+                    config_paths = [
+                        Path.home() / '.config' / 'myjobspyai' / 'config.yaml',
+                        Path.home() / '.myjobspyai' / 'config.yaml',
+                        Path.cwd() / 'config.yaml',
+                    ]
+
+                    for config_path in config_paths:
+                        if config_path.exists():
+                            logger.debug(
+                                f"[LLM INIT] Trying to load config from: {config_path}"
+                            )
+                            with open(config_path, 'r') as f:
+                                config_data = yaml.safe_load(f)
+                                # Check for llm_providers at root level
+                                if (
+                                    'llm_providers' in config_data
+                                    and config_data['llm_providers']
+                                ):
+                                    providers_config = config_data['llm_providers']
+                                    logger.debug(
+                                        f"[LLM INIT] Loaded {len(providers_config)} providers from {config_path}"
+                                    )
+                                    break
+                                # Check for llm.providers
+                                elif (
+                                    'llm' in config_data
+                                    and isinstance(config_data['llm'], dict)
+                                    and 'providers' in config_data['llm']
+                                ):
+                                    providers_config = config_data['llm']['providers']
+                                    logger.debug(
+                                        f"[LLM INIT] Loaded {len(providers_config)} providers from llm.providers in {config_path}"
+                                    )
+                                    break
+                except Exception as e:
+                    logger.error(
+                        f"[LLM INIT] Error loading config file: {e}", exc_info=True
+                    )
+
+            logger.debug(
+                f"[LLM INIT] Available providers: {list(providers_config.keys()) if providers_config else 'None'}"
+            )
+            logger.debug(
+                f"[LLM INIT] Default provider from config: {getattr(config, 'default_llm_provider', 'Not set')}"
+            )
 
             if not providers_config:
-                logger.warning("No LLM providers configured in settings")
-                return
+                error_msg = "No LLM providers configured in config. Please check your configuration file."
+                logger.error(error_msg)
 
+                # Log detailed config information for debugging
+                if hasattr(config, 'model_dump'):
+                    config_dict = config.model_dump()
+                    logger.error(
+                        f"[LLM INIT] Config dump keys: {list(config_dict.keys())}"
+                    )
+                    if 'llm_providers' in config_dict:
+                        logger.error(
+                            f"[LLM INIT] llm_providers type: {type(config_dict['llm_providers']).__name__}"
+                        )
+
+                # Log all available attributes on the config object
+                config_attrs = []
+                if hasattr(config, '__dict__'):
+                    config_attrs = [k for k in dir(config) if not k.startswith('_')]
+                    logger.error(
+                        f"[LLM INIT] Available config attributes: {', '.join(config_attrs)}"
+                    )
+
+                    # Log the type of llm_providers if it exists
+                    if 'llm_providers' in config_attrs:
+                        llm_providers = getattr(config, 'llm_providers', None)
+                        logger.error(
+                            f"[LLM INIT] llm_providers type: {type(llm_providers).__name__ if llm_providers else 'None'}"
+                        )
+
+                raise ValueError(error_msg)
+
+            # First, get the provider config from providers_config
             if self.provider_name not in providers_config:
-                logger.warning(
+                available_providers = list(providers_config.keys())
+                error_msg = (
                     f"Provider '{self.provider_name}' not found in configuration. "
-                    f"Available providers: {list(providers_config.keys())}"
+                    f"Available providers: {', '.join(available_providers)}"
                 )
-                return
+                logger.error(error_msg)
+                raise ValueError(error_msg)
 
             provider_config = providers_config[self.provider_name]
-            self.provider_type = provider_config.type
 
+            # Get provider config with fallback for both dict and object access
+            def get_config_value(config, key, default=None):
+                if hasattr(config, 'get') and callable(config.get):  # It's a dict
+                    return config.get(key, default)
+                return getattr(config, key, default)
+
+            # Get provider type with fallback
+            self.provider_type = get_config_value(provider_config, 'type')
             if not self.provider_type:
-                raise ValueError(
-                    f"Provider '{self.provider_name}' is missing 'type' field"
+                error_msg = (
+                    f"Provider '{self.provider_name}' is missing required 'type' field"
                 )
+                logger.error(error_msg)
+                raise ValueError(error_msg)
 
-            # Convert Pydantic model to dict for the factory
+            # Log provider configuration (excluding sensitive data)
+            logger.debug(
+                f"Initializing provider '{self.provider_name}' with type: {self.provider_type}"
+            )
+
+            # Get config values with appropriate fallbacks
+            model = get_config_value(provider_config, 'model', 'default-model')
+            api_key = get_config_value(provider_config, 'api_key')
+            base_url = get_config_value(provider_config, 'base_url')
+            timeout = get_config_value(
+                provider_config, 'timeout', 60
+            )  # Default 60s timeout
+            max_retries = get_config_value(
+                provider_config, 'max_retries', 3
+            )  # Default 3 retries
+            temperature = get_config_value(provider_config, 'temperature', 0.7)
+            max_tokens = get_config_value(provider_config, 'max_tokens', 1000)
+
+            logger.debug(f"Provider model: {model}")
+            logger.debug(f"Provider timeout: {timeout}")
+
+            # Prepare config for the factory
             provider_config_dict = {
-                "type": provider_config.type,
-                "model": provider_config.model,
-                "api_key": provider_config.api_key,
-                "base_url": provider_config.base_url,
-                "timeout": provider_config.timeout,
-                "max_retries": provider_config.max_retries,
-                "temperature": provider_config.temperature,
-                "max_tokens": provider_config.max_tokens,
+                "type": self.provider_type,
+                "model": model,
+                "api_key": api_key,
+                "base_url": base_url,
+                "timeout": timeout,
+                "max_retries": max_retries,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
             }
 
             # Initialize the provider using the factory
-            self.llm_provider = ProviderFactory.create_provider(
-                provider_type=self.provider_type,
-                config=provider_config_dict,
-                name=self.provider_name,
+            self.llm_provider = ProviderFactory().create(
+                provider_name=self.provider_name, config=provider_config_dict
             )
 
-            # Set common attributes
-            self.model_name = provider_config.model
-            self.request_timeout = provider_config.timeout
-            self.max_retries = provider_config.max_retries
+            # Set common attributes with fallback for both dict and object access
+            def get_attr(config, attr, default=None):
+                if hasattr(config, 'get') and callable(config.get):  # It's a dict
+                    return config.get(attr, default)
+                return getattr(config, attr, default)
+
+            # Use the values we already extracted from the config
+            self.model_name = model
+            self.request_timeout = timeout
+            self.max_retries = max_retries
             self.retry_delay = 5  # Default retry delay
 
             logger.info(
@@ -270,47 +470,83 @@ class BaseAnalyzer:
         """
         Check the connection to the LLM provider and verify the model is available.
         For LangChain providers, we'll do a simple test generation to verify connectivity.
+
+        Raises:
+            RuntimeError: If the LLM provider is not properly initialized or connection fails.
         """
-        with tracer.start_as_current_span("check_connection_and_model") as span:
-            span.set_attributes(
-                {
-                    "provider_name": self.provider_name,
-                    "provider_type": self.provider_type or "unknown",
-                    "model": self.model_name or "unknown",
-                }
-            )
+        if not self.llm_provider:
+            error_msg = "LLM provider not initialized. Cannot check connection."
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
-            if not self.llm_provider:
-                raise RuntimeError("LLM provider not initialized")
-
-            # For LangChain providers, we'll do a simple test generation
+        @tracer.start_as_current_span("check_llm_connection")
+        def test_connection():
             try:
-                # Use a simple test prompt to verify connectivity
-                test_prompt = "Test connection - respond with 'OK'"
+                # For LangChain providers, we'll try a simple completion
+                if self.provider_type == "langchain":
+                    # Test with a simple prompt
+                    test_prompt = (
+                        "Respond with just the word 'success' and nothing else."
+                    )
+                    response = self.llm_provider.generate([test_prompt])
 
-                # For synchronous check, we'll use asyncio to run the async method
-                async def test_connection():
-                    response = await self.llm_provider.generate(test_prompt)
-                    return response
+                    if not response or not response.generations:
+                        error_msg = (
+                            "Empty response from LLM provider during connection test"
+                        )
+                        logger.error(error_msg)
+                        return False, error_msg
 
-                # Run the async test
-                response = asyncio.run(test_connection())
+                    result = response.generations[0][0].text.strip().lower()
+                    if "success" not in result:
+                        error_msg = f"Unexpected response from LLM provider during connection test: {result}"
+                        logger.error(error_msg)
+                        return False, error_msg
 
-                if not response or not response.strip():
-                    raise ValueError("Empty response from LLM provider")
+                    logger.info(
+                        f"Successfully connected to {self.provider_name} LLM provider"
+                    )
+                    return True, None
+
+                # For other provider types, just check if the provider is initialized
+                if self.llm_provider is None:
+                    error_msg = "LLM provider not properly initialized"
+                    logger.error(error_msg)
+                    return False, error_msg
 
                 logger.info(
-                    f"Successfully connected to {self.provider_name} provider with model: {self.model_name}"
+                    f"Successfully initialized {self.provider_name} LLM provider"
                 )
+                return True, None
 
             except Exception as e:
-                error_msg = (
-                    f"Failed to connect to {self.provider_name} provider: {str(e)}"
-                )
+                error_msg = f"Error testing LLM connection: {str(e)}"
                 logger.error(error_msg, exc_info=True)
-                span.record_exception(e)
-                span.set_status(trace.Status(trace.StatusCode.ERROR, error_msg))
-                raise
+                return False, error_msg
+
+        logger.info(
+            f"Verifying connection to {self.provider_name} ({self.provider_type})..."
+        )
+
+        # Test the connection and handle the result
+        connection_ok, error_msg = test_connection()
+        if not connection_ok:
+            error_msg = error_msg or "Unknown error during connection test"
+            logger.error(
+                f"Failed to verify connection to {self.provider_name}: {error_msg}"
+            )
+            raise RuntimeError(
+                f"Failed to connect to {self.provider_name} LLM provider. "
+                f"Please check your configuration and network connection. Error: {error_msg}"
+            )
+
+            # Record the error in the span if we're in a tracing context
+            current_span = trace.get_current_span()
+            if current_span.is_recording():
+                current_span.record_exception(Exception(error_msg))
+                current_span.set_status(trace.Status(trace.StatusCode.ERROR, error_msg))
+
+            raise
 
     async def _call_llm_async(self, prompt: str, task_name: str, **kwargs):
         """

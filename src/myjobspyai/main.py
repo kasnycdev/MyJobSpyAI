@@ -18,6 +18,7 @@ from rich.table import Table
 from myjobspyai.analysis.analyzer import JobAnalyzer, ResumeAnalyzer
 from myjobspyai.analysis.models import ResumeData
 from myjobspyai.config import config as app_config
+from myjobspyai.config import load_config
 from myjobspyai.main_matcher import load_and_extract_resume_async
 
 # Import application components
@@ -250,7 +251,7 @@ def setup_logging_custom(debug: bool = False) -> None:
 
             return handler_config
 
-        # Create formatters dictionary with JSON support
+        # Create formatters dictionary
         formatters = {
             'standard': {'format': log_format, 'datefmt': date_format, 'style': '%'},
             'detailed': {
@@ -258,23 +259,6 @@ def setup_logging_custom(debug: bool = False) -> None:
                 'datefmt': date_format,
             },
             'simple': {'format': '%(levelname)-8s %(message)s'},
-            'json': {
-                '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
-                'format': '''{
-                    "timestamp": "%(asctime)s",
-                    "level": "%(levelname)s",
-                    "logger": "%(name)s",
-                    "module": "%(module)s",
-                    "function": "%(funcName)s",
-                    "line": %(lineno)d,
-                    "message": "%(message)s",
-                    "process": %(process)d,
-                    "thread": %(thread)d,
-                    "process_name": "%(processName)s",
-                    "thread_name": "%(threadName)s"
-                }''',
-                'datefmt': date_format,
-            },
         }
 
         # Create handlers dictionary
@@ -976,25 +960,78 @@ async def analyze_jobs_with_resume(
     # Initialize LLM provider if configured
     llm_provider = None
     try:
+        from myjobspyai.analysis.analyzer import BaseAnalyzer, JobAnalyzer
+        from myjobspyai.analysis.providers.factory import ProviderFactory
         from myjobspyai.config import config as app_config
 
-        if hasattr(app_config, 'llm') and app_config.llm:
-            llm_config = app_config.llm
-            default_provider = llm_config.get('default_provider')
-            providers = llm_config.get('providers', {})
+        # Get providers from the root level llm_providers
+        providers = getattr(app_config, 'llm_providers', {})
 
-            if default_provider and default_provider in providers:
+        # Get list of enabled providers first
+        enabled_providers = [
+            name
+            for name, provider in providers.items()
+            if getattr(provider, 'enabled', True)
+        ]
+
+        if not enabled_providers:
+            logger.warning("No enabled LLM providers found in configuration")
+        else:
+            # Try to get the default provider name
+            default_provider = getattr(app_config, 'default_llm_provider', None)
+
+            # If no default or default is not enabled, use the first enabled provider
+            if not default_provider or default_provider not in enabled_providers:
+                default_provider = enabled_providers[0]
+                logger.info(f"Using LLM provider: {default_provider}")
+
+            if default_provider in providers:
                 provider_config = providers[default_provider]
-                if provider_config.get('enabled', False):
-                    llm_provider = await initialize_llm_provider(provider_config)
-                    if llm_provider:
-                        logger.info(f"Initialized LLM provider: {default_provider}")
-                    else:
-                        logger.warning(
-                            f"Failed to initialize LLM provider: {default_provider}"
+                logger.info(f"Initializing LLM provider: {default_provider}")
+
+                # Convert Pydantic model to dict if needed
+                if hasattr(provider_config, 'model_dump'):
+                    provider_config_dict = provider_config.model_dump()
+                else:
+                    provider_config_dict = dict(provider_config)
+
+                # Ensure provider name is set
+                provider_config_dict['name'] = default_provider
+
+                # Try to initialize the provider using the factory directly
+                try:
+                    provider_type = provider_config_dict.get('type', 'langchain')
+                    llm_provider = ProviderFactory().create(
+                        provider_type, **provider_config_dict
+                    )
+                    logger.info(
+                        f"Successfully initialized LLM provider: {default_provider}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to initialize LLM provider using factory: {e}"
+                    )
+                    # Fall back to the old method if factory fails
+                    try:
+                        base_analyzer = BaseAnalyzer(provider_name=default_provider)
+                        llm_provider = base_analyzer.llm_provider
+                        logger.info(
+                            f"Initialized LLM provider using BaseAnalyzer: {default_provider}"
                         )
+                    except Exception as inner_e:
+                        logger.warning(
+                            f"Failed to initialize LLM provider using BaseAnalyzer: {inner_e}"
+                        )
+                        # Last resort: try the legacy initialize_llm_provider
+                        llm_provider = await initialize_llm_provider(
+                            provider_config_dict
+                        )
+                        if llm_provider:
+                            logger.info(
+                                f"Initialized LLM provider using fallback method: {default_provider}"
+                            )
     except Exception as e:
-        logger.warning(f"Error initializing LLM provider: {e}")
+        logger.error(f"Error initializing LLM provider: {e}", exc_info=True)
 
     # Initialize job analyzer with the LLM provider
     job_analyzer = JobAnalyzer(llm_provider=llm_provider)
@@ -1570,8 +1607,13 @@ def main() -> int:
     console.setFormatter(formatter)
     logging.basicConfig(handlers=[console], level=logging.INFO)
 
-    # Get logger
+    # Get logger for main
     logger = logging.getLogger(__name__)
+
+    # Log startup information
+    logger.info("=" * 50)
+    logger.info("Starting MyJobSpy AI")
+    logger.info("-" * 50)
 
     try:
         # Parse command line arguments
@@ -1588,12 +1630,11 @@ def main() -> int:
         # Get logger after setup
         logger = logging.getLogger(__name__)
 
-        # Log startup information
-        logger.info("=" * 50)
-        logger.info(f"Starting MyJobSpy AI (Debug: {debug_mode})")
-        logger.info("-" * 50)
+        # Log debug information
+        if debug_mode:
+            logger.debug(f"Debug mode enabled (Debug: {debug_mode})")
 
-        # Log configuration paths
+        # Log configuration paths and load configuration
         config_paths = [
             Path('~/.config/myjobspyai/config.yaml').expanduser(),
             Path('config.yaml').absolute(),
@@ -1603,12 +1644,21 @@ def main() -> int:
         config_loaded = False
         for config_path in config_paths:
             if config_path.exists():
-                logger.info(f"Using configuration from: {config_path}")
-                config_loaded = True
-                break
+                try:
+                    from myjobspyai.config import load_config
+
+                    load_config(config_path)
+                    logger.info(f"Loaded configuration from: {config_path}")
+                    config_loaded = True
+                    break
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load configuration from {config_path}: {e}"
+                    )
+                    continue
 
         if not config_loaded:
-            logger.warning("No configuration file found. Using default settings.")
+            logger.warning("No valid configuration file found. Using default settings.")
 
         # Set log level based on verbosity
         verbose_level = getattr(args, 'verbose', 0)

@@ -6,6 +6,7 @@ langchain-community>=0.0.10
 langchain-openai>=0.0.5
 langchain-anthropic>=0.0.4
 langchain-google-genai>=0.0.5
+langchain-ollama>=0.1.0
 langchain-community[all]>=0.0.10  # Includes many community integrations
 
 # Optional but recommended for better JSON handling

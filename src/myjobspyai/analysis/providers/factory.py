@@ -22,6 +22,13 @@ class ProviderType(str, Enum):
     Additional provider types can be registered at runtime.
     """
 
+    LANGCHAIN = "langchain"
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    HUGGINGFACE = "huggingface"
+    OLLAMA = "ollama"
+    CUSTOM = "custom"
+
 
 class ProviderFactory:
     """Singleton factory for creating and managing LLM providers.
@@ -53,13 +60,20 @@ class ProviderFactory:
         # Register built-in providers
         try:
             from .langchain_provider import LangChainProvider
+            from .ollama_provider import OllamaProvider
 
+            # Register LangChain provider
             self.register(ProviderType.LANGCHAIN, LangChainProvider)
+
+            # Register Ollama provider
+            self.register(ProviderType.OLLAMA, OllamaProvider)
+
             logger.info(
                 "Registered built-in providers: %s", ", ".join(self._providers.keys())
             )
         except ImportError as e:
             logger.warning("Failed to register built-in providers: %s", e)
+            logger.exception("Detailed error:")
 
     @property
     def available_providers(self) -> Dict[str, Type[BaseProvider]]:

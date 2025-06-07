@@ -67,18 +67,18 @@ output:
 # LLM Configuration
 # ==============================================
 llm:
-  default_provider: langchain_default  # Default LLM provider to use
+  default_provider: "langchain"  # Default LLM provider to use
 
   # Configure multiple LLM providers
   providers:
     # Unified LangChain provider (recommended)
-    langchain_default:
-      type: langchain
+    langchain:
+      type: "langchain"
       enabled: true
       config:
         # General LLM settings
-        provider: ollama               # LLM provider (ollama, openai, anthropic, etc.)
-        model: hermes3:3b             # Model name specific to the provider
+        provider: "ollama"               # LLM provider (ollama, openai, anthropic, etc.)
+        model: "hermes3:3b"             # Model name specific to the provider
 
         # Generation parameters
         temperature: 0.7              # 0.0 (deterministic) to 2.0 (creative)
