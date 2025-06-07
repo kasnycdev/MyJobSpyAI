@@ -1,0 +1,10 @@
+sphinx==7.3.7
+sphinx-rtd-theme==2.0.0
+sphinx-autodoc-typehints==2.1.0
+myst-parser==2.0.0
+sphinx-copybutton==0.5.2
+sphinxcontrib-mermaid==0.9.2
+sphinxcontrib-httpdomain==1.8.1
+sphinxcontrib-plantuml==0.32
+sphinxcontrib-napoleon==0.7
+sphinx-tabs==3.4.5
