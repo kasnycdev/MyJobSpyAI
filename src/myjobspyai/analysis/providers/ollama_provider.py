@@ -22,16 +22,23 @@ class OllamaProvider(BaseProvider[str]):
     def __init__(self, config: Dict[str, Any], **kwargs):
         super().__init__(config, **kwargs)
 
+        # Convert config to dict if it's a Pydantic model
+        if hasattr(config, 'model_dump'):
+            config = config.model_dump()
+        elif hasattr(config, 'dict'):
+            config = config.dict()
+
         # Extract configuration with defaults
-        self.model = config.get("model", "llama2")  # Default to llama2 if not specified
-        self.base_url = config.get(
-            "base_url", "http://localhost:11434"
-        )  # Default Ollama URL
-        self.temperature = config.get("temperature", 0.7)
-        # Ollama uses 'num_predict' instead of 'max_tokens'
-        self.num_predict = config.get(
-            "max_tokens", 1000
-        )  # Will be used in the generate method
+        self.model = config.get(
+            "model", "llama3:instruct"
+        )  # Default to llama3 if not specified
+        self.base_url = config.get("base_url", "http://localhost:11434")
+        self.temperature = min(
+            max(float(config.get("temperature", 0.7)), 0.1), 1.0
+        )  # Clamp between 0.1 and 1.0
+
+        # Handle both num_predict and max_tokens for backward compatibility
+        self.num_predict = config.get("num_predict", config.get("max_tokens", 1000))
 
         # Configure HTTPX client with detailed logging
         import http.client as http_client

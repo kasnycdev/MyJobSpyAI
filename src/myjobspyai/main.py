@@ -998,14 +998,25 @@ async def analyze_jobs_with_resume(
                 # Ensure provider name is set
                 provider_config_dict['name'] = default_provider
 
+                # Convert provider config to dict if it's a Pydantic model
+                if hasattr(provider_config, 'model_dump'):
+                    provider_config_dict = provider_config.model_dump()
+                elif hasattr(provider_config, 'dict'):
+                    provider_config_dict = provider_config.dict()
+
+                # Ensure type is set
+                provider_type = provider_config_dict.get(
+                    'type',
+                    'ollama' if 'ollama' in default_provider.lower() else 'langchain',
+                )
+
                 # Try to initialize the provider using the factory directly
                 try:
-                    provider_type = provider_config_dict.get('type', 'langchain')
                     llm_provider = ProviderFactory().create(
                         provider_type, **provider_config_dict
                     )
                     logger.info(
-                        f"Successfully initialized LLM provider: {default_provider}"
+                        f"Successfully initialized LLM provider: {default_provider} (type: {provider_type})"
                     )
                 except Exception as e:
                     logger.warning(
