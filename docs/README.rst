@@ -1,44 +1,47 @@
 Building the Documentation
-=========================
+==========================
 
 This directory contains the source files for the MyJobSpyAI documentation.
 
-## Prerequisites
+Prerequisites
+------------
 
 - Python 3.8+
 - pip
-- Sphinx and other documentation dependencies (installed via `requirements-docs.txt`)
+- Sphinx and other documentation dependencies (installed via ``requirements-docs.txt``)
 
-## Building the Documentation
+Building the Documentation
+-------------------------
 
 1. Install the documentation dependencies:
 
-   ```bash
-   pip install -r requirements-docs.txt
-   ```
+   .. code-block:: bash
+
+      pip install -r requirements-docs.txt
 
 2. Generate the API documentation:
 
-   ```bash
-   python generate_api_docs.py
-   ```
+   .. code-block:: bash
+
+      python generate_api_docs.py
 
 3. Build the HTML documentation:
 
-   ```bash
-   # On Unix/macOS
-   ./build_docs.sh
+   .. code-block:: bash
 
-   # Or on Windows
-   .\build_docs.bat
-   ```
+      # On Unix/macOS
+      ./build_docs.sh
 
-4. The built documentation will be available in the `_build/html` directory.
+      # Or on Windows
+      .\build_docs.bat
 
-## Documentation Structure
+4. The built documentation will be available in the ``_build/html`` directory.
 
-- `index.rst` - Main documentation entry point
-- `getting_started.rst` - Getting started guide
+Documentation Structure
+----------------------
+
+- ``index.rst`` - Main documentation entry point
+- ``getting_started.rst`` - Getting started guide
 - `installation.rst` - Installation instructions
 - `configuration.rst` - Configuration reference
 - `usage.rst` - Usage guide
