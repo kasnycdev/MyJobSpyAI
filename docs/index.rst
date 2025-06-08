@@ -1,6 +1,7 @@
 .. MyJobSpyAI documentation master file, created by
    sphinx-quickstart on Fri Jun  7 20:22:13 2024.
 
+
 Welcome to MyJobSpyAI Documentation
 ==================================
 
@@ -21,17 +22,11 @@ MyJobSpyAI is a powerful AI-powered job search and analysis tool that helps job 
    getting_started
    installation
    configuration
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User Guides
-   :hidden:
-
    usage
    examples
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: API Reference
    :hidden:
 
@@ -44,7 +39,7 @@ MyJobSpyAI is a powerful AI-powered job search and analysis tool that helps job 
 
    contributing
    changelog
-
+   README
 
 Indices and References
 =====================
@@ -56,7 +51,7 @@ Indices and References
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :caption: Full Contents:
+   :caption: Full Documentation:
 
    getting_started
    installation
@@ -66,16 +61,9 @@ Indices and References
    api/modules
    contributing
    changelog
+   README
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Development
-   :hidden:
-
-   contributing
-   changelog
-
-   # Temporarily commented out until these files exist
+   # Future documentation sections
    # development
    # testing
    # deployment
