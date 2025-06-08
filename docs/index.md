@@ -5,28 +5,19 @@ Welcome to the documentation for MyJobSpyAI, an AI-powered job search and analys
 ## Getting Started
 
 - [Introduction](getting_started/introduction.md)
-- [Installation](getting_started/installation.md)
-- [Configuration](getting_started/configuration.md)
-- [Usage](getting_started/usage.md)
-- [Examples](getting_started/examples.md)
 
 ## Features
 
 - [Job Analysis](features/job_analysis.md)
-- [Resume Matching](features/resume_matching.md)
-- [Job Scraping](features/job_scraping.md)
-- [Filtering](features/filtering.md)
-- [LLM Integration](features/llm_integration.md)
+- [Resume Analysis](features/resume_analysis.md)
 
 ## API Reference
 
-- [Core](api/index.md)
+- [Overview](api/reference.md)
+- [Main](api/myjobspyai.md)
 - [Analysis](api/myjobspyai.analysis.md)
-- [Filtering](api/myjobspyai.filtering.md)
 - [LLM](api/myjobspyai.llm.md)
-- [Scrapers](api/myjobspyai.scrapers.md)
-- [Models](api/myjobspyai.models.md)
-- [Utils](api/myjobspyai.utils.md)
+- [Parsers](api/myjobspyai.parsers.md)
 
 ## Development
 
@@ -37,8 +28,7 @@ Welcome to the documentation for MyJobSpyAI, an AI-powered job search and analys
 
 ## Enhancement Plans
 
-- [Overview](enhancement_plans/index.md)
-- [Roadmap](enhancement_plans/roadmap.md)
+- [Overview](enhancement_plans/roadmap.md)
 - [Future Features](enhancement_plans/future_features.md)
 
 ## Support
@@ -49,4 +39,4 @@ Welcome to the documentation for MyJobSpyAI, an AI-powered job search and analys
 
 ## License
 
-MyJobSpyAI is released under the MIT License. See [LICENSE](../LICENSE) for details.
+MyJobSpyAI is released under the MIT License. See [LICENSE](license.md) for details.
