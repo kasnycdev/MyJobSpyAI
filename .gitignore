@@ -19,6 +19,7 @@ __pypackages__/
 
 # MkDocs build directories and assets
 site/
+docs/backup_rst/
 *.html
 *.pdf
 *.css
