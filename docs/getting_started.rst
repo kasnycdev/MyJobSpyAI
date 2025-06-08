@@ -14,19 +14,23 @@ Key Features
 
 Quick Start
 -----------
+
 1. Install MyJobSpyAI:
+
    .. toctree::
       :maxdepth: 1
 
       installation
 
 2. Configure your settings:
+
    .. toctree::
       :maxdepth: 1
 
       configuration
 
 3. Start using MyJobSpyAI:
+
    .. toctree::
       :maxdepth: 1
 
