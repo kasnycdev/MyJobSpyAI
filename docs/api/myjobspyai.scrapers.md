@@ -26,15 +26,15 @@ MMMMMMMMMMMMMMMMMMMMMMMMMM
 
 > members
 >
-> :   
+> :
 >
 > undoc-members
 >
-> :   
+> :
 >
 > show-inheritance
 >
-> :   
+> :
 
 Submodule s
 
@@ -70,15 +70,15 @@ RRRRRRRRRRRRRRRRRRRRR
 
 > members
 >
-> :   
+> :
 >
 > undoc-members
 >
-> :   
+> :
 >
 > show-inheritance
 >
-> :   
+> :
 
 ::: {.toctree maxdepth="4"}
 myjobspyai.scrapers.job myjobspyai.scrapers.resumedin

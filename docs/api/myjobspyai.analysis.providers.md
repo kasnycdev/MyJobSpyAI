@@ -3,31 +3,31 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -35,15 +35,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -51,15 +51,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -67,15 +67,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -83,15 +83,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -99,15 +99,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -115,15 +115,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -131,15 +131,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -147,15 +147,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -163,15 +163,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -179,15 +179,15 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -197,11 +197,11 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
 > show-inheritance
 >
-> :   
+> :
 >
 > undoc-members
 >
-> :   
+> :
 >
 > special-members
 >
@@ -209,11 +209,11 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 >
 > show-inheritance
 >
-> :   
+> :
 >
 > members
 >
-> :   
+> :
 >
 > special-members
 >
@@ -221,11 +221,11 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 >
 > undoc-members
 >
-> :   
+> :
 >
 > show-inheritance
 >
-> :   
+> :
 >
 > special-members
 >
@@ -233,27 +233,27 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
 \"\"\"
 
-:   
+:
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     special-members
 
@@ -261,11 +261,11 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     special-members
 
@@ -273,27 +273,27 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
 \"\"\"
 
-:   
+:
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     special-members
 
@@ -301,11 +301,11 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     special-members
 
@@ -313,27 +313,27 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
 \"\"\"
 
-:   
+:
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     special-members
 
@@ -341,11 +341,11 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     special-members
 
@@ -353,27 +353,27 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
 \"\"\"
 
-:   
+:
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     special-members
 
@@ -381,11 +381,11 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     special-members
 
@@ -393,279 +393,279 @@ myjobspyai.analysis Providers ===========Analysis Providers Module
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
 Submodule s
 

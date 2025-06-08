@@ -2,31 +2,31 @@
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -34,15 +34,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -50,15 +50,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -66,15 +66,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -82,15 +82,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -98,15 +98,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -114,15 +114,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -130,15 +130,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -146,15 +146,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -162,15 +162,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -178,15 +178,15 @@
 
     members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     special-members
 
@@ -196,11 +196,11 @@
 
 > show-inheritance
 >
-> :   
+> :
 >
 > undoc-members
 >
-> :   
+> :
 >
 > special-members
 >
@@ -208,11 +208,11 @@
 >
 > show-inheritance
 >
-> :   
+> :
 >
 > members
 >
-> :   
+> :
 >
 > special-members
 >
@@ -220,11 +220,11 @@
 >
 > undoc-members
 >
-> :   
+> :
 >
 > show-inheritance
 >
-> :   
+> :
 >
 > special-members
 >
@@ -232,27 +232,27 @@
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
 \"\"\"
 
-:   
+:
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     special-members
 
@@ -260,11 +260,11 @@
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     special-members
 
@@ -272,27 +272,27 @@
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
 \"\"\"
 
-:   
+:
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     special-members
 
@@ -300,11 +300,11 @@
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     special-members
 
@@ -312,27 +312,27 @@
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
 \"\"\"
 
-:   
+:
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     special-members
 
@@ -340,11 +340,11 @@
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     special-members
 
@@ -352,27 +352,27 @@
 
 \"\"\"MyJobSpy AI - A powerful job search and analysis tool.
 
-:   
+:
 
     members
 
-    :   
+    :
 
 \"\"\"
 
-:   
+:
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     special-members
 
@@ -380,11 +380,11 @@
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     special-members
 
@@ -392,279 +392,279 @@
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
     members
 
-    :   
+    :
 
     undoc-members
 
-    :   
+    :
 
     show-inheritance
 
-    :   
+    :
 
 Submodule s
 
@@ -698,15 +698,15 @@ AAAAAAAAAAAAAAAAAAAAAAAA
 
 > members
 >
-> :   
+> :
 >
 > undoc-members
 >
-> :   
+> :
 >
 > show-inheritance
 >
-> :   
+> :
 
 AAAAAAAAAAAAAAAAAAAAAAAA
 
@@ -736,15 +736,15 @@ AAAAAAAAAAAAAAAAAAAAAAAA
 
 > members
 >
-> :   
+> :
 >
 > undoc-members
 >
-> :   
+> :
 >
 > show-inheritance
 >
-> :   
+> :
 
 Other Submodule s
 

@@ -97,14 +97,14 @@ class Resume:
     experience: list[Experience]
     education: list[Education]
     summary: str
-    
+
 class Experience:
     company: str
     title: str
     start_date: datetime
     end_date: datetime
     description: str
-    
+
 class Education:
     institution: str
     degree: str
@@ -120,7 +120,7 @@ try:
     results = analyzer.analyze(description)
 except JobAnalysisError as e:
     print(f"Analysis failed: {e}")
-    
+
 try:
     jobs = scraper.scrape(query, location)
 except ScrapingError as e:
@@ -135,11 +135,11 @@ api:
   version: "1.0.0"
   debug: false
   timeout: 30
-  
+
 analysis:
   model_path: "models/job_analysis"
   language: "en"
-  
+
 scraping:
   max_retries: 3
   retry_delay: 5

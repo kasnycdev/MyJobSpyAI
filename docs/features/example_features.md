@@ -7,10 +7,10 @@
 def analyze_job(job_description: str) -> dict:
     """
     Analyze a job description using MyJobSpyAI
-    
+
     Args:
         job_description: The job description text
-        
+
     Returns:
         dict: Analysis results including skills, requirements, and salary range
     """
@@ -71,10 +71,10 @@ graph TD
 def analyze_resume(resume_text: str) -> dict:
     """
     Analyze a resume using MyJobSpyAI
-    
+
     Args:
         resume_text: The resume text
-        
+
     Returns:
         dict: Analysis results including skills, experience, and education
     """
