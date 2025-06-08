@@ -1,7 +1,7 @@
 .. _changelog:
 
 Changelog
-========
+=========
 
 All notable changes to MyJobSpyAI will be documented in this file.
 
@@ -37,15 +37,18 @@ Changed
 -------------------
 - Initial release
 
-## [0.1.0] - 2024-06-07
+[0.1.0] - 2024-06-07
+-------------------
 
-### Added
+Added
+~~~~~
 - Initial project setup and basic structure
 - Core functionality for job and resume analysis
 - Basic configuration system
 - Initial documentation
 
-### Changed
+Changed
+~~~~~~~
 - N/A
 
 ### Fixed

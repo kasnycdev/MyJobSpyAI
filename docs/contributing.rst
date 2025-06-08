@@ -11,7 +11,7 @@ Table of Contents
    :depth: 2
 
 Ways to Contribute
------------------
+------------------
 
 Report Bugs
 ~~~~~~~~~~
@@ -21,7 +21,7 @@ Report Bugs
 - Share any relevant error messages or logs
 
 Suggest Enhancements
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 - Describe the feature or improvement
 - Explain why it would be valuable
 - Provide examples of how it would work
@@ -33,7 +33,7 @@ Submit Code Changes
 - Submit a pull request with a clear description
 
 Improve Documentation
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 - Fix typos and improve clarity
 - Add missing documentation
 - Update outdated information
@@ -100,7 +100,7 @@ pytest tests/test_analyzer.py::TestAnalyzer::test_specific_case
 ```
 
 Code Quality
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 Before submitting code, run these checks:
 
@@ -186,7 +186,7 @@ myjobspyai/
 └── README.md              # Project README
 
 Code Style
----------
+----------
 
 - Follow `PEP 8 <https://www.python.org/dev/peps/pep-0008/>`_ style guide
 - Use type hints for all functions and methods
