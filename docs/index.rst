@@ -34,7 +34,6 @@ MyJobSpyAI is a powerful AI-powered job search and analysis tool that helps job 
    :caption: API Reference
    :hidden:
 
-   api/index
    api/modules
 
 .. toctree::
@@ -55,20 +54,15 @@ Indices and References
 
 .. toctree::
    :hidden:
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: Full Contents:
-   :glob:
-
-   *
-   */**
-   **/*
 
    getting_started
    installation
    configuration
    usage
-   api
    examples
+   api/modules
    contributing
    changelog
 
