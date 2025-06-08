@@ -1,4 +1,5 @@
-.. MyJobSpyAI documentation master file
+.. MyJobSpyAI documentation master file, created by
+   sphinx-quickstart on Fri Jun  7 20:22:13 2024.
 
 Welcome to MyJobSpyAI Documentation
 ==================================
@@ -67,17 +68,17 @@ Indices and References
    changelog
 
 .. toctree::
-   :hidden:
+   :maxdepth: 2
    :caption: Development
-
-   development
-   testing
-   deployment
-
-.. toctree::
    :hidden:
-   :caption: Project
 
-   roadmap
-   code_of_conduct
-   license
+   contributing
+   changelog
+
+   # Temporarily commented out until these files exist
+   # development
+   # testing
+   # deployment
+   # roadmap
+   # code_of_conduct
+   # license

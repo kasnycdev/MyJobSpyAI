@@ -4,7 +4,8 @@ Configuration
 MyJobSpyAI can be configured using a YAML configuration file. This file allows you to customize various aspects of the application, including LLM providers, logging, and API settings.
 
 Configuration File Locations
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 MyJobSpyAI looks for configuration files in the following locations (in order of priority):
 
 1. ``~/.config/myjobspyai/config.yaml`` (recommended)
@@ -12,8 +13,104 @@ MyJobSpyAI looks for configuration files in the following locations (in order of
 3. ``./config.yaml`` (in the current working directory)
 
 Basic Configuration Structure
----------------------------
-A basic configuration file looks like this:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+LLM Providers
+~~~~~~~~~~~~
+
+You can configure multiple LLM providers and switch between them. The following providers are supported:
+
+1. **Ollama** (recommended for local development)
+2. **LangChain** (for production use with OpenAI, Anthropic, etc.)
+
+Example configuration for multiple providers:
+
+.. code-block:: yaml
+
+   llm:
+     default_provider: "ollama"
+     providers:
+       ollama:
+         enabled: true
+         model: "llama3:instruct"
+         base_url: "http://localhost:11434"
+       openai:
+         enabled: false
+         model: "gpt-4"
+         api_key: ${OPENAI_API_KEY}  # Uses environment variable
+         temperature: 0.7
+         max_tokens: 1000
+
+
+Ollama
+~~~~~~
+
+For local development, you can use Ollama with models like LLaMA 3. Example configuration:
+
+.. code-block:: yaml
+
+   llm:
+     providers:
+       ollama:
+         enabled: true
+         model: "llama3:instruct"  # or any other model you have installed
+         base_url: "http://localhost:11434"  # Default Ollama server URL
+         temperature: 0.7
+         num_predict: 1000  # Maximum number of tokens to generate
+
+OpenAI
+~~~~~
+
+.. code-block:: yaml
+
+   openai:
+     enabled: false  # Set to true to enable
+     model: "gpt-4"  # or "gpt-3.5-turbo"
+     api_key: ${OPENAI_API_KEY}  # Read from environment variable
+     temperature: 0.7
+     max_tokens: 1000
+
+Anthropic
+~~~~~~~~
+
+.. code-block:: yaml
+
+   anthropic:
+     enabled: false
+     model: "claude-3-opus-20240229"  # or "claude-3-sonnet-20240229"
+     api_key: ${ANTHROPIC_API_KEY}  # Read from environment variable
+     temperature: 0.7
+     max_tokens: 1000
+
+Environment Variables
+~~~~~~~~~~~~~~~~~~~
+
+You can use environment variables in your configuration file using the ${VARIABLE_NAME} syntax. For example:
+
+.. code-block:: yaml
+
+   openai:
+     api_key: ${OPENAI_API_KEY}  # Will be replaced with the value of the OPENAI_API_KEY environment variable
+
+Logging Configuration
+~~~~~~~~~~~~~~~~~~~~
+
+You can configure logging in the configuration file:
+
+.. code-block:: yaml
+
+   # Logging configuration
+   logging:
+     level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+     file: "myjobspyai.log"  # Log file path (relative to config file or absolute)
+     max_size: 10  # MB
+     backup_count: 5  # Number of backup logs to keep
+     format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+Example Configuration
+~~~~~~~~~~~~~~~~~~~
+
+Here's a complete example configuration file:
 
 .. code-block:: yaml
 
@@ -23,7 +120,7 @@ A basic configuration file looks like this:
 
    # LLM Configuration
    llm:
-     default_provider: "ollama"  # Default provider to use
+     default_provider: "ollama"
      providers:
        ollama:
          enabled: true
@@ -35,87 +132,39 @@ A basic configuration file looks like this:
        openai:
          enabled: false
          model: "gpt-4"
-         api_key: ${OPENAI_API_KEY}  # Read from environment variable
+         api_key: ${OPENAI_API_KEY}
          temperature: 0.7
          max_tokens: 1000
 
-LLM Providers
-------------
-MyJobSpyAI supports multiple LLM providers. Here's how to configure them:
+   # Logging configuration
+   logging:
+     level: "INFO"
+     file: "myjobspyai.log"
+     max_size: 10
+     backup_count: 5
+     format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-### Ollama
+Environment Variables Reference
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: yaml
+The following environment variables can be used to override configuration settings:
 
-   ollama:
-     enabled: true
-     model: "llama3:instruct"  # Model to use
-     base_url: "http://localhost:11434"  # Ollama server URL
-     temperature: 0.7  # 0.0 to 1.0
-     num_predict: 1000  # Maximum number of tokens to generate
+- ``MYJOBSPYAI_LOG_LEVEL``: Set the log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- ``MYJOBSPYAI_LOG_FILE``: Set the log file path
+- ``MYJOBSPYAI_LLM_DEFAULT_PROVIDER``: Set the default LLM provider
+- ``MYJOBSPYAI_LLM_PROVIDERS_OLLAMA_ENABLED``: Enable/disable Ollama provider
+- ``MYJOBSPYAI_LLM_PROVIDERS_OLLAMA_MODEL``: Set the Ollama model
+- ``MYJOBSPYAI_LLM_PROVIDERS_OLLAMA_BASE_URL``: Set the Ollama server URL
+- ``MYJOBSPYAI_LLM_PROVIDERS_OPENAI_ENABLED``: Enable/disable OpenAI provider
+- ``MYJOBSPYAI_LLM_PROVIDERS_OPENAI_MODEL``: Set the OpenAI model
+- ``OPENAI_API_KEY``: Set the OpenAI API key
 
-### OpenAI
+Job Search Configuration
+~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: yaml
-
-   openai:
-     enabled: false
-     model: "gpt-4"  # or "gpt-3.5-turbo"
-     api_key: ${OPENAI_API_KEY}  # Read from environment variable
-     temperature: 0.7
-     max_tokens: 1000
-
-### Anthropic
-
-.. code-block:: yaml
-
-   anthropic:
-     enabled: false
-     model: "claude-3-opus-20240229"
-     api_key: ${ANTHROPIC_API_KEY}  # Read from environment variable
-     temperature: 0.7
-     max_tokens: 1000
-
-Environment Variables
--------------------
-Sensitive information like API keys can be loaded from environment variables using the ``${VARIABLE_NAME}`` syntax in the config file.
-
-Example:
+You can configure job search settings:
 
 .. code-block:: yaml
-
-   openai:
-     api_key: ${OPENAI_API_KEY}
-
-Logging Configuration
--------------------
-You can configure logging with these options:
-
-.. code-block:: yaml
-
-   log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-   log_file: "myjobspyai.log"  # Path to log file (optional)
-   log_format: "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {message}"  # Custom log format
-
-Example Configuration
--------------------
-
-.. code-block:: yaml
-
-   # LLM Configuration
-   llm:
-     default_provider: "ollama"
-     providers:
-       ollama:
-         name: "ollama"
-         enabled: true
-         type: "ollama"
-         model: "gemma3:latest"
-         temperature: 0.7
-         num_predict: 1000
-         timeout: 120
-         max_retries: 3
-         base_url: "http://localhost:11434"
 
    # Job Search Configuration
    jobspy:
@@ -127,17 +176,15 @@ Example Configuration
      is_remote: true
      results_wanted: 5
 
+Output Configuration
+~~~~~~~~~~~~~~~~~~~
+
+You can configure output settings:
+
+.. code-block:: yaml
+
    # Output Configuration
    output:
      output_dir: "output"
      scraped_jobs_filename: "scraped_jobs.json"
      analysis_filename: "analyzed_jobs.json"
-
-Environment Variables
--------------------
-You can also configure settings using environment variables:
-
-- ``MYJOBSPYAI_LLM_DEFAULT_PROVIDER``
-- ``MYJOBSPYAI_LLM_PROVIDERS_OLLAMA_MODEL``
-- ``MYJOBSPYAI_JOBSPY_SEARCH_TERM``
-- And more...
