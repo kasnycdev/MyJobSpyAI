@@ -54,7 +54,7 @@ markdown_extensions:
   - codehilite:
       guess_lang: false
       use_pygments: true
-      pygments_style: default
+      pygments_style: github
   - pymdownx.betterem:
       smart_enable: all
   - pymdownx.details
