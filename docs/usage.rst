@@ -6,14 +6,16 @@ This guide will help you get started with using MyJobSpyAI for analyzing job pos
 Basic Usage
 -----------
 
-### Importing the Library
+Importing the Library
+-------------------
 
 .. code-block:: python
 
    from myjobspyai import JobAnalyzer, ResumeAnalyzer
    from myjobspyai.models import JobPosting, Resume
 
-### Analyzing a Job Posting
+Analyzing a Job Posting
+----------------------
 
 .. code-block:: python
 
@@ -38,7 +40,8 @@ Basic Usage
    print(f"Experience Level: {analysis.experience_level}")
    print(f"Technical Requirements: {analysis.technical_requirements}")
 
-### Analyzing a Resume
+Analyzing a Resume
+------------------
 
 .. code-block:: python
 
@@ -66,7 +69,8 @@ Basic Usage
    print(f"Strengths: {analysis.strengths}")
    print(f"Areas for Improvement: {analysis.areas_for_improvement}")
 
-### Matching Resume to Job
+Matching Resume to Job
+----------------------
 
 .. code-block:: python
 
@@ -82,7 +86,8 @@ Basic Usage
 Advanced Usage
 -------------
 
-### Customizing Analysis
+Customizing Analysis
+-------------------
 
 You can customize the analysis by passing configuration options:
 
@@ -100,7 +105,8 @@ You can customize the analysis by passing configuration options:
    analyzer = JobAnalyzer(config=config)
    analysis = analyzer.analyze(job_posting)
 
-### Batch Processing
+Batch Processing
+---------------
 
 Analyze multiple job postings or resumes in batch:
 
@@ -113,7 +119,8 @@ Analyze multiple job postings or resumes in batch:
    # Or use the batch method
    batch_analyses = analyzer.batch_analyze(job_postings)
 
-### Using Different LLM Providers
+Error Handling
+--------------
 
 Switch between different LLM providers:
 

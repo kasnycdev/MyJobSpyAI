@@ -16,7 +16,7 @@ Basic Configuration Structure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 LLM Providers
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 You can configure multiple LLM providers and switch between them. The following providers are supported:
 
@@ -59,7 +59,7 @@ For local development, you can use Ollama with models like LLaMA 3. Example conf
          num_predict: 1000  # Maximum number of tokens to generate
 
 OpenAI
-~~~~~
+~~~~~~
 
 .. code-block:: yaml
 
@@ -71,7 +71,7 @@ OpenAI
      max_tokens: 1000
 
 Anthropic
-~~~~~~~~
+~~~~~~~~~
 
 .. code-block:: yaml
 
@@ -83,7 +83,7 @@ Anthropic
      max_tokens: 1000
 
 Environment Variables
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 You can use environment variables in your configuration file using the ${VARIABLE_NAME} syntax. For example:
 
@@ -93,7 +93,7 @@ You can use environment variables in your configuration file using the ${VARIABL
      api_key: ${OPENAI_API_KEY}  # Will be replaced with the value of the OPENAI_API_KEY environment variable
 
 Logging Configuration
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 You can configure logging in the configuration file:
 
@@ -108,7 +108,7 @@ You can configure logging in the configuration file:
      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 Example Configuration
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Here's a complete example configuration file:
 
@@ -145,7 +145,7 @@ Here's a complete example configuration file:
      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 Environment Variables Reference
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following environment variables can be used to override configuration settings:
 
@@ -160,7 +160,7 @@ The following environment variables can be used to override configuration settin
 - ``OPENAI_API_KEY``: Set the OpenAI API key
 
 Job Search Configuration
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can configure job search settings:
 
@@ -177,7 +177,7 @@ You can configure job search settings:
      results_wanted: 5
 
 Output Configuration
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 You can configure output settings:
 

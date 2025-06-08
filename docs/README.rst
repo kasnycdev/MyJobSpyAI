@@ -40,7 +40,7 @@ Building Locally
 4. The built documentation will be available in the ``_build/html`` directory.
 
 Documentation Structure
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 - :doc:`index` - Main documentation entry point
 - :doc:`getting_started` - Getting started guide

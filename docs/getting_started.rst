@@ -6,7 +6,7 @@ Introduction
 MyJobSpyAI is a powerful tool for analyzing job postings and resumes using AI. It helps job seekers understand job requirements and tailor their applications accordingly.
 
 Key Features
------------
+------------
 - **Job Analysis**: Extract key requirements and skills from job postings
 - **Resume Analysis**: Analyze your resume to identify strengths and gaps
 - **Matching**: See how well your resume matches specific job requirements
@@ -37,7 +37,7 @@ Quick Start
       usage
 
 Next Steps
------------
+----------
 - Explore the :doc:`API reference <api/modules>` for detailed technical documentation
 - Check out the :doc:`examples` for practical use cases
 - Learn how to contribute in the :doc:`contributing` guide

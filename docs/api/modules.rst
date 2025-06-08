@@ -1,5 +1,5 @@
-API Reference
-=============
+MyJobSpyAI API Reference
+======================
 
 .. toctree::
    :maxdepth: 4

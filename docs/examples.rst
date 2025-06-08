@@ -6,7 +6,8 @@ This page provides practical examples of how to use MyJobSpyAI for various job s
 Basic Examples
 -------------
 
-### 1. Basic Job Analysis
+1. Basic Job Analysis
+-------------------
 
 Analyze a single job posting to extract key information:
 
@@ -38,7 +39,8 @@ Analyze a single job posting to extract key information:
    print(f"Experience Level: {analysis.experience_level}")
    print(f"Education Requirements: {analysis.education_requirements}")
 
-### 2. Resume Analysis
+2. Resume Analysis
+----------------
 
 Analyze a resume to identify strengths and areas for improvement:
 
@@ -88,7 +90,8 @@ Analyze a resume to identify strengths and areas for improvement:
 Intermediate Examples
 -------------------
 
-### 3. Job-Readiness Check
+3. Job-Readiness Check
+---------------------
 
 Check how well a resume matches a specific job description:
 
@@ -165,7 +168,8 @@ Analyze multiple job postings at once:
 Advanced Examples
 ----------------
 
-### 5. Custom Analysis Configuration
+### 4. Custom Analysis with Configuration
+--------------------------------------
 
 Customize the analysis with specific parameters:
 

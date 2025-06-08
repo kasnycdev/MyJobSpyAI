@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started with MyJobSpyAI &mdash; MyJobSpyAI 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/tabs.css?v=a5c4661c" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea59a0c6" />
+
+
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=8d563738"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+        <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="Welcome to MyJobSpyAI Documentation" href="index.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="index.html" class="icon icon-home">
+            MyJobSpyAI
+          </a>
+              <div class="version">
+                1.0.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started with MyJobSpyAI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-methods">Installation Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#configuration-file-locations">Configuration File Locations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#basic-configuration-structure">Basic Configuration Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#llm-providers">LLM Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#ollama">Ollama</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#openai">OpenAI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#anthropic">Anthropic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#logging-configuration">Logging Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#example-configuration">Example Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#environment-variables-reference">Environment Variables Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#job-search-configuration">Job Search Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#output-configuration">Output Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#advanced-usage">Advanced Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#next-steps">Next Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#command-line-interface">Command Line Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#id1">Command Line Interface</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#basic-examples">Basic Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#intermediate-examples">Intermediate Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#advanced-examples">Advanced Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#next-steps">Next Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#basic-job-search">Basic Job Search</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#resume-analysis">Resume Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#custom-configuration">Custom Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/modules.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.html">myjobspyai package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.html#subpackages">Subpackages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.config.html">myjobspyai.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.main.html">myjobspyai.main module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.main_matcher.html">myjobspyai.main_matcher module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.prompts.html">myjobspyai.prompts package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.analysis.html">myjobspyai.analysis package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.analysis.html#subpackages">Subpackages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.analysis.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.analysis.analyzer.html">myjobspyai.analysis.analyzer module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.analysis.chunking_utils.html">myjobspyai.analysis.chunking_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.analysis.models.html">myjobspyai.analysis.models module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.analysis.providers.html">myjobspyai.analysis.providers package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.analysis.providers.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.analysis.utils.html">myjobspyai.analysis.utils package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.analysis.utils.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.filtering.html">myjobspyai.filtering package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.filtering.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.filtering.filter.html">myjobspyai.filtering.filter module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.filtering.filter_utils.html">myjobspyai.filtering.filter_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.llm.html">myjobspyai.llm package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.llm.html#subpackages">Subpackages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.llm.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.llm.providers.html">myjobspyai.llm.providers package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.llm.providers.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.models.html">myjobspyai.models package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.models.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.models.analysis.html">myjobspyai.models.analysis module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.models.job.html">myjobspyai.models.job module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.models.resume.html">myjobspyai.models.resume module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.parsers.html">myjobspyai.parsers package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.parsers.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.parsers.job_parser.html">myjobspyai.parsers.job_parser module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.parsers.resume_parser.html">myjobspyai.parsers.resume_parser module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.scrapers.html">myjobspyai.scrapers package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.scrapers.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.scrapers.base.html">myjobspyai.scrapers.base module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.scrapers.factory.html">myjobspyai.scrapers.factory module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.scrapers.indeed.html">myjobspyai.scrapers.indeed module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.scrapers.jobspy_scraper.html">myjobspyai.scrapers.jobspy_scraper module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.scrapers.linkedin.html">myjobspyai.scrapers.linkedin module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.html">myjobspyai.utils package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/myjobspyai.utils.html#submodule-s">Submodule    s</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.async_utils.html">myjobspyai.utils.async_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.env.html">myjobspyai.utils.env module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.files.html">myjobspyai.utils.files module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.http_client.html">myjobspyai.utils.http_client module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.logging.html">myjobspyai.utils.logging module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.logging_utils.html">myjobspyai.utils.logging_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.prompts.html">myjobspyai.utils.prompts module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/myjobspyai.utils.validation.html">myjobspyai.utils.validation module</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to MyJobSpyAI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#table-of-contents">Table of Contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#ways-to-contribute">Ways to Contribute</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#report-bugs">Report Bugs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#suggest-enhancements">Suggest Enhancements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#submit-code-changes">Submit Code Changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#improve-documentation">Improve Documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#development-setup">Development Setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#running-tests">Running Tests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#code-quality">Code Quality</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#documentation">Documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#pull-request-guidelines">Pull Request Guidelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#project-structure">Project Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#code-style">Code Style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#testing-guidelines">Testing Guidelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#documentation-standards">Documentation Standards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#release-process">Release Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#code-of-conduct">Code of Conduct</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#unreleased">Unreleased</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#added">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#changed">Changed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id2">[1.0.0] - 2025-06-07</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="README.html">Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="README.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="README.html#building-locally">Building Locally</a></li>
+<li class="toctree-l2"><a class="reference internal" href="README.html#documentation-structure">Documentation Structure</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">MyJobSpyAI</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting Started with MyJobSpyAI</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/getting_started.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <section id="getting-started-with-myjobspyai">
+<h1>Getting Started with MyJobSpyAI<a class="headerlink" href="#getting-started-with-myjobspyai" title="Link to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>MyJobSpyAI is a powerful tool for analyzing job postings and resumes using AI. It helps job seekers understand job requirements and tailor their applications accordingly.</p>
+</section>
+<section id="key-features">
+<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Job Analysis</strong>: Extract key requirements and skills from job postings</p></li>
+<li><p><strong>Resume Analysis</strong>: Analyze your resume to identify strengths and gaps</p></li>
+<li><p><strong>Matching</strong>: See how well your resume matches specific job requirements</p></li>
+<li><p><strong>Customization</strong>: Tailor your resume for specific job applications</p></li>
+</ul>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p>Install MyJobSpyAI:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+</ul>
+</div>
+</li>
+<li><p>Configure your settings:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+</ul>
+</div>
+</li>
+<li><p>Start using MyJobSpyAI:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+</ul>
+</div>
+</li>
+</ol>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Explore the <a class="reference internal" href="api/modules.html"><span class="doc">API reference</span></a> for detailed technical documentation</p></li>
+<li><p>Check out the <a class="reference internal" href="examples.html"><span class="doc">Examples</span></a> for practical use cases</p></li>
+<li><p>Learn how to contribute in the <a class="reference internal" href="contributing.html"><span class="doc">Contributing to MyJobSpyAI</span></a> guide</p></li>
+<li><p>See what’s new in the <a class="reference internal" href="changelog.html"><span class="doc">Changelog</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to MyJobSpyAI Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MyJobSpyAI Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

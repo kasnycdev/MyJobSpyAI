@@ -12,7 +12,8 @@ Prerequisites
 Installation Methods
 -------------------
 
-### Using pip (Recommended)
+Using pip (Recommended)
+----------------------
 
 The easiest way to install MyJobSpyAI is using pip:
 
@@ -20,7 +21,8 @@ The easiest way to install MyJobSpyAI is using pip:
 
    pip install myjobspyai
 
-### From Source
+From Source
+-----------
 
 If you want to contribute to the project or need the latest development version:
 
@@ -38,7 +40,8 @@ If you want to contribute to the project or need the latest development version:
       pip install -e .
 
 
-### Verifying the Installation
+Verifying the Installation
+------------------------
 
 After installation, you can verify that MyJobSpyAI is installed correctly by running:
 
