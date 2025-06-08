@@ -31,14 +31,14 @@ from myjobspyai.analysis import JobAnalyzer
 class TestJobAnalyzer(TestCase):
     def setUp(self):
         self.analyzer = JobAnalyzer()
-        
+
     def test_skill_extraction(self):
         """Test skill extraction from job descriptions"""
         description = "Senior Python Developer with 5+ years experience"
         skills = self.analyzer.extract_skills(description)
         self.assertIn("Python", skills)
         self.assertIn("Developer", skills)
-        
+
     def test_salary_estimation(self):
         """Test salary range estimation"""
         description = "Senior Software Engineer in Silicon Valley"
@@ -97,14 +97,14 @@ from myjobspyai.analysis import JobAnalyzer
 def test_performance():
     """Test analysis performance"""
     analyzer = JobAnalyzer()
-    description = """Senior Python Developer required for AI startup. 
+    description = """Senior Python Developer required for AI startup.
     Must have experience with machine learning and cloud services."""
-    
+
     # Measure analysis time
     start_time = timeit.default_timer()
     results = analyzer.analyze(description)
     elapsed = timeit.default_timer() - start_time
-    
+
     assert elapsed < 1.0  # Should complete in less than 1 second
 ```
 

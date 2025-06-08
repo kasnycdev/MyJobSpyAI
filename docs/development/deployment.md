@@ -240,10 +240,10 @@ loggers:
     ```bash
     # Docker build issues
     docker build --no-cache .
-    
+
     # Container restarts
     docker logs container_id
-    
+
     # Port conflicts
     docker ps -a
     docker stop container_id
@@ -253,10 +253,10 @@ loggers:
     ```bash
     # Pod status
     kubectl get pods
-    
+
     # Pod logs
     kubectl logs pod_name
-    
+
     # Resource usage
     kubectl top pods
     ```
@@ -265,10 +265,10 @@ loggers:
     ```bash
     # EC2 status
     aws ec2 describe-instances
-    
+
     # CloudWatch logs
     aws logs get-log-events --log-group-name /aws/lambda/myjobspyai
-    
+
     # Security groups
     aws ec2 describe-security-groups
     ```

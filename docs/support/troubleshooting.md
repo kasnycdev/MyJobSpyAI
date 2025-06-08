@@ -140,22 +140,22 @@ from functools import wraps
 def rate_limit(max_calls: int, period: int):
     def decorator(func):
         calls = []
-        
+
         @wraps(func)
         async def wrapper(*args, **kwargs):
             now = time.time()
             calls.append(now)
-            
+
             # Remove old calls
             calls[:] = [call for call in calls if now - call < period]
-            
+
             if len(calls) >= max_calls:
                 time.sleep(period - (now - calls[0]))
-                
+
             return await func(*args, **kwargs)
-        
+
         return wrapper
-    
+
     return decorator
 
 @rate_limit(max_calls=100, period=60)
