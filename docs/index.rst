@@ -1,4 +1,4 @@
-.. MyJobSpyAI documentation
+.. MyJobSpyAI documentation master file
 
 Welcome to MyJobSpyAI Documentation
 ==================================
@@ -12,28 +12,39 @@ MyJobSpyAI is a powerful AI-powered job search and analysis tool that helps job 
    <p>Check out the <a href="changelog.html">changelog</a> for details about the latest release!</p>
    </div>
 
-Getting Started
---------------
+.. toctree::
+   :maxdepth: 2
+   :caption: Getting Started
+   :hidden:
 
-New to MyJobSpyAI? Start here:
+   getting_started
+   installation
+   configuration
 
-- :doc:`getting_started` - Overview and quick start guide
-- :doc:`installation` - Installation instructions and requirements
-- :doc:`configuration` - Configuration options and examples
+.. toctree::
+   :maxdepth: 2
+   :caption: User Guides
+   :hidden:
 
-User Guides
------------
+   usage
+   examples
 
-- :doc:`usage` - Comprehensive usage guide with examples
-- :doc:`examples` - Practical examples and code snippets
-- :doc:`api` - API reference documentation
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+   :hidden:
 
-For Developers
--------------
+   api/index
+   api/modules
 
-- :doc:`contributing` - How to contribute to the project
-- :doc:`changelog` - Release history and changes
-- `GitHub Repository <https://github.com/yourusername/MyJobSpyAI>`_
+.. toctree::
+   :maxdepth: 2
+   :caption: Development
+   :hidden:
+
+   contributing
+   changelog
+
 
 Indices and References
 =====================
@@ -45,9 +56,12 @@ Indices and References
 .. toctree::
    :hidden:
    :maxdepth: 3
-   :caption: Contents:
+   :caption: Full Contents:
    :glob:
 
+   *
+   */**
+   **/*
 
    getting_started
    installation
