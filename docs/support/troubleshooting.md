@@ -218,7 +218,6 @@ def process_large_data(data):
 ### Documentation
 
 - [API Reference](../api/reference.md)
-- [Development Guide](../development/index.md)
 - [Testing Guide](../development/testing.md)
 - [Deployment Guide](../development/deployment.md)
 

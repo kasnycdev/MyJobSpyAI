@@ -32,4 +32,4 @@ To get started with MyJobSpyAI, follow these steps:
 
 ## License
 
-MyJobSpyAI is released under the MIT License. See [LICENSE](../license.md) for details.
+MyJobSpyAI is released under the MIT License. See [LICENSE](https://github.com/kasnycdev/MyJobSpyAI/blob/master/LICENSE) for details.
