@@ -1,0 +1,176 @@
+site_name: MyJobSpyAI
+docs_dir: .
+site_description: 'Documentation for MyJobSpyAI'
+site_author: 'Your Name'
+theme:
+  name: 'material'
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    - search.fuzzy
+    - search.shortcut
+    - toc.follow
+    - toc.integrate
+    - content.code.annotate
+    - content.code.copy
+    - content.code.hilite
+    - content.tabs.link
+    - content.tabs.sticky
+    - content.tooltips
+    - content.code.line-numbers
+    - content.code.wrap
+    - content.code.highlight
+    - content.code.scroll
+  palette:
+    primary: "blue"
+    accent: "blue"
+    scheme: auto
+    toggle:
+      icon: material/toggle-switch
+      name: Switch color scheme
+  font:
+    text: "Roboto"
+    code: "Roboto Mono"
+  logo: assets/logo.png
+  favicon: assets/favicon.ico
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/file-edit-outline
+    home: material/home
+    menu: material/menu
+    toc: material/toc
+    search: material/magnify
+    prev: material/chevron-left
+    next: material/chevron-right
+    tools: material/tools
+
+markdown_extensions:
+  - admonition
+  - codehilite:
+      guess_lang: false
+      pygments_style: github
+      use_pygments: true
+      linenums: true
+      anchor_linenums: true
+      line_spans: __line_
+  - toc:
+      permalink: true
+      separator: '-'
+  - pymdownx.details
+
+  - pymdownx.highlight:
+      auto_title: true
+      use_pygments: true
+      pygments_style: github
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+  - git:
+      date_format: '%b %d, %Y'
+      datetime_format: '%B %d, %Y at %H:%M'
+      message_template: '{message}'
+      author_template: '{author}'
+      commit_template: '{commit}'
+      time_template: '{time}'
+      tag_template: '{tag}'
+      branch_template: '{branch}'
+      show_author: true
+      show_time: true
+      show_message: true
+      show_branch: true
+      show_tag: true
+      show_commit: true
+      show_date: true
+      show_datetime: true
+      show_timezone: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Introduction: getting_started/introduction.md
+    - Installation: getting_started/installation.md
+    - Configuration: getting_started/configuration.md
+    - Usage: getting_started/usage.md
+    - Examples: getting_started/examples.md
+    - Best Practices: getting_started/best_practices.md
+  - Features:
+    - Job Analysis: features/job_analysis.md
+    - Resume Matching: features/resume_matching.md
+    - Job Scraping: features/job_scraping.md
+    - Filtering: features/filtering.md
+    - LLM Integration: features/llm_integration.md
+  - API Reference:
+    - Overview: api/index.md
+    - Core:
+      - Main: api/myjobspyai.md
+      - Configuration: api/myjobspyai.config.md
+      - Main Matcher: api/myjobspyai.main_matcher.md
+    - Analysis:
+      - Overview: api/myjobspyai.analysis.md
+      - Analyzer: api/myjobspyai.analysis.analyzer.md
+      - Models: api/myjobspyai.analysis.models.md
+      - Providers: api/myjobspyai.analysis.providers.md
+      - Utils: api/myjobspyai.analysis.utils.md
+    - Filtering:
+      - Overview: api/myjobspyai.filtering.md
+      - Filter: api/myjobspyai.filtering.filter.md
+      - Filter Utils: api/myjobspyai.filtering.filter_utils.md
+    - LLM:
+      - Overview: api/myjobspyai.llm.md
+      - Base: api/myjobspyai.llm.base.md
+      - Providers: api/myjobspyai.llm.providers.md
+    - Scrapers:
+      - Overview: api/myjobspyai.scrapers.md
+      - Base: api/myjobspyai.scrapers.base.md
+      - Factory: api/myjobspyai.scrapers.factory.md
+      - JobSpy: api/myjobspyai.scrapers.jobspy_scraper.md
+      - LinkedIn: api/myjobspyai.scrapers.linkedin.md
+      - Indeed: api/myjobspyai.scrapers.indeed.md
+    - Models:
+      - Overview: api/myjobspyai.models.md
+      - Job: api/myjobspyai.models.job.md
+      - Resume: api/myjobspyai.models.resume.md
+      - Analysis: api/myjobspyai.models.analysis.md
+    - Utils:
+      - Overview: api/myjobspyai.utils.md
+      - Async Utils: api/myjobspyai.utils.async_utils.md
+      - Env: api/myjobspyai.utils.env.md
+      - Files: api/myjobspyai.utils.files.md
+      - HTTP Client: api/myjobspyai.utils.http_client.md
+      - Logging: api/myjobspyai.utils.logging.md
+      - Logging Utils: api/myjobspyai.utils.logging_utils.md
+      - Prompts: api/myjobspyai.utils.prompts.md
+      - Validation: api/myjobspyai.utils.validation.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Code Style: development/code_style.md
+    - Testing: development/testing.md
+    - Deployment: development/deployment.md
+  - Enhancement Plans:
+    - Overview: enhancement_plans/index.md
+    - Roadmap: enhancement_plans/roadmap.md
+    - Future Features: enhancement_plans/future_features.md
+  - Changelog: changelog.md
+  - License: license.md
+  - Support: support.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yourusername/myjobspyai
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/yourusername
+
+edit_uri: edit/main/docs/
+repo_url: https://github.com/yourusername/myjobspyai
+repo_name: GitHub
