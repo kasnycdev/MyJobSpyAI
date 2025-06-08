@@ -6,9 +6,21 @@ All notable changes to MyJobSpyAI will be documented in this file.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
-## [Unreleased]
+.. _changelog:
 
-### Added
+Changelog
+========
+
+All notable changes to MyJobSpyAI will be documented in this file.
+
+The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
+and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
+
+Unreleased
+----------
+
+Added
+~~~~~
 - Comprehensive documentation for configuration, usage, and examples
 - Detailed contribution guidelines and development setup instructions
 - Enhanced logging system with multiple log files and rotation
@@ -16,7 +28,8 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 - Job analysis and resume matching functionality
 - Configuration management system with environment variable support
 
-### Changed
+Changed
+~~~~~~~
 - Updated project structure for better organization
 - Improved error handling and logging
 - Refactored configuration loading to support multiple formats

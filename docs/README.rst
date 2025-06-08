@@ -1,5 +1,5 @@
-Building the Documentation
-==========================
+Documentation
+============
 
 This directory contains the source files for the MyJobSpyAI documentation.
 
@@ -10,8 +10,8 @@ Prerequisites
 - pip
 - Sphinx and other documentation dependencies (installed via ``requirements-docs.txt``)
 
-Building the Documentation
--------------------------
+Building Locally
+---------------
 
 1. Install the documentation dependencies:
 
