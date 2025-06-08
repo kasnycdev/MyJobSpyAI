@@ -75,24 +75,12 @@ markdown_extensions:
 
 plugins:
   - search
-  - git:
-      date_format: '%b %d, %Y'
-      datetime_format: '%B %d, %Y at %H:%M'
-      message_template: '{message}'
-      author_template: '{author}'
-      commit_template: '{commit}'
-      time_template: '{time}'
-      tag_template: '{tag}'
-      branch_template: '{branch}'
-      show_author: true
-      show_time: true
-      show_message: true
-      show_branch: true
-      show_tag: true
-      show_commit: true
-      show_date: true
-      show_datetime: true
-      show_timezone: true
+  - macros
+  - mermaid
+  - autolinks
+  - minify
+  - awesome-pages
+  - redirects
 
 nav:
   - Home: index.md
