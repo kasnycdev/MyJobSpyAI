@@ -1,7 +1,7 @@
 myjobspyai package
 ==================
 
-.. automodule    :: myjobspyai
+.. automodule:: myjobspyai
    :members:
    :undoc-members:
    :show-inheritance:
@@ -21,7 +21,7 @@ Subpackages
    myjobspyai.scrapers
    myjobspyai.utils
 
-Submodule    s
+Submodules
 ----------
 
 .. toctree::

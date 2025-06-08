@@ -11,12 +11,14 @@ cd "$(dirname "$0")"
 echo "Generating API documentation..."
 python generate_api_docs.py
 
-# Create _static directory if it doesn't exist
-mkdir -p _static
+# Create assets directory if it doesn't exist
+mkdir -p assets
 
 # Build the documentation
 echo "Building documentation..."
-sphinx-build -b html . _build/html
+mkdocs build --clean
 
-echo "Documentation built successfully!"
+# Serve documentation
+echo "Starting documentation server..."
+mkdocs serve
 echo "Open _build/html/index.html in your browser to view the documentation."
