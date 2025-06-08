@@ -114,7 +114,9 @@ nav:
     - Introduction: getting_started/introduction.md
   - Features:
     - Job Analysis: features/job_analysis.md
-    - Resume Analysis: features/resume_analysis.md
+    - Job Scraping: features/job_scraping.md
+    - Resume Matching: features/resume_matching.md
+    - Example Features: features/example_features.md
   - Development:
     - Code Style: development/code_style.md
     - Testing: development/testing.md
@@ -123,16 +125,36 @@ nav:
   - Enhancement Plans:
     - Overview: enhancement_plans/roadmap.md
     - Future Features: enhancement_plans/future_features.md
+    - Resume Job Suitability: enhancement_plans/2024-06-05_resume_job_suitability_enhancement.md
   - API Reference:
     - Overview: api/reference.md
     - Main: api/myjobspyai.md
     - Analysis: api/myjobspyai.analysis.md
+    - Analysis Providers: api/myjobspyai.analysis.providers.md
+    - Analysis Providers Base: api/myjobspyai.analysis.providers.base.md
+    - Analysis Providers Factory: api/myjobspyai.analysis.providers.factory.md
+    - Analysis Providers LangChain: api/myjobspyai.analysis.providers.langchain_provider.md
+    - Analysis Utils: api/myjobspyai.analysis.utils.md
+    - Analysis Chunking: api/myjobspyai.analysis.chunking_utils.md
+    - Analysis Chunking Utils: api/myjobspyai.analysis.utils.chunking.md
+    - Analysis LangChain OTel: api/myjobspyai.analysis.utils.langchain_otel.md
+    - Analysis Models: api/myjobspyai.analysis.models.md
+    - Analysis Analyzer: api/myjobspyai.analysis.analyzer.md
+    - Config: api/myjobspyai.config.md
     - LLM: api/myjobspyai.llm.md
+    - LLM LangChain: api/myjobspyai.llm.providers.langchain.md
+    - LLM Ollama: api/myjobspyai.llm.providers.ollama.md
+    - Main Matcher: api/myjobspyai.main_matcher.md
+    - Main: api/myjobspyai.main.md
     - Parsers: api/myjobspyai.parsers.md
+    - Job Parser: api/myjobspyai.parsers.job_parser.md
+    - Resume Parser: api/myjobspyai.parsers.resume_parser.md
+    - Prompts: api/myjobspyai.prompts.md
+    - API Index: api/index.md
+    - API Modules: api/modules.md
   - Support:
     - Troubleshooting: support/troubleshooting.md
-    - FAQ: support/faq.md
-    - Contributing: development/contributing.md
+    - Changelog: changelog.md
     - Filtering:
       - Overview: api/myjobspyai.filtering.md
       - Filter: api/myjobspyai.filtering.filter.md

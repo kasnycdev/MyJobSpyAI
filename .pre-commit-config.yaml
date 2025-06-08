@@ -102,6 +102,18 @@ repos:
 
 - repo: local
   hooks:
+    - id: mkdocs-validate
+      name: MkDocs Build Validation
+      description: Validates MkDocs documentation build
+      entry: python -m mkdocs build --clean --site-dir /tmp/mkdocs-build --config-file docs/mkdocs.yml --strict
+      language: system
+      pass_filenames: false
+      always_run: true
+      exclude: ''  # Respect .gitignore
+      files: ^docs/
+
+- repo: local
+  hooks:
     - id: mkdocs-lint
       name: MkDocs Build
       entry: mkdocs

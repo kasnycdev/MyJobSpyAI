@@ -9,7 +9,6 @@ Welcome to the documentation for MyJobSpyAI, an AI-powered job search and analys
 ## Features
 
 - [Job Analysis](features/job_analysis.md)
-- [Resume Analysis](features/resume_analysis.md)
 
 ## API Reference
 
@@ -39,4 +38,4 @@ Welcome to the documentation for MyJobSpyAI, an AI-powered job search and analys
 
 ## License
 
-MyJobSpyAI is released under the MIT License. See [LICENSE](license.md) for details.
+MyJobSpyAI is released under the MIT License. See [LICENSE](https://github.com/kasnycdev/MyJobSpyAI/blob/master/LICENSE) for details.
