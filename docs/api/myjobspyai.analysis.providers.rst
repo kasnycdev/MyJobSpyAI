@@ -1,12 +1,12 @@
 myjobspyai.analysis.providers package
 =====================================
 
-.. automodule:: myjobspyai.analysis.providers
+.. automodule    :: myjobspyai.analysis.providers
    :members:
    :undoc-members:
    :show-inheritance:
 
-Submodules
+Submodule    s
 ----------
 
 .. toctree::

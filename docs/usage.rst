@@ -161,7 +161,7 @@ For additional help, please refer to:
 Next Steps
 ----------
 - :doc:`examples`: See more examples of using MyJobSpyAI
-- :doc:`api`: Explore the full API reference
+- :doc:`API reference <api/modules>`: Explore the full API reference
 
 Command Line Interface
 ---------------------

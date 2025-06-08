@@ -1,12 +1,12 @@
 myjobspyai.scrapers package
 ===========================
 
-.. automodule:: myjobspyai.scrapers
+.. automodule    :: myjobspyai.scrapers
    :members:
    :undoc-members:
    :show-inheritance:
 
-Submodules
+Submodule    s
 ----------
 
 .. toctree::
