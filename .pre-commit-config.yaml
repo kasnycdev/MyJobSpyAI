@@ -100,27 +100,17 @@ repos:
     - id: prettier
       types: [yaml, json, markdown, html, css, javascript]
 
-- repo: https://github.com/mkdocs/mkdocs
-  rev: 1.5.0
+- repo: local
   hooks:
     - id: mkdocs-lint
-      args: [--strict]
+      name: MkDocs Build
+      entry: mkdocs
+      language: python
+      types: [markdown, yaml]
       files: ^docs/
-
-- repo: https://github.com/mkdocs/mkdocs-material
-  rev: 9.6.14
-  hooks:
-    - id: material-lint
-      args: [--strict]
-      files: ^docs/
-
-- repo: https://github.com/mkdocs/mkdocs-mermaid2
-  rev: 0.5.0
-  hooks:
-    - id: mermaid-lint
-      args: [--strict]
-      files: ^docs/
-      exclude: ''  # Respect .gitignore
+      pass_filenames: false
+      args: [build, --strict]
+      additional_dependencies: [mkdocs>=1.5.0, mkdocs-material>=9.0.0, pymdown-extensions>=9.0]
 
 ci:
   autofix_commit_msg: "style: auto-fix by pre-commit hooks"
