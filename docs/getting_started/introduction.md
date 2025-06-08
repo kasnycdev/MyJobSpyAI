@@ -22,10 +22,7 @@ MyJobSpyAI is an AI-powered job search and analysis platform that helps users:
 
 To get started with MyJobSpyAI, follow these steps:
 
-1. [Installation](installation.md)
-2. [Configuration](configuration.md)
-3. [Usage](usage.md)
-4. [Examples](examples.md)
+1. [Introduction](../index.md)
 
 ## Support and Community
 

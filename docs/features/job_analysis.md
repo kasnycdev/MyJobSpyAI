@@ -56,4 +56,4 @@ If you encounter any issues with job analysis:
 1. Check the job description format
 2. Verify analysis configuration
 3. Review error logs
-4. Consult the [Troubleshooting Guide](../troubleshooting.md)
+4. Consult the [Troubleshooting Guide](../support/troubleshooting.md)
