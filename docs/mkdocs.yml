@@ -55,6 +55,9 @@ markdown_extensions:
       guess_lang: false
       use_pygments: true
       pygments_style: monokai
+      linenums: true
+      anchor_linenums: true
+      line_spans: __line_
   - pymdownx.betterem:
       smart_enable: all
   - pymdownx.details
@@ -62,22 +65,7 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
-  - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
-      alt
-  - pymdownx.magiclink
   - pymdownx.superfences
-  - pymdownx.tasklist:
-      custom_checkbox: true
-  - admonition
-  - codehilite:
-      guess_lang: false
-      pygments_style: github
-      use_pygments: true
-      linenums: true
-      anchor_linenums: true
-      line_spans: __line_
   - toc:
       permalink: true
       separator: '-'
@@ -123,23 +111,29 @@ extra:
 nav:
   - Home: index.md
   - Getting Started:
-    - Introduction: getting_started/introduction.md
+    - Introduction: index.md
   - Features:
     - Job Analysis: features/job_analysis.md
-    - Job Scraping: features/job_scraping.md
-    - Resume Matching: features/resume_matching.md
+    - Resume Analysis: features/resume_analysis.md
+  - Development:
+    - Code Style: development/code_style.md
+    - Testing: development/testing.md
+    - Deployment: development/deployment.md
+    - Contributing: development/contributing.md
   - Enhancement Plans:
+    - Overview: enhancement_plans/index.md
     - Roadmap: enhancement_plans/roadmap.md
-    - Future Features: enhancement_plans/future_features.md
   - API Reference:
-    - Overview: api/index.md
-    - Core: api/myjobspyai.md
+    - Overview: api/reference.md
+    - Main: api/myjobspyai.main.md
     - Analysis: api/myjobspyai.analysis.md
     - LLM: api/myjobspyai.llm.md
-    - Scrapers: api/myjobspyai.scrapers.md
     - Parsers: api/myjobspyai.parsers.md
-    - Models: api/myjobspyai.models.md
-    - Utils: api/myjobspyai.utils.md
+    - Prompts: api/myjobspyai.prompts.md
+  - Support:
+    - Troubleshooting: support/troubleshooting.md
+    - FAQ: support/faq.md
+    - Contributing: support/contributing.md
     - Filtering:
       - Overview: api/myjobspyai.filtering.md
       - Filter: api/myjobspyai.filtering.filter.md
@@ -175,21 +169,11 @@ nav:
     - Code Style: development/code_style.md
     - Testing: development/testing.md
     - Deployment: development/deployment.md
-  - Enhancement Plans:
-    - Overview: enhancement_plans/index.md
-    - Roadmap: enhancement_plans/roadmap.md
-    - Future Features: enhancement_plans/future_features.md
-  - Changelog: changelog.md
-  - License: license.md
-  - Support: support.md
-
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/yourusername/myjobspyai
-    - icon: fontawesome/brands/twitter
-      link: https://twitter.com/yourusername
+      link: https://github.com/kasnycdev/MyJobSpyAI
 
-edit_uri: edit/main/docs/
-repo_url: https://github.com/yourusername/myjobspyai
+edit_uri: edit/master/docs/
+repo_url: https://github.com/kasnycdev/MyJobSpyAI
 repo_name: GitHub
