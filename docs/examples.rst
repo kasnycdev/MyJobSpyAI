@@ -27,7 +27,7 @@ Analyze a single job posting to extract key information:
        - Advanced degree in Computer Science or related field
        """,
        company="Data Insights Inc.",
-       location="New York, NY"
+       location="New York, NY",
    )
 
    # Analyze the job
@@ -60,22 +60,22 @@ Analyze a resume to identify strengths and areas for improvement:
                "title": "Data Scientist",
                "company": "Tech Solutions Inc.",
                "duration": "2 years",
-               "description": "Developed ML models for customer segmentation."
+               "description": "Developed ML models for customer segmentation.",
            },
            {
                "title": "Junior Data Analyst",
                "company": "Data Insights Co.",
                "duration": "2 years",
-               "description": "Performed data analysis and created dashboards."
-           }
+               "description": "Performed data analysis and created dashboards.",
+           },
        ],
        education=[
            {
                "degree": "MSc in Computer Science",
                "institution": "University of Technology",
-               "year": 2019
+               "year": 2019,
            }
-       ]
+       ],
    )
 
    analyzer = ResumeAnalyzer()
@@ -106,7 +106,7 @@ Check how well a resume matches a specific job description:
        - Experience with deep learning frameworks
        - Knowledge of cloud platforms (AWS/GCP)
        - Experience with MLOps tools
-       """
+       """,
    )
 
    # Resume
@@ -114,8 +114,8 @@ Check how well a resume matches a specific job description:
        skills=["Python", "Machine Learning", "AWS", "Docker"],
        experience=[
            {"title": "ML Engineer", "duration": "2 years"},
-           {"title": "Data Scientist", "duration": "1 year"}
-       ]
+           {"title": "Data Scientist", "duration": "1 year"},
+       ],
    )
 
    # Analyze and match
@@ -142,9 +142,15 @@ Analyze multiple job postings at once:
 
    # Create multiple job postings
    jobs = [
-       JobPosting(title="Data Engineer", description="Looking for a data engineer with SQL and Python..."),
-       JobPosting(title="ML Engineer", description="Seeking ML engineer with TensorFlow experience..."),
-       JobPosting(title="Data Analyst", description="Junior data analyst position...")
+       JobPosting(
+           title="Data Engineer",
+           description="Looking for a data engineer with SQL and Python...",
+       ),
+       JobPosting(
+           title="ML Engineer",
+           description="Seeking ML engineer with TensorFlow experience...",
+       ),
+       JobPosting(title="Data Analyst", description="Junior data analyst position..."),
    ]
 
    # Batch analyze
@@ -172,7 +178,7 @@ Customize the analysis with specific parameters:
        include_salary_estimates=True,
        include_company_analysis=True,
        detailed_technical_analysis=True,
-       language="en"
+       language="en",
    )
 
    analyzer = JobAnalyzer(config=config)
@@ -239,7 +245,7 @@ Basic Job Search
        search_term="Data Scientist",
        location="New York, NY",
        is_remote=True,
-       results_wanted=10
+       results_wanted=10,
    )
    print(f"Found {len(jobs)} jobs")
 
@@ -255,8 +261,7 @@ Resume Analysis
 
    # Analyze jobs with your resume
    analysis = client.analyze_jobs_with_resume(
-       resume_path="path/to/your/resume.pdf",
-       jobs=jobs
+       resume_path="path/to/your/resume.pdf", jobs=jobs
    )
 
    # Print analysis results

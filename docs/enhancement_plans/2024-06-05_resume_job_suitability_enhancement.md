@@ -93,6 +93,7 @@ This document outlines the plan to enhance the resume and job suitability analys
        languages: float = Field(..., ge=0, le=100)
        extracurricular: float = Field(..., ge=0, le=100)
 
+
    class JobAnalysisResult(BaseModel):
        # Existing fields...
        section_scores: SectionScores

@@ -92,7 +92,9 @@ To debug a failing test:
 
 2. Use `pdb` to debug:
    ```python
-   import pdb; pdb.set_trace()  # Add this line where you want to break
+   import pdb
+
+   pdb.set_trace()  # Add this line where you want to break
    ```
    Then run with `-s` flag.
 

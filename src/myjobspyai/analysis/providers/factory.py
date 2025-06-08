@@ -184,13 +184,8 @@ class ProviderFactory:
         Example:
             ```python
             config = {
-                "openai": {
-                    "api_key": "sk-...",
-                    "model": "gpt-4"
-                },
-                "langchain": {
-                    "model_name": "gpt-3.5-turbo"
-                }
+                "openai": {"api_key": "sk-...", "model": "gpt-4"},
+                "langchain": {"model_name": "gpt-3.5-turbo"},
             }
             providers = factory.create_from_config(config)
             ```

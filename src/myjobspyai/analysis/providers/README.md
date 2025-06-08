@@ -50,8 +50,7 @@ from analysis.providers.factory import ProviderFactory
 
 # Get a provider instance
 provider = ProviderFactory.create_provider(
-    provider_type="langchain",
-    config=config["llm"]["providers"]["langchain_default"]
+    provider_type="langchain", config=config["llm"]["providers"]["langchain_default"]
 )
 
 # Generate text

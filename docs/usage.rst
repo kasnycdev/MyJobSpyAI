@@ -26,7 +26,7 @@ Basic Usage
        Nice to have: AWS, Docker, Kubernetes.
        """,
        company="Tech Corp Inc.",
-       location="Remote"
+       location="Remote",
    )
 
    # Analyze the job posting
@@ -49,9 +49,13 @@ Basic Usage
        summary="5+ years of experience in Python development...",
        skills=["Python", "Django", "REST APIs", "PostgreSQL", "AWS"],
        experience=[
-           {"title": "Senior Developer", "company": "Previous Corp", "duration": "3 years"},
-           {"title": "Python Developer", "company": "Startup Inc.", "duration": "2 years"}
-       ]
+           {
+               "title": "Senior Developer",
+               "company": "Previous Corp",
+               "duration": "3 years",
+           },
+           {"title": "Python Developer", "company": "Startup Inc.", "duration": "2 years"},
+       ],
    )
 
    # Analyze the resume
@@ -90,7 +94,7 @@ You can customize the analysis by passing configuration options:
        include_technical_skills=True,
        include_soft_skills=True,
        include_salary_estimates=False,
-       detailed_analysis=True
+       detailed_analysis=True,
    )
 
    analyzer = JobAnalyzer(config=config)
@@ -118,16 +122,12 @@ Switch between different LLM providers:
    from myjobspyai.providers import OllamaProvider, OpenAIConfig
 
    # Use OpenAI
-   openai_config = OpenAIConfig(
-       model="gpt-4",
-       api_key="your-api-key"
-   )
+   openai_config = OpenAIConfig(model="gpt-4", api_key="your-api-key")
    analyzer = JobAnalyzer(llm_provider=OpenAIProvider(openai_config))
 
    # Or use Ollama
    ollama_provider = OllamaProvider(
-       model="llama3:instruct",
-       base_url="http://localhost:11434"
+       model="llama3:instruct", base_url="http://localhost:11434"
    )
    analyzer = JobAnalyzer(llm_provider=ollama_provider)
 
@@ -186,15 +186,12 @@ Command Line Interface
 
    # Search for jobs
    jobs = client.search_jobs(
-       search_term="Software Engineer",
-       location="Remote",
-       is_remote=True
+       search_term="Software Engineer", location="Remote", is_remote=True
    )
 
    # Analyze jobs with a resume
    analysis = client.analyze_jobs_with_resume(
-       resume_path="path/to/your/resume.pdf",
-       jobs=jobs
+       resume_path="path/to/your/resume.pdf", jobs=jobs
    )
 
    # Save results
