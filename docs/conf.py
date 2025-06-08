@@ -4,9 +4,18 @@ import sys
 from datetime import datetime
 
 # Add project to path
-project_root = os.path.abspath('../../')
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 src_dir = os.path.join(project_root, 'src')
-sys.path.insert(0, src_dir)
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
+# Verify the module can be imported
+try:
+    import myjobspyai
+    print(f"Successfully imported myjobspyai from {myjobspyai.__file__}")
+except ImportError as e:
+    print(f"Error importing myjobspyai: {e}")
+    print(f"Python path: {sys.path}")
 
 # Project information
 project = 'MyJobSpyAI'

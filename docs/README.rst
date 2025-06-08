@@ -1,3 +1,5 @@
+.. _readme:
+
 Documentation
 ============
 
@@ -40,15 +42,15 @@ Building Locally
 Documentation Structure
 ----------------------
 
-- ``index.rst`` - Main documentation entry point
-- ``getting_started.rst`` - Getting started guide
-- `installation.rst` - Installation instructions
-- `configuration.rst` - Configuration reference
-- `usage.rst` - Usage guide
-- `examples.rst` - Code examples
-- `api/` - Auto-generated API documentation
-- `contributing.rst` - Contribution guidelines
-- `changelog.rst` - Release history
+- :doc:`index` - Main documentation entry point
+- :doc:`getting_started` - Getting started guide
+- :doc:`installation` - Installation instructions
+- :doc:`configuration` - Configuration reference
+- :doc:`usage` - Usage guide
+- :doc:`examples` - Code examples
+- :doc:`api/modules` - API Reference
+- :doc:`contributing` - Contribution guidelines
+- :doc:`changelog` - Release history
 
 ## Writing Documentation
 
