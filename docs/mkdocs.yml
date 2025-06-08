@@ -111,7 +111,7 @@ extra:
 nav:
   - Home: index.md
   - Getting Started:
-    - Introduction: index.md
+    - Introduction: getting_started/introduction.md
   - Features:
     - Job Analysis: features/job_analysis.md
     - Resume Analysis: features/resume_analysis.md
@@ -121,19 +121,18 @@ nav:
     - Deployment: development/deployment.md
     - Contributing: development/contributing.md
   - Enhancement Plans:
-    - Overview: enhancement_plans/index.md
-    - Roadmap: enhancement_plans/roadmap.md
+    - Overview: enhancement_plans/roadmap.md
+    - Future Features: enhancement_plans/future_features.md
   - API Reference:
     - Overview: api/reference.md
-    - Main: api/myjobspyai.main.md
+    - Main: api/myjobspyai.md
     - Analysis: api/myjobspyai.analysis.md
     - LLM: api/myjobspyai.llm.md
     - Parsers: api/myjobspyai.parsers.md
-    - Prompts: api/myjobspyai.prompts.md
   - Support:
     - Troubleshooting: support/troubleshooting.md
     - FAQ: support/faq.md
-    - Contributing: support/contributing.md
+    - Contributing: development/contributing.md
     - Filtering:
       - Overview: api/myjobspyai.filtering.md
       - Filter: api/myjobspyai.filtering.filter.md
