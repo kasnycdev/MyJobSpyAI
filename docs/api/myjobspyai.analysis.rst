@@ -1,7 +1,7 @@
 myjobspyai.analysis package
 ===========================
 
-.. automodule    :: myjobspyai.analysis
+.. automodule:: myjobspyai.analysis
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +15,7 @@ Subpackages
    myjobspyai.analysis.providers
    myjobspyai.analysis.utils
 
-Submodule    s
+Submodules
 ----------
 
 .. toctree::

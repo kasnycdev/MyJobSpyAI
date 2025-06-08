@@ -1,12 +1,12 @@
 myjobspyai.models package
 =========================
 
-.. automodule    :: myjobspyai.models
+.. automodule:: myjobspyai.models
    :members:
    :undoc-members:
    :show-inheritance:
 
-Submodule    s
+Submodules
 ----------
 
 .. toctree::

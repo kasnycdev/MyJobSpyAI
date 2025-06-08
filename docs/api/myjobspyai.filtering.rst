@@ -1,12 +1,12 @@
 myjobspyai.filtering package
 ============================
 
-.. automodule    :: myjobspyai.filtering
+.. automodule:: myjobspyai.filtering
    :members:
    :undoc-members:
    :show-inheritance:
 
-Submodule    s
+Submodules
 ----------
 
 .. toctree::
