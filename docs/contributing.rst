@@ -13,23 +13,27 @@ Table of Contents
 Ways to Contribute
 -----------------
 
-### Report Bugs
+Report Bugs
+~~~~~~~~~~
 - Search existing issues to avoid duplicates
 - Provide detailed information about your environment
 - Include steps to reproduce the issue
 - Share any relevant error messages or logs
 
-### Suggest Enhancements
+Suggest Enhancements
+~~~~~~~~~~~~~~~~~~
 - Describe the feature or improvement
 - Explain why it would be valuable
 - Provide examples of how it would work
 
-### Submit Code Changes
+Submit Code Changes
+~~~~~~~~~~~~~~~~~~
 - Follow the development setup instructions
 - Create a feature branch for your changes
 - Submit a pull request with a clear description
 
-### Improve Documentation
+Improve Documentation
+~~~~~~~~~~~~~~~~~~~~
 - Fix typos and improve clarity
 - Add missing documentation
 - Update outdated information
@@ -37,13 +41,15 @@ Ways to Contribute
 Development Setup
 ----------------
 
-### Prerequisites
+Prerequisites
+~~~~~~~~~~~~
 - Python 3.8+
 - Git
 - pip
 - (Optional) virtualenv or conda
 
-### Installation
+Installation
+~~~~~~~~~~~
 
 1. **Fork the repository** on GitHub
 
@@ -74,7 +80,8 @@ Development Setup
    pre-commit install
    ```
 
-### Running Tests
+Running Tests
+~~~~~~~~~~~~
 
 Run the full test suite:
 ```bash
@@ -92,7 +99,8 @@ pytest tests/test_analyzer.py
 pytest tests/test_analyzer.py::TestAnalyzer::test_specific_case
 ```
 
-### Code Quality
+Code Quality
+~~~~~~~~~~~
 
 Before submitting code, run these checks:
 
@@ -112,7 +120,8 @@ Before submitting code, run these checks:
    black myjobspyai tests
    ```
 
-### Documentation
+Documentation
+~~~~~~~~~~~~
 
 Build the documentation locally:
 ```bash
@@ -136,15 +145,15 @@ Pull Request Guidelines
    - Reference issues and pull requests liberally
 
    Example:
-   ```
-   Add support for Ollama LLM provider
+   .. code-block:: text
 
-   - Implement OllamaProvider class
-   - Add configuration options
-   - Update documentation
+      feat(ollama): Add support for Ollama LLM provider
 
-   Fixes #123
-   ```
+      - Implement OllamaProvider class
+      - Add configuration options
+      - Update documentation
+
+      Fixes #123
 
 3. **Pull Request Process**:
    - Ensure tests pass and coverage remains high
@@ -158,9 +167,8 @@ Pull Request Guidelines
    - Be respectful and constructive
 
 Project Structure
-----------------
+-----------------
 
-```
 myjobspyai/
 ├── src/                    # Source code
 │   ├── myjobspyai/         # Main package
@@ -176,10 +184,9 @@ myjobspyai/
 ├── .pre-commit-config.yaml # Pre-commit hooks
 ├── pyproject.toml         # Project configuration
 └── README.md              # Project README
-```
 
 Code Style
-----------
+---------
 
 - Follow `PEP 8 <https://www.python.org/dev/peps/pep-0008/>`_ style guide
 - Use type hints for all functions and methods
@@ -206,6 +213,8 @@ Documentation Standards
 - Add docstrings to all public modules, classes, and functions
 - Include examples in docstrings
 - Document all public API endpoints
+- Keep README.md up to date
+- Update CHANGELOG.md for all user-facing changes
 
 Release Process
 --------------

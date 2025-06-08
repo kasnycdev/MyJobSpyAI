@@ -1,12 +1,12 @@
 myjobspyai.parsers package
 ==========================
 
-.. automodule:: myjobspyai.parsers
+.. automodule    :: myjobspyai.parsers
    :members:
    :undoc-members:
    :show-inheritance:
 
-Submodules
+Submodule    s
 ----------
 
 .. toctree::

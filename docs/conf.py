@@ -4,18 +4,26 @@ import sys
 from datetime import datetime
 
 # Add project to path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 src_dir = os.path.join(project_root, 'src')
+
+# Add src directory to path
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-# Verify the module can be imported
+# Also add the project root to path for development installs
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Try to import the package
 try:
     import myjobspyai
     print(f"Successfully imported myjobspyai from {myjobspyai.__file__}")
 except ImportError as e:
     print(f"Error importing myjobspyai: {e}")
     print(f"Python path: {sys.path}")
+
+
 
 # Project information
 project = 'MyJobSpyAI'

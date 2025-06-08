@@ -231,7 +231,7 @@ Next Steps
 ----------
 - :doc:`usage`: Learn more about using MyJobSpyAI
 - :doc:`configuration`: Configure advanced settings
-- :doc:`api`: Explore the full API reference
+- :doc:`api/modules`: Explore the full API reference
 
 Basic Job Search
 ----------------

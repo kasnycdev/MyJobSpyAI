@@ -1,7 +1,7 @@
 myjobspyai.parsers.resume\_parser module
 ========================================
 
-.. automodule:: myjobspyai.parsers.resume_parser
+.. automodule    :: myjobspyai.parsers.resume_parser
    :members:
    :undoc-members:
    :show-inheritance:

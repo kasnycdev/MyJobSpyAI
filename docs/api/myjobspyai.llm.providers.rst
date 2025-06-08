@@ -1,12 +1,12 @@
 myjobspyai.llm.providers package
 ================================
 
-.. automodule:: myjobspyai.llm.providers
+.. automodule    :: myjobspyai.llm.providers
    :members:
    :undoc-members:
    :show-inheritance:
 
-Submodules
+Submodule    s
 ----------
 
 .. toctree::

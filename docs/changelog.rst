@@ -34,7 +34,7 @@ Changed
 - Fixed documentation build process
 
 [1.0.0] - 2025-06-07
-------------------
+-------------------
 - Initial release
 
 ## [0.1.0] - 2024-06-07

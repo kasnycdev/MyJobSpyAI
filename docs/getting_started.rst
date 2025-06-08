@@ -37,8 +37,8 @@ Quick Start
       usage
 
 Next Steps
-----------
-- Explore the :doc:`api` for detailed technical documentation
+-----------
+- Explore the :doc:`API reference <api/modules>` for detailed technical documentation
 - Check out the :doc:`examples` for practical use cases
 - Learn how to contribute in the :doc:`contributing` guide
 - See what's new in the :doc:`changelog`
