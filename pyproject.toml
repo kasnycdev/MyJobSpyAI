@@ -8,12 +8,17 @@ package-dir = { "" = "src" }
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
     "black>=23.0.0",
     "isort>=5.12.0",
     "mypy>=1.0.0",
+    "pytest>=7.3.1",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
     "ruff>=0.0.280",
+    "types-python-dateutil>=2.8.0",
+    "types-pyyaml>=6.0.0",
+    "types-requests>=2.28.0",
 ]
 docs = [
     "sphinx>=7.0.0",
@@ -78,20 +83,7 @@ dependencies = [
     "opentelemetry-sdk~=1.22.0",  # OpenTelemetry SDK
 ]
 
-[project.optional-dependencies]
-dev = [
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "ruff>=0.0.270",
-    "mypy>=1.0.0",
-    "pytest>=7.3.1",
-    "pytest-cov>=4.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-mock>=3.10.0",
-    "types-python-dateutil>=2.8.0",
-    "types-pyyaml>=6.0.0",
-    "types-requests>=2.28.0",
-]
+
 
 [project.urls]
 homepage = "https://github.com/yourusername/myjobspyai"
