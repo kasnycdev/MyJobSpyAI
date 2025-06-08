@@ -1,4 +1,4 @@
-.PHONY: test test-cov lint format check-types install install-dev clean
+.PHONY: test test-cov lint format check-types install install-dev clean docs docs-serve
 
 # Variables
 PYTHON = python3
@@ -13,9 +13,25 @@ ISORT = isort
 # Directories
 SRC_DIR = src
 TESTS_DIR = tests
+DOCS_DIR = docs
 
 # Default target
 all: test lint check-types
+
+# Documentation targets
+docs:
+	$(PYTHON) -m pip install -r requirements-docs.txt
+	mkdocs build
+
+docs-serve:
+	$(PYTHON) -m pip install -r requirements-docs.txt
+	mkdocs serve
+
+# Install the package in development mode with docs
+install-dev:
+	$(PIP) install -e .
+	$(PIP) install -r requirements-test.txt
+	$(PIP) install -r requirements-docs.txt
 
 # Install the package in development mode
 install-dev:
