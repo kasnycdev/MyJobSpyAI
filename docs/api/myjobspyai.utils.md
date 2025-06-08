@@ -1,666 +1,257 @@
-# MyJobSpyAI Utilities Module
+# myjobspyai.utils
 
-\"\"\"MyJobSpy AI - A powerful job search and analysis tool.
+## Overview
 
-:
+The utils module provides utility classes and functions for common operations across the application. It includes utilities for async operations, environment variables, file handling, HTTP requests, logging, prompts, and validation.
 
-    members
+## Classes
 
-    :
+### AsyncUtils
 
-    members
+Utility class for async operations.
 
-    :
+#### Methods
 
-    undoc-members
+##### \_run_async
 
-    :
+```python
+# Run an async function internally
+result = await AsyncUtils._run_async(async_func, *args, **kwargs)
+```
 
-    members
+Internal method to run an async function with error handling.
 
-    :
+##### run_async
 
-    show-inheritance
+```python
+# Run an async function
+result = await AsyncUtils.run_async(async_func, *args, **kwargs)
+```
 
-    :
+Public method to run an async function with proper error handling and resource cleanup.
 
-    undoc-members
+### Env
 
-    :
+Utility class for environment variables.
 
-    special-members
+#### Methods
 
-    :   \_\_init\_\_
+##### \_get_env
 
-    members
+```python
+# Get an environment variable internally
+value = Env._get_env("API_KEY", default="default_value")
+```
 
-    :
+Internal method to get an environment variable with type conversion.
 
-    show-inheritance
+##### get_env
 
-    :
+```python
+# Get an environment variable
+value = Env.get_env("API_KEY", default="default_value")
+```
 
-    undoc-members
+Public method to safely get environment variables with validation.
 
-    :
+### Files
 
-    special-members
+Utility class for file operations.
 
-    :   \_\_init\_\_
+#### Methods
 
-    members
+##### \_read_file
 
-    :
+```python
+# Read a file internally
+content = await Files._read_file("path/to/file.txt")
+```
 
-    show-inheritance
+Internal method to read file content with error handling.
 
-    :
+##### read_file
 
-    undoc-members
+```python
+# Read a file
+content = await Files.read_file("path/to/file.txt")
+```
 
-    :
+Public method to safely read file content with proper resource cleanup.
 
-    special-members
+### HttpClient
 
-    :   \_\_init\_\_
+Utility class for HTTP requests.
 
-    members
+#### Methods
 
-    :
+##### \_get
 
-    show-inheritance
+```python
+# Make a GET request internally
+response = await HttpClient._get("https://api.example.com")
+```
 
-    :
+Internal method to make GET requests with error handling.
 
-    undoc-members
+##### \_post
 
-    :
+```python
+# Make a POST request internally
+response = await HttpClient._post("https://api.example.com", data={"key": "value"})
+```
 
-    special-members
+Internal method to make POST requests with error handling.
 
-    :   \_\_init\_\_
+##### get
 
-    members
+```python
+# Make a GET request
+response = await HttpClient.get("https://api.example.com")
+```
 
-    :
+Public method to make GET requests with proper error handling and resource cleanup.
 
-    show-inheritance
+##### post
 
-    :
+```python
+# Make a POST request
+response = await HttpClient.post("https://api.example.com", data={"key": "value"})
+```
 
-    undoc-members
+Public method to make POST requests with proper error handling and resource cleanup.
 
-    :
+### Logging
 
-    special-members
+Utility class for logging.
 
-    :   \_\_init\_\_
+#### Methods
 
-    members
+##### \_setup_logger
 
-    :
+```python
+# Set up a logger internally
+logger = Logging._setup_logger("my_logger", level="INFO")
+```
 
-    show-inheritance
+Internal method to configure a logger with proper handlers and formatters.
 
-    :
+##### setup_logger
 
-    undoc-members
+```python
+# Set up a logger
+logger = Logging.setup_logger("my_logger", level="INFO")
+```
 
-    :
+Public method to configure a logger with proper error handling.
 
-    special-members
+### LoggingUtils
 
-    :   \_\_init\_\_
+Utility class for logging operations.
 
-    members
+#### Methods
 
-    :
+##### \_log_error
 
-    show-inheritance
+```python
+# Log an error internally
+LoggingUtils._log_error(exception, context="operation")
+```
 
-    :
+Internal method to log errors with proper context and traceback.
 
-    undoc-members
+##### log_error
 
-    :
+```python
+# Log an error
+LoggingUtils.log_error(exception, context="operation")
+```
 
-    special-members
+Public method to log errors with proper error handling and context.
 
-    :   \_\_init\_\_
+### Prompts
 
-    members
+Utility class for prompts.
 
-    :
+#### Methods
 
-    show-inheritance
+##### \_get_prompt
 
-    :
+```python
+# Get a prompt internally
+prompt = Prompts._get_prompt("job_analysis")
+```
 
-    undoc-members
+Internal method to retrieve a prompt template.
 
-    :
+##### get_prompt
 
-    special-members
+```python
+# Get a prompt
+prompt = Prompts.get_prompt("job_analysis")
+```
 
-    :   \_\_init\_\_
+Public method to safely retrieve and format prompt templates.
 
-    members
+### Validation
 
-    :
+Utility class for validation.
 
-    show-inheritance
+#### Methods
 
-    :
+##### \_validate_config
 
-    undoc-members
+```python
+# Validate a configuration internally
+is_valid = Validation._validate_config(config, schema)
+```
 
-    :
+Internal method to validate configuration against a schema.
 
-    special-members
+##### validate_config
 
-    :   \_\_init\_\_
+```python
+# Validate a configuration
+is_valid = Validation.validate_config(config, schema)
+```
 
-    members
+Public method to validate configuration with proper error handling.
 
-    :
+## Usage Example
 
-    show-inheritance
+```python
+from myjobspyai.utils import AsyncUtils, Env, Files, HttpClient, Logging, Prompts, Validation
 
-    :
+# Async operations
+result = await AsyncUtils.run_async(async_func, *args, **kwargs)
 
-    undoc-members
+# Environment variables
+api_key = Env.get_env("API_KEY", default="default_value")
 
-    :
+# File operations
+content = await Files.read_file("path/to/file.txt")
 
-    special-members
+# HTTP requests
+response = await HttpClient.get("https://api.example.com")
 
-    :   \_\_init\_\_
+# Logging
+logger = Logging.setup_logger("my_logger", level="INFO")
 
-    members
+# Prompts
+prompt = Prompts.get_prompt("job_analysis")
 
-    :
+# Validation
+is_valid = Validation.validate_config(config, schema)
+```
 
-    show-inheritance
+## Best Practices
 
-    :
-
-    undoc-members
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-\"\"\"
-
-> show-inheritance
->
-> :
->
-> undoc-members
->
-> :
->
-> special-members
->
-> :   \_\_init\_\_
->
-> show-inheritance
->
-> :
->
-> members
->
-> :
->
-> special-members
->
-> :   \_\_init\_\_
->
-> undoc-members
->
-> :
->
-> show-inheritance
->
-> :
->
-> special-members
->
-> :   \_\_init\_\_
-
-\"\"\"MyJobSpy AI - A powerful job search and analysis tool.
-
-:
-
-    members
-
-    :
-
-\"\"\"
-
-:
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-\"\"\"MyJobSpy AI - A powerful job search and analysis tool.
-
-:
-
-    members
-
-    :
-
-\"\"\"
-
-:
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-\"\"\"MyJobSpy AI - A powerful job search and analysis tool.
-
-:
-
-    members
-
-    :
-
-\"\"\"
-
-:
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-\"\"\"MyJobSpy AI - A powerful job search and analysis tool.
-
-:
-
-    members
-
-    :
-
-\"\"\"
-
-:
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    special-members
-
-    :   \_\_init\_\_
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-    members
-
-    :
-
-    undoc-members
-
-    :
-
-    show-inheritance
-
-    :
-
-Submodule s
-
-------------------------------------------------------------------------
-
-::: {.toctree maxdepth="4"}
-myjobspyai.utils.async_utils myjobspyai.utils.env myjobspyai.utils.files
-myjobspyai.utils.http_client myjobspyai.utils.logging
-myjobspyai.utils.logging_utils myjobspyai.utils.prompts
-myjobspyai.utils.validation
-:::
+1. Always use proper error handling
+2. Clean up resources properly
+3. Use appropriate logging levels
+4. Validate configurations
+5. Handle async operations safely
+6. Use environment variables for configuration
+7. Follow security best practices
+8. Implement proper error handling
+9. Use type hints and validation
+10. Monitor resource usage
