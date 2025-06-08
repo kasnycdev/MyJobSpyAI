@@ -25,6 +25,7 @@ scrapers/
 ```python
 from .base import BaseJobScraper, JobListing
 
+
 class ExampleScraper(BaseJobScraper):
     def __init__(self, config=None):
         super().__init__("example", config)
