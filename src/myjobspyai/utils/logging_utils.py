@@ -101,50 +101,31 @@ def setup_logging(
         log_file.parent.mkdir(parents=True, exist_ok=True)
         logging_config["handlers"]["file"] = {
             "level": log_level,
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": str(log_file),
-            "maxBytes": 10 * 1024 * 1024,  # 10MB
-            "backupCount": 5,
+            "class": "logging.FileHandler",
             "formatter": "detailed",
-            "encoding": "utf8",
+            "filename": str(log_file),
         }
-        for logger in logging_config["loggers"].values():
-            logger["handlers"].append("file")
+        for logger_name in logging_config["loggers"]:
+            logging_config["loggers"][logger_name]["handlers"].append("file")
 
-    # Apply the logging configuration
     logging.config.dictConfig(logging_config)
-
-    # Set log level for third-party libraries
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("requests").setLevel(logging.WARNING)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("httpcore").setLevel(logging.WARNING)
-    logging.getLogger("openai").setLevel(logging.WARNING)
 
 
 def get_logger(name: Optional[str] = None) -> logging.Logger:
-    """
-    Get a logger with the given name.
-
-    Args:
-        name: The name of the logger. If None, returns the root logger.
-
-    Returns:
-        A configured logger instance.
-    """
-    return logging.getLogger(name)
+    """Get a logger with the given name."""
+    return logging.getLogger(name if name else __name__)
 
 
 def get_model_output_logger() -> logging.Logger:
     """Get the model output logger."""
-    return get_logger(MODEL_OUTPUT_LOGGER_NAME)
+    return logging.getLogger(MODEL_OUTPUT_LOGGER_NAME)
 
 
 def get_request_logger() -> logging.Logger:
     """Get the request logger."""
-    return get_logger(REQUEST_LOGGER_NAME)
+    return logging.getLogger(REQUEST_LOGGER_NAME)
 
 
 def get_analysis_logger() -> logging.Logger:
     """Get the analysis logger."""
-    return get_logger(ANALYSIS_LOGGER_NAME)
+    return logging.getLogger(ANALYSIS_LOGGER_NAME)

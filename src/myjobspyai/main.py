@@ -3,11 +3,9 @@
 import argparse
 import asyncio
 import logging
-import os
-import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from rich.console import Console
@@ -15,28 +13,91 @@ from rich.logging import RichHandler
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from myjobspyai.analysis.analyzer import JobAnalyzer, ResumeAnalyzer
+# Initialize console for Rich output
+console = Console()
+
+# Create a reusable table creation function
+def _create_table(show_details: bool = False) -> Table:
+    """Create a table for displaying job listings.
+
+    Args:
+        show_details: Whether to show detailed columns
+
+    Returns:
+        Table: Rich Table object
+    """
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("#", style="dim", width=3)
+    table.add_column("Title", style="cyan", no_wrap=True)
+    table.add_column("Company", style="green")
+    table.add_column("Location", style="yellow")
+    table.add_column("Type", style="blue")
+    table.add_column("Posted", style="purple")
+
+    if show_details:
+        table.add_column("Salary", style="magenta")
+        table.add_column("Experience", style="cyan")
+        table.add_column("Skills", style="green")
+        table.add_column("Requirements", style="yellow")
+
+    return table
+
+# Helper functions for formatting job data
+def _format_job_type(job_type: str) -> str:
+    """Format job type string for display.
+
+    Args:
+        job_type: Job type string
+
+    Returns:
+        str: Formatted job type
+    """
+    if not job_type:
+        return "N/A"
+    return job_type.title()
+
+def _format_posted_date(posted_date: Any) -> str:
+    """Format posted date for display.
+
+    Args:
+        posted_date: Date object or string
+
+    Returns:
+        str: Formatted date string
+    """
+    if not posted_date:
+        return "N/A"
+    if isinstance(posted_date, str):
+        return posted_date
+    return posted_date.strftime("%Y-%m-%d")
+
+def _format_description(description: str, show_details: bool = False) -> str:
+    """Format job description for display.
+
+    Args:
+        description: Job description
+        show_details: Whether to show full description
+
+    Returns:
+        str: Formatted description
+    """
+    if not description:
+        return "N/A"
+    if not show_details:
+        return description[:100] + "..." if len(description) > 100 else description
+    return description
+
+from myjobspyai.analysis.analyzer import JobAnalyzer, ResumeAnalyzer, LangChainProvider
 from myjobspyai.analysis.models import ResumeData
-from myjobspyai.config import config as app_config
+from myjobspyai.config_manager import load_config, get_config
 from myjobspyai.main_matcher import load_and_extract_resume_async
-
-# Import application components
 from myjobspyai.scrapers.factory import create_scraper
+from myjobspyai.utils.logging_config import LoggingConfig
 
-# Import JobSpy if available
-try:
-    JOBSPY_AVAILABLE = True
-except ImportError:
-    JOBSPY_AVAILABLE = False
-
-# Set up logging before other imports that might log
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[RichHandler(rich_tracebacks=True, markup=False)],
-)
-logger = logging.getLogger("myjobspyai")
+# Set up logging
+logging_config = LoggingConfig(debug=get_config().debug)
+logging_config.setup()
+logger = logging_config.get_logger()
 
 # Set up rich console
 console = Console()
@@ -85,6 +146,18 @@ def parse_config_overrides(overrides: List[str]) -> Dict[str, Any]:
     return result
 
 
+def create_file_handler_config(name, level, log_path, mode='a'):
+    """Create file handler configuration."""
+    handler_config = {
+        'level': level,
+        'formatter': 'standard',
+        'filename': str(log_path),
+        'encoding': 'utf-8',
+        'delay': True,
+        'mode': mode,
+    }
+    return handler_config
+
 def setup_logging_custom(debug: bool = False) -> None:
     """Configure logging for the application.
 
@@ -94,9 +167,7 @@ def setup_logging_custom(debug: bool = False) -> None:
     import logging
     import logging.config
     import os
-    from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
     from pathlib import Path
-    from typing import Any, Dict
 
     # Set up basic logging first to capture any errors
     logging.basicConfig(level=logging.INFO)
@@ -109,157 +180,251 @@ def setup_logging_custom(debug: bool = False) -> None:
         # Get logging config from app_config
         log_config = app_config.logging
 
-        # Set up log directory - use the configured log_dir or default to 'logs' in the current directory
-        log_dir = (
-            Path(str(getattr(log_config, 'log_dir', 'logs'))).expanduser().absolute()
-        )
+        # Set up log directory
+        log_dir = Path(str(getattr(log_config, 'log_dir', 'logs'))).expanduser().absolute()
+        _setup_log_directory(log_dir, logger)
+        logger.info(f"Log directory: {log_dir}")
 
-        # Try to create the log directory with appropriate permissions
+        # Set default log level
+        default_log_level = _get_log_level(debug, log_config)
+
+        # Define log format
+        log_format = _get_log_format(log_config)
+        date_format = _get_date_format(log_config)
+
+        # Get log files configuration
+        log_files = _get_log_files(log_config, log_dir, default_log_level)
+
+        # Get log file configuration
+        log_file_mode = _get_log_file_mode(log_config)
+        max_size = _get_log_file_size(log_config)
+
+        # Get rolling strategy configuration
+        rolling_strategy = _get_rolling_strategy(log_config)
+        when = _get_rotation_when(log_config)
+        interval = _get_rotation_interval(log_config)
+        utc = _get_rotation_utc(log_config)
+        at_time = _get_rotation_at_time(log_config)
+
+        # Create handlers
         try:
-            log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)  # rwxr-xr-x
-            # Ensure the directory is writable by the current user
-            if not os.access(log_dir, os.W_OK):
-                logger.warning(
-                    f"Log directory {log_dir} is not writable. Falling back to default location."
-                )
-                log_dir = Path.cwd() / 'logs'
-                log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+            handlers = _create_handlers(log_level, log_files, log_file_mode, rolling_strategy,
+                                      max_size, when, interval, utc, at_time)
         except Exception as e:
+            logger.error(f"Failed to create log handlers: {str(e)}", exc_info=True)
+            handlers = {'console': create_file_handler_config('console', 'INFO', 'stderr')}
+            logger.warning("Using default console handler due to configuration error")
+
+        # Configure loggers
+        loggers = _configure_loggers(debug, log_files)
+
+        # Configure logging
+        logging_config = {
+            'version': 1,
+            'disable_existing_loggers': False,
+            'formatters': _create_formatters(date_format),
+            'handlers': handlers,
+            'loggers': loggers,
+            'root': {'handlers': ['console'], 'level': 'DEBUG' if debug else 'INFO'},
+        }
+
+        # Apply the logging configuration
+        logging.config.dictConfig(logging_config)
+
+        # Set up error tracking for uncaught exceptions
+        _setup_exception_handler(logger)
+
+        # Log Python warnings
+        logging.captureWarnings(True)
+
+        # Log the configuration
+        _log_configuration(logger, log_dir, debug, log_files)
+
+    except Exception as e:
+        # Fallback to basic config if logging setup fails
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger("myjobspyai")
+        logger.error(f"Failed to configure logging: {e}", exc_info=True)
+        logger.info("Falling back to basic logging configuration")
+
+def _setup_log_directory(log_dir: Path, logger) -> None:
+    """Set up the log directory with appropriate permissions."""
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+        if not os.access(log_dir, os.W_OK):
             logger.warning(
-                f"Failed to create log directory at {log_dir}: {e}. Using default location."
+                f"Log directory {log_dir} is not writable. Falling back to default location."
             )
             log_dir = Path.cwd() / 'logs'
             log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+    except Exception as e:
+        logger.warning(
+            f"Failed to create log directory at {log_dir}: {e}. Using default location."
+        )
+        log_dir = Path.cwd() / 'logs'
+        log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
-        logger.info(f"Log directory: {log_dir}")
+def _get_log_level(debug: bool, log_config) -> int:
+    """Get the log level from configuration or default."""
+    return logging.DEBUG if debug else getattr(
+        logging,
+        str(getattr(log_config, 'log_level', 'INFO')).upper(),
+        logging.INFO,
+    )
 
-        # Set default log level based on config or debug flag
-        default_log_level = (
-            logging.DEBUG
-            if debug
-            else getattr(
-                logging,
-                str(getattr(log_config, 'log_level', 'INFO')).upper(),
-                logging.INFO,
-            )
+def _get_log_format(log_config) -> str:
+    """Get the log format from configuration or default."""
+    log_format = getattr(
+        log_config,
+        'format',
+        '%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s'
+    )
+    return log_format
+
+def _get_date_format(log_config) -> str:
+    """Get the date format from configuration or default."""
+    return str(getattr(log_config, 'date_format', "%Y-%m-%d %H:%M:%S"))
+
+def _get_log_files(log_config, log_dir: Path, default_log_level: int) -> dict:
+    """Get log files configuration."""
+    if hasattr(log_config, 'files') and log_config.files:
+        return {
+            log_name: {
+                'path': log_dir / str(log_spec.get('path', f"{log_name}.log")),
+                'level': getattr(
+                    logging,
+                    str(log_spec.get('level', 'INFO')).upper(),
+                    logging.INFO,
+                ),
+            }
+            for log_name, log_spec in log_config.files.items()
+        }
+    else:
+        return {
+            'app': {
+                'path': log_dir / str(getattr(log_config, 'info_log_file', 'app.log')),
+                'level': default_log_level,
+            },
+            'debug': {
+                'path': log_dir / str(getattr(log_config, 'debug_log_file', 'debug.log')),
+                'level': logging.DEBUG,
+            },
+            'error': {
+                'path': log_dir / str(getattr(log_config, 'error_log_file', 'error.log')),
+                'level': logging.WARNING,
+            },
+            'llm': {
+                'path': log_dir / str(getattr(log_config, 'model_output_log_file', 'llm.log')),
+                'level': logging.INFO,
+            },
+        }
+
+def _get_log_file_mode(log_config) -> str:
+    """Get the log file mode from configuration or default."""
+    return str(getattr(log_config, 'log_file_mode', 'a'))
+
+def _get_log_file_size(log_config) -> int:
+    """Get the log file size from configuration or default."""
+    return int(getattr(log_config, 'max_size', 10 * 1024 * 1024))
+
+def _get_rolling_strategy(log_config) -> str:
+    """Get the rolling strategy from configuration or default."""
+    return str(getattr(log_config, 'rolling_strategy', 'size')).lower()
+
+def _get_rotation_when(log_config) -> str:
+    """Get the rotation when from configuration or default."""
+    return str(getattr(log_config, 'when', 'midnight'))
+
+def _get_rotation_interval(log_config) -> int:
+    """Get the rotation interval from configuration or default."""
+    return int(getattr(log_config, 'interval', 1))
+
+def _get_rotation_utc(log_config) -> bool:
+    """Get the rotation UTC from configuration or default."""
+    return bool(getattr(log_config, 'utc', False))
+
+def _get_rotation_at_time(log_config):
+    """Get the rotation at time from configuration."""
+    try:
+        at_time = getattr(log_config, 'at_time', None)
+        if at_time:
+            # Validate time format if provided
+            try:
+                datetime.strptime(at_time, '%H:%M')
+            except ValueError:
+                logger.warning(f"Invalid time format for rotation at_time: {at_time}. Using default.")
+                return None
+        return at_time
+    except Exception as e:
+        logger.error(f"Error processing rotation at_time: {str(e)}")
+        return None
+
+def _create_handlers(log_level: int, log_files: dict, log_file_mode: str, rolling_strategy: str,
+                    max_size: int, when: str, interval: int, utc: bool, at_time) -> dict:
+    """Create handlers configuration."""
+    handlers = {
+        'console': {
+            'class': 'rich.logging.RichHandler',
+            'level': log_level,
+            'formatter': 'standard',
+            'rich_tracebacks': True,
+            'show_path': debug,
+            'markup': True,
+            'show_time': True,
+            'show_level': True,
+        }
+    }
+
+    if hasattr(log_config, 'info_log_file') and getattr(log_config, 'info_log_file', None):
+        handlers['info_file'] = create_file_handler_config(
+            'info_file', 'INFO', 'standard', log_files['info']
         )
 
-        # Define log format
-        log_format = str(
-            getattr(
-                log_config,
-                'format',
-                '%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s',
-            )
+    for name, log_spec in log_files.items():
+        handlers[f'file_{name}'] = create_file_handler_config(
+            name=name, level=log_spec['level'], log_path=log_spec['path']
         )
-        date_format = str(getattr(log_config, 'date_format', "%Y-%m-%d %H:%M:%S"))
 
-        # Check if using new files configuration or legacy
-        if hasattr(log_config, 'files') and log_config.files:
-            # New configuration with separate files
-            log_files = {}
-            for log_name, log_spec in log_config.files.items():
-                log_files[log_name] = {
-                    'path': log_dir / str(log_spec.get('path', f"{log_name}.log")),
-                    'level': getattr(
-                        logging,
-                        str(log_spec.get('level', 'INFO')).upper(),
-                        logging.INFO,
-                    ),
-                }
-        else:
-            # Legacy configuration for backward compatibility
-            log_files = {
-                'app': {
-                    'path': log_dir
-                    / str(getattr(log_config, 'info_log_file', 'app.log')),
-                    'level': default_log_level,
-                },
-                'debug': {
-                    'path': log_dir
-                    / str(getattr(log_config, 'debug_log_file', 'debug.log')),
-                    'level': logging.DEBUG,
-                },
-                'error': {
-                    'path': log_dir
-                    / str(getattr(log_config, 'error_log_file', 'error.log')),
-                    'level': logging.WARNING,
-                },
-                'llm': {
-                    'path': log_dir
-                    / str(getattr(log_config, 'model_output_log_file', 'llm.log')),
-                    'level': logging.INFO,
-                },
-            }
+    return handlers
 
-        # Log file configuration
-        log_file_mode = str(
-            getattr(log_config, 'log_file_mode', 'a')
-        )  # 'w' for overwrite, 'a' for append
-        max_size = int(
-            getattr(log_config, 'max_size', 10 * 1024 * 1024)
-        )  # 10MB default
-        backup_count = int(
-            getattr(log_config, 'backup_count', 5)
-        )  # Number of backup files to keep
+def _configure_loggers(debug: bool, log_files: dict) -> dict:
+    """Configure loggers."""
+    return {
+        '': {  # root logger
+            'handlers': ['console'] + [f'file_{name}' for name in log_files.keys()],
+            'level': 'DEBUG' if debug else 'INFO',
+            'propagate': True,
+        },
+        'myjobspyai': {
+            'handlers': ['console', 'file_app', 'file_error', 'file_debug'],
+            'level': 'DEBUG' if debug else 'INFO',
+            'propagate': False,
+        },
+        'llm': {
+            'handlers': ['file_llm'],
+            'level': 'DEBUG' if debug else 'INFO',
+            'propagate': False,
+        },
+        'debug': {'handlers': ['file_debug'], 'level': 'DEBUG', 'propagate': False},
+        'error': {
+            'handlers': ['file_error'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    }
 
-        # Rolling strategy configuration
-        rolling_strategy = str(
-            getattr(log_config, 'rolling_strategy', 'size')
-        ).lower()  # 'size' or 'time'
-        when = str(getattr(log_config, 'when', 'midnight'))  # For time-based rotation
-        interval = int(
-            getattr(log_config, 'interval', 1)
-        )  # Interval for time-based rotation
-        utc = bool(getattr(log_config, 'utc', False))  # Use UTC for time-based rotation
-        at_time = getattr(
-            log_config, 'at_time', None
-        )  # Specific time for time-based rotation
-
-        # Helper function to create file handler config
-        def create_file_handler_config(name, level, log_path, mode=log_file_mode):
-            handler_config = {
-                'level': level,
-                'formatter': 'standard',
-                'filename': str(log_path),
-                'encoding': 'utf-8',
-                'delay': True,  # Delay file opening until first write
-                'mode': mode,  # 'w' for overwrite, 'a' for append
-            }
-
-            if rolling_strategy == 'size':
-                handler_config.update(
-                    {
-                        'class': 'logging.handlers.RotatingFileHandler',
-                        'maxBytes': max_size,
-                        'backupCount': backup_count,
-                    }
-                )
-            else:  # time-based rotation
-                handler_config.update(
-                    {
-                        'class': 'logging.handlers.TimedRotatingFileHandler',
-                        'when': when,
-                        'interval': interval,
-                        'backupCount': backup_count,
-                        'utc': utc,
-                    }
-                )
-                if at_time:
-                    handler_config['atTime'] = at_time
-
-            return handler_config
-
-        # Create formatters dictionary with JSON support
-        formatters = {
-            'standard': {'format': log_format, 'datefmt': date_format, 'style': '%'},
+def _create_formatters(date_format: str) -> dict:
+    """Create formatters configuration."""
+    try:
+        return {
+            'standard': {'format': _get_log_format(log_config), 'datefmt': date_format, 'style': '%'},
             'detailed': {
                 'format': '%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s',
                 'datefmt': date_format,
             },
             'simple': {'format': '%(levelname)-8s %(message)s'},
             'json': {
-                '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+                'class': 'pythonjsonlogger.jsonlogger.JsonFormatter',
                 'format': '''{
                     "timestamp": "%(asctime)s",
                     "level": "%(levelname)s",
@@ -276,116 +441,42 @@ def setup_logging_custom(debug: bool = False) -> None:
                 'datefmt': date_format,
             },
         }
-
-        # Create handlers dictionary
-        handlers = {
-            'console': {
-                'class': 'rich.logging.RichHandler',
-                'level': log_level,
-                'formatter': 'standard',
-                'rich_tracebacks': True,
-                'show_path': debug,
-                'markup': True,
-                'show_time': True,
-                'show_level': True,
-            }
-        }
-
-        # Add file handlers based on configuration
-        if hasattr(log_config, 'info_log_file') and getattr(
-            log_config, 'info_log_file', None
-        ):
-            handlers['info_file'] = create_file_handler_config(
-                'info_file', 'INFO', 'standard', log_files['info']
-            )
-
-        # File handlers for each log type
-        for name, log_spec in log_files.items():
-            handlers[f'file_{name}'] = create_file_handler_config(
-                name=name, level=log_spec['level'], log_path=log_spec['path']
-            )
-
-        # Configure loggers
-        loggers = {
-            '': {  # root logger
-                'handlers': ['console'] + [f'file_{name}' for name in log_files.keys()],
-                'level': 'DEBUG' if debug else 'INFO',
-                'propagate': True,
-            },
-            'myjobspyai': {
-                'handlers': ['console', 'file_app', 'file_error', 'file_debug'],
-                'level': 'DEBUG' if debug else 'INFO',
-                'propagate': False,
-            },
-            'llm': {
-                'handlers': ['file_llm'],
-                'level': 'DEBUG' if debug else 'INFO',
-                'propagate': False,
-            },
-            'debug': {'handlers': ['file_debug'], 'level': 'DEBUG', 'propagate': False},
-            'error': {
-                'handlers': ['file_error'],
-                'level': 'WARNING',
-                'propagate': False,
-            },
-        }
-
-        # Configure logging
-        logging_config = {
-            'version': 1,
-            'disable_existing_loggers': False,
-            'formatters': formatters,
-            'handlers': handlers,
-            'loggers': loggers,
-            'root': {'handlers': ['console'], 'level': 'DEBUG' if debug else 'INFO'},
-        }
-
-        # Apply the logging configuration
-        logging.config.dictConfig(logging_config)
-
-        # Set up error tracking for uncaught exceptions
-        def handle_exception(exc_type, exc_value, exc_traceback):
-            if issubclass(exc_type, KeyboardInterrupt):
-                # Call the default excepthook for keyboard interrupts
-                sys.__excepthook__(exc_type, exc_value, exc_traceback)
-                return
-
-            # Log the exception
-            logger.critical(
-                "Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback)
-            )
-
-        # Set the exception handler
-        sys.excepthook = handle_exception
-
-        # Log Python warnings
-        logging.captureWarnings(True)
-
-        # Log the configuration
-        logger.info("=" * 50)
-        logger.info(f"Logging configured. Log directory: {log_dir.absolute()}")
-        logger.info(f"Log level: {'DEBUG' if debug else 'INFO'}")
-        log_files_str = ', '.join(
-            [f"{name}: {log_spec['path'].name}" for name, log_spec in log_files.items()]
-        )
-        logger.info(f"Log files: {log_files_str}")
-
-        # Log the configuration file location if it exists
-        config_path = Path('~/.config/myjobspyai/config.yaml').expanduser()
-        if config_path.exists():
-            logger.info(f"Using configuration from: {config_path}")
-        else:
-            logger.warning(
-                f"Configuration file not found at {config_path}. Using default settings."
-            )
-        logger.info("-" * 50)
-
     except Exception as e:
-        # Fallback to basic config if logging setup fails
-        logging.basicConfig(level=logging.INFO)
-        logger = logging.getLogger("myjobspyai")
-        logger.error(f"Failed to configure logging: {e}", exc_info=True)
-        logger.info("Falling back to basic logging configuration")
+        logger.error(f"Failed to create formatters: {str(e)}")
+        return {
+            'standard': {'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        'datefmt': date_format,
+                        'style': '%'},
+            'simple': {'format': '%(levelname)s %(message)s'},
+        }
+
+def _setup_exception_handler(logger) -> None:
+    """Set up exception handler."""
+    def handle_exception(exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        logger.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    sys.excepthook = handle_exception
+
+def _log_configuration(logger, log_dir: Path, debug: bool, log_files: dict) -> None:
+    """Log the configuration."""
+    logger.info("=" * 50)
+    logger.info(f"Logging configured. Log directory: {log_dir.absolute()}")
+    logger.info(f"Log level: {'DEBUG' if debug else 'INFO'}")
+    log_files_str = ', '.join(
+        [f"{name}: {log_spec['path'].name}" for name, log_spec in log_files.items()]
+    )
+    logger.info(f"Log files: {log_files_str}")
+
+    config_path = Path('~/.config/myjobspyai/config.yaml').expanduser()
+    if config_path.exists():
+        logger.info(f"Using configuration from: {config_path}")
+    else:
+        logger.warning(
+            f"Configuration file not found at {config_path}. Using default settings."
+        )
+    logger.info("-" * 50)
 
 
 def parse_args(args: list[str]) -> argparse.Namespace:
@@ -397,28 +488,26 @@ def parse_args(args: list[str]) -> argparse.Namespace:
     Returns:
         Parsed arguments.
     """
-    parser = argparse.ArgumentParser(
-        description="MyJobSpy AI - AI-powered job search and analysis tool"
-    )
-
-    # Required arguments
-    required_group = parser.add_argument_group('Required Arguments')
-    required_group.add_argument(
-        '--search',
-        type=str,
-        required=True,
-        help='Search term (e.g., "software engineer" or "data scientist")',
-    )
-    required_group.add_argument(
-        '--resume',
-        type=str,
-        required=True,
-        help='Path to resume file (PDF or DOCX)',
-    )
+    parser = argparse.ArgumentParser(description="MyJobSpy AI - Job Search and Analysis Tool")
+    # Basic arguments
+    # Basic search arguments
+    parser.add_argument('--search', type=str, help='Search term for job titles')
+    parser.add_argument('--min-salary', type=float, help='Minimum salary requirement')
+    parser.add_argument('--max-salary', type=float, help='Maximum salary requirement')
+    parser.add_argument('--resume', type=str, help='Path to resume PDF file')
+    parser.add_argument('--analyze', action='store_true', help='Analyze jobs against resume')
+    parser.add_argument('--details', action='store_true', help='Show detailed job information')
+    parser.add_argument('--save', action='store_true', help='Save results to file')
+    parser.add_argument('--output', type=str, help='Output file name')
+    parser.add_argument('--format', type=str, choices=['json', 'csv', 'xlsx', 'markdown'], default='json', help='Output format')
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging')
+    parser.add_argument('--quiet', action='store_true', help='Suppress all output except errors')
+    parser.add_argument('--version', action='store_true', help='Show version information')
+    parser.add_argument('--interactive', action='store_true', help='Enable interactive mode')
+    parser.add_argument('--no-interactive', action='store_true', help='Disable interactive mode')
 
     # Scraper selection
-    scraper_group = parser.add_argument_group('Scraper Options')
-    scraper_group.add_argument(
+    parser.add_argument(
         '--scraper',
         type=str,
         default='jobspy',
@@ -426,7 +515,7 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         help='Scraper to use (default: jobspy)',
     )
 
-    # Search options
+    # Search options - specialized search parameters
     search_group = parser.add_argument_group('Search Options')
     search_group.add_argument(
         '--site-name',
@@ -454,22 +543,10 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         help='Search term specifically for Google Jobs (overrides --search-term for Google)',
     )
     search_group.add_argument(
-        '--location',
-        type=str,
-        default='',
-        help='Location for job search (e.g., "New York, NY" or "Remote")',
-    )
-    search_group.add_argument(
         '--distance',
         type=int,
         default=50,
         help='Distance in miles from location (default: 50)',
-    )
-    search_group.add_argument(
-        '--job-type',
-        type=str,
-        choices=['fulltime', 'parttime', 'contract', 'internship'],
-        help='Type of job to search for',
     )
     search_group.add_argument(
         '--results-wanted',
@@ -481,11 +558,6 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         '--hours-old',
         type=int,
         help='Maximum age of job postings in hours',
-    )
-    search_group.add_argument(
-        '--is-remote',
-        action='store_true',
-        help='Only show remote jobs',
     )
     search_group.add_argument(
         '--easy-apply',
@@ -517,15 +589,11 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         help='Convert wages to annual salary',
     )
     search_group.add_argument(
-        '--min-salary',
-        type=float,
-        help='Minimum annual salary to filter jobs',
-    )
-    search_group.add_argument(
         '--country-indeed',
         type=str,
         help='Country for Indeed/Glassdoor searches (e.g., "USA", "Canada")',
     )
+
 
     # Output options
     output_group = parser.add_argument_group('Output Options')
@@ -611,9 +679,153 @@ def parse_args(args: list[str]) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-async def initialize_llm_provider(
-    provider_config: Dict[str, Any],
-) -> Optional[Any]:
+async def _get_openai_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Get OpenAI configuration."""
+    try:
+        return {
+            'base_url': config.get('base_url', ''),
+            'model': config.get('model', 'gpt-4-turbo-preview'),
+            'api_key': config.get('api_key') or os.getenv('OPENAI_API_KEY'),
+            'temperature': config.get('temperature', 0.7),
+            'max_tokens': config.get('max_tokens', 1000),
+            'streaming': config.get('streaming', True),
+            'request_timeout': config.get('timeout', 60),
+            'organization': config.get('organization') or os.getenv('OPENAI_ORG_ID'),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get OpenAI configuration: {str(e)}")
+        return {
+            'model': 'gpt-4-turbo-preview',
+            'temperature': 0.7,
+            'max_tokens': 1000,
+            'streaming': True,
+            'request_timeout': 60,
+        }
+
+def _get_anthropic_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Get Anthropic configuration."""
+    try:
+        return {
+            'model': config.get('model', 'claude-3-opus-20240229'),
+            'api_key': config.get('api_key') or os.getenv('ANTHROPIC_API_KEY'),
+            'temperature': config.get('temperature', 0.7),
+            'max_tokens': config.get('max_tokens', 1000),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get Anthropic configuration: {str(e)}")
+        return {
+            'model': 'claude-3-opus-20240229',
+            'temperature': 0.7,
+            'max_tokens': 1000,
+        }
+
+def _get_google_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Get Google configuration."""
+    try:
+        return {
+            'model': config.get('model', 'gemini-pro'),
+            'google_api_key': config.get('api_key') or os.getenv('GOOGLE_API_KEY'),
+            'temperature': config.get('temperature', 0.7),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get Google configuration: {str(e)}")
+        return {
+            'model': 'gemini-pro',
+            'temperature': 0.7,
+        }
+
+def _get_ollama_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Get Ollama configuration."""
+    try:
+        return {
+            'base_url': config.get('base_url', 'http://localhost:11434'),
+            'model': config.get('model', 'llama2'),
+            'temperature': config.get('temperature', 0.7),
+            'top_p': config.get('top_p', 1.0),
+            'timeout': config.get('timeout', 60),
+            'num_predict': config.get('max_tokens', 1000),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get Ollama configuration: {str(e)}")
+        return {
+            'base_url': 'http://localhost:11434',
+            'model': 'llama2',
+            'temperature': 0.7,
+            'top_p': 1.0,
+            'timeout': 60,
+        }
+
+def _initialize_openai(config: Dict[str, Any]) -> Optional[Any]:
+    """Initialize OpenAI provider."""
+    try:
+        from langchain_openai import ChatOpenAI
+
+        if config['base_url'].startswith(('http://', 'https://')):
+            return ChatOpenAI(
+                base_url=config['base_url'],
+                model=config['model'],
+                api_key=config['api_key'],
+                temperature=config['temperature'],
+                max_tokens=config['max_tokens'],
+                streaming=config['streaming'],
+                request_timeout=config['request_timeout'],
+            )
+        return ChatOpenAI(
+            model=config['model'],
+            api_key=config['api_key'],
+            temperature=config['temperature'],
+            max_tokens=config['max_tokens'],
+            streaming=config['streaming'],
+            request_timeout=config['request_timeout'],
+            organization=config['organization'],
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize OpenAI provider: {str(e)}")
+        return None
+
+def _initialize_anthropic(config: Dict[str, Any]) -> Optional[Any]:
+    """Initialize Anthropic provider."""
+    try:
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(**config)
+    except Exception as e:
+        logger.error(f"Failed to initialize Anthropic provider: {str(e)}")
+        return None
+
+def _initialize_google(config: Dict[str, Any]) -> Optional[Any]:
+    """Initialize Google provider."""
+    try:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(**config)
+    except Exception as e:
+        logger.error(f"Failed to initialize Google provider: {str(e)}")
+        return None
+
+def _initialize_ollama(config: Dict[str, Any]) -> Optional[Any]:
+    """Initialize Ollama provider."""
+    try:
+        from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+        from langchain_community.llms import Ollama
+        from langchain_core.callbacks.manager import CallbackManager
+
+        callbacks = [StreamingStdOutCallbackHandler()] if config['streaming'] else []
+        return Ollama(
+            base_url=config['base_url'],
+            model=config['model'],
+            temperature=config['temperature'],
+            top_p=config['top_p'],
+            callback_manager=CallbackManager(callbacks) if callbacks else None,
+            timeout=config['timeout'],
+            num_predict=config['num_predict'],
+        )
+    except ImportError as e:
+        logger.error("Failed to import Ollama dependencies. Install with: pip install langchain-community")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to initialize Ollama provider: {e}", exc_info=True)
+        return None
+
+def initialize_llm_provider(provider_config: Dict[str, Any]) -> Optional[Any]:
     """Initialize an LLM provider from configuration.
 
     Args:
@@ -631,89 +843,15 @@ async def initialize_llm_provider(
 
     try:
         if provider_type == "openai":
-            from langchain_openai import ChatOpenAI
-
-            # Handle LM Studio (local) configuration
-            if config.get("base_url", "").startswith(("http://", "https://")):
-                return ChatOpenAI(
-                    base_url=config["base_url"],
-                    model=config.get("model", "local-model"),
-                    api_key=config.get("api_key", "not-needed"),
-                    temperature=config.get("temperature", 0.7),
-                    max_tokens=config.get("max_tokens", 1000),
-                    streaming=config.get("streaming", True),
-                    request_timeout=config.get("timeout", 60),
-                )
-            # Standard OpenAI configuration
-            return ChatOpenAI(
-                model=config.get("model", "gpt-4-turbo-preview"),
-                api_key=config.get("api_key") or os.getenv("OPENAI_API_KEY"),
-                temperature=config.get("temperature", 0.7),
-                max_tokens=config.get("max_tokens", 1000),
-                streaming=config.get("streaming", True),
-                request_timeout=config.get("timeout", 60),
-                organization=config.get("organization") or os.getenv("OPENAI_ORG_ID"),
-            )
-
+            return _initialize_openai(_get_openai_config(config))
         elif provider_type == "anthropic":
-            from langchain_anthropic import ChatAnthropic
-
-            return ChatAnthropic(
-                model=config.get("model", "claude-3-opus-20240229"),
-                api_key=config.get("api_key") or os.getenv("ANTHROPIC_API_KEY"),
-                temperature=config.get("temperature", 0.7),
-                max_tokens=config.get("max_tokens", 1000),
-            )
-
+            return _initialize_anthropic(_get_anthropic_config(config))
         elif provider_type == "google":
-            from langchain_google_genai import ChatGoogleGenerativeAI
-
-            return ChatGoogleGenerativeAI(
-                model=config.get("model", "gemini-pro"),
-                google_api_key=config.get("api_key") or os.getenv("GOOGLE_API_KEY"),
-                temperature=config.get("temperature", 0.7),
-            )
-
+            return _initialize_google(_get_google_config(config))
         elif provider_type == "langchain":
-            # For backward compatibility with LangChain provider
             return LangChainProvider(config)
-
         elif provider_type == "ollama":
-            try:
-                from langchain.callbacks.streaming_stdout import (
-                    StreamingStdOutCallbackHandler,
-                )
-                from langchain_community.llms import Ollama
-                from langchain_core.callbacks.manager import CallbackManager
-
-                # Set up callbacks for streaming if enabled
-                callbacks = []
-                if config.get("streaming", False):
-                    callbacks = [StreamingStdOutCallbackHandler()]
-
-                # Initialize Ollama with the specified configuration
-                return Ollama(
-                    base_url=config.get("base_url", "http://localhost:11434"),
-                    model=config.get(
-                        "model", "llama2"
-                    ),  # Default to llama2 if not specified
-                    temperature=config.get("temperature", 0.7),
-                    top_p=config.get("top_p", 1.0),
-                    callback_manager=CallbackManager(callbacks) if callbacks else None,
-                    timeout=config.get("timeout", 60),
-                    num_predict=config.get("max_tokens", 1000),
-                )
-            except ImportError as e:
-                logger.error(
-                    "Failed to import Ollama dependencies. Install with: pip install langchain-community"
-                )
-                return None
-            except Exception as e:
-                logger.error(
-                    f"Failed to initialize Ollama provider: {e}", exc_info=True
-                )
-                return None
-
+            return _initialize_ollama(_get_ollama_config(config))
         else:
             logger.warning(f"Unsupported LLM provider: {provider_type}")
             return None
@@ -729,233 +867,196 @@ async def initialize_llm_provider(
             logger.info("pip install langchain-google-genai")
         return None
 
-    except Exception as e:
-        logger.error(
-            f"Failed to initialize {provider_type} provider: {e}", exc_info=True
-        )
-        return None
+def display_jobs_table(jobs: List[Dict[str, Any]], console: Console, show_details: bool = False) -> None:
+    """Display jobs in a formatted table.
 
+    Args:
+        jobs: List of job dictionaries.
+        console: Rich console for output.
+        show_details: Whether to show detailed information.
+    """
+    try:
+        if not jobs:
+            console.print("[yellow]No jobs found![/]")
+            return
 
-def display_jobs_table(jobs: list, title: str = "Job Search Results"):
-    """Display job search results in a formatted table with analysis."""
-    if not jobs:
-        console.print("[yellow]No jobs to display.[/yellow]")
-        return
+        table = _create_table(show_details)
+        for i, job in enumerate(jobs):
+            # Get job properties
+            title = str(job.get('title', ''))
+            company = str(job.get('company', ''))
+            location = str(job.get('location', ''))
+            job_type = _format_job_type(job.get('job_type', 'Full-time'))
+            posted_date = _format_posted_date(job.get('posted_date', 'N/A'))
+            description = _format_description(job.get('description', ''), show_details)
 
-    # Check if we have analysis results
-    has_analysis = bool(jobs and isinstance(jobs[0], dict) and '_analysis' in jobs[0])
+            # Format text to fit columns
+            title = title[:50] + ("..." if len(title) > 50 else "")
+            company = company[:20] + ("..." if len(company) > 20 else "")
+            location = location[:20] + ("..." if len(location) > 20 else "")
 
-    # Create a table with appropriate columns
-    table = Table(title=title, show_header=True, header_style="bold magenta")
+            # Add row to table
+            table.add_row(
+                str(i),
+                title,
+                company,
+                location,
+                job_type,
+                posted_date,
+                description
+            )
 
-    # Add columns
-    table.add_column("#", style="dim", width=4)
-    table.add_column("Title")
-    table.add_column("Company")
-    table.add_column("Location")
-    table.add_column("Type")
-    table.add_column("Remote")
-    table.add_column("Posted")
+        # Print the table
+        console.print(table)
 
-    # Add analysis column if we have analysis
-    if has_analysis:
-        table.add_column("Match Score", justify="right")
-
-    # Add rows
-    for i, job in enumerate(jobs, 1):
-        # Handle both object and dict job formats
-        if isinstance(job, dict):
-            title = job.get('title', 'N/A')
-            company = job.get('company', 'N/A')
-            location = job.get('location', 'N/A')
-            job_type = job.get('job_type', 'N/A')
-            is_remote = "✅" if job.get('is_remote', False) else "❌"
-            posted_date = job.get('posted_date', 'N/A')
-
-            # Get analysis score if available
-            match_score = ""
-            if has_analysis and '_analysis' in job and job['_analysis']:
-                analysis = job['_analysis']
-                if (
-                    'suitability_score' in analysis
-                    and analysis['suitability_score'] is not None
-                ):
-                    score = analysis['suitability_score']
-                    # Color code the score
-                    if score >= 75:
-                        match_score = f"[green]{score}%[/green]"
-                    elif score >= 50:
-                        match_score = f"[yellow]{score}%[/yellow]"
-                    else:
-                        match_score = f"[red]{score}%[/red]"
-        else:
-            # Original object access
-            title = getattr(job, 'title', 'N/A')
-            company = getattr(job, 'company', 'N/A')
-            location = getattr(job, 'location', 'N/A')
-            job_type = getattr(job, 'job_type', 'N/A')
-            is_remote = "✅" if getattr(job, 'is_remote', False) else "❌"
-            posted_date = getattr(job, 'posted_date', 'N/A')
-            match_score = ""
-
-        # Format the date if it's a datetime object
-        if hasattr(posted_date, 'strftime'):
-            posted_date = posted_date.strftime('%Y-%m-%d')
-
-        # Build row data
-        row_data = [
-            str(i),
-            str(title)[:50] + ("..." if len(str(title)) > 50 else ""),
-            str(company)[:20] + ("..." if len(str(company)) > 20 else ""),
-            str(location)[:20] + ("..." if len(str(location)) > 20 else ""),
-            str(job_type),
-            is_remote,
-            str(posted_date),
-        ]
-
-        # Add match score if available
+        # Print analysis legend if we have analysis
+        has_analysis = any('_analysis' in job for job in jobs)
         if has_analysis:
-            row_data.append(match_score)
+            console.print("\n[bold]Match Score Legend:[/bold]")
+            console.print("  [green]75-100%:[/green] Strong match")
+            console.print("  [yellow]50-74%:[/yellow] Moderate match")
+            console.print("  [red]0-49%:[/red] Weak match")
 
-        table.add_row(*row_data)
-
-    # Print the table
-    console.print(table)
-
-    # Print analysis legend if we have analysis
-    if has_analysis:
-        console.print("\n[bold]Match Score Legend:[/bold]")
-        console.print("  [green]75-100%:[/green] Strong match")
-        console.print("  [yellow]50-74%:[/yellow] Moderate match")
-        console.print("  [red]0-49%:[/red] Weak match")
-
-    console.print(
-        f"\n[yellow]Found {len(jobs)} jobs. Use the job number to view details.[/yellow]"
-    )
+        console.print(
+            f"\n[yellow]Found {len(jobs)} jobs. Use the job number to view details.[/yellow]"
+        )
+    except Exception as e:
+        logger.error(f"Error displaying jobs table: {str(e)}")
+        console.print("[red]Error displaying jobs table. Please check the logs for details.[/red]")
 
 
 def display_job_details(job):
     """Display detailed information about a job with analysis if available."""
-    console = Console()
+    try:
+        console = Console()
 
-    # Handle both dict and object job formats
-    is_dict = isinstance(job, dict)
+        # Handle both dict and object job formats
+        is_dict = isinstance(job, dict)
 
-    # Get job details
-    title = job.get('title') if is_dict else getattr(job, 'title', 'N/A')
-    company = job.get('company') if is_dict else getattr(job, 'company', 'N/A')
-    location = job.get('location') if is_dict else getattr(job, 'location', 'N/A')
-    job_type = job.get('job_type') if is_dict else getattr(job, 'job_type', 'N/A')
-    remote = job.get('is_remote') if is_dict else getattr(job, 'is_remote', False)
-    posted_date = (
-        job.get('posted_date') if is_dict else getattr(job, 'posted_date', None)
-    )
-    description = job.get('description') if is_dict else getattr(job, 'description', '')
-    url = job.get('url') if is_dict else getattr(job, 'url', '')
-
-    # Get analysis if available
-    analysis = job.get('_analysis') if is_dict and '_analysis' in job else None
-
-    # Create a panel for the job details
-    console.print(f"\n[bold blue]{'=' * 80}[/bold blue]")
-    console.print(f"[bold]{title}[/bold]")
-    console.print(f"[bold cyan]{company}[/bold]")
-    console.print(f"[yellow]{location}[/yellow]")
-
-    # Job type and remote status
-    job_type_str = str(job_type or "Not specified").replace("_", " ").title()
-    remote_status = "✅ Remote" if remote else "❌ On-site"
-    console.print(f"{job_type_str} • {remote_status}")
-
-    # Display match score if analysis is available
-    if (
-        analysis
-        and 'suitability_score' in analysis
-        and analysis['suitability_score'] is not None
-    ):
-        score = analysis['suitability_score']
-        # Color code the score
-        if score >= 75:
-            score_display = f"[green]{score}% Match[/green]"
-        elif score >= 50:
-            score_display = f"[yellow]{score}% Match[/yellow]"
-        else:
-            score_display = f"[red]{score}% Match[/red]"
-        console.print(f"\n[bold]Match Score:[/bold] {score_display}")
-
-        # Display strengths if available
-        if 'pros' in analysis and analysis['pros']:
-            console.print("\n[bold green]Strengths:[/bold green]")
-            for strength in analysis['pros'][:3]:  # Limit to top 3 strengths
-                console.print(f"  • {strength}")
-
-        # Display areas for improvement if available
-        if 'cons' in analysis and analysis['cons']:
-            console.print("\n[bold yellow]Areas for Improvement:[/bold yellow]")
-            for con in analysis['cons'][:3]:  # Limit to top 3 areas
-                console.print(f"  • {con}")
-
-    # Posted date
-    if posted_date:
-        if hasattr(posted_date, 'strftime'):
-            posted_date = posted_date.strftime('%Y-%m-%d')
-        console.print(f"\n[dim]Posted: {posted_date}[/dim]")
-
-    # Job description
-    if description:
-        console.print("\n[bold]Description:[/bold]")
-        console.print(description[:1000] + ("..." if len(description) > 1000 else ""))
-
-    # Salary information if available
-    salary = (
-        job.get('salary')
-        if is_dict
-        else (getattr(job, 'salary', None) if hasattr(job, 'salary') else None)
-    )
-    if salary:
-        salary_str = []
-
-        # Handle both dict and object salary formats
-        min_amount = (
-            salary.get('min_amount')
-            if isinstance(salary, dict)
-            else getattr(salary, 'min_amount', None)
+        # Get job details
+        title = job.get('title') if is_dict else getattr(job, 'title', 'N/A')
+        company = job.get('company') if is_dict else getattr(job, 'company', 'N/A')
+        location = job.get('location') if is_dict else getattr(job, 'location', 'N/A')
+        job_type = job.get('job_type') if is_dict else getattr(job, 'job_type', 'N/A')
+        remote = job.get('is_remote') if is_dict else getattr(job, 'is_remote', False)
+        posted_date = (
+            job.get('posted_date') if is_dict else getattr(job, 'posted_date', None)
         )
-        max_amount = (
-            salary.get('max_amount')
-            if isinstance(salary, dict)
-            else getattr(salary, 'max_amount', None)
-        )
-        currency = (
-            salary.get('currency')
-            if isinstance(salary, dict)
-            else getattr(salary, 'currency', None)
-        )
-        period = (
-            salary.get('period')
-            if isinstance(salary, dict)
-            else getattr(salary, 'period', None)
-        )
+        description = job.get('description') if is_dict else getattr(job, 'description', '')
+        url = job.get('url') if is_dict else getattr(job, 'url', '')
 
-        if min_amount is not None:
-            salary_str.append(f"${min_amount:,.0f}")
-        if max_amount is not None:
+        # Get analysis if available
+        analysis = job.get('_analysis') if is_dict and '_analysis' in job else None
+
+        # Create a panel for the job details
+        console.print(f"\n[bold blue]{'=' * 80}[/bold blue]")
+        console.print(f"[bold]{title}[/bold]")
+        console.print(f"[bold cyan]{company}[/bold]")
+        console.print(f"[yellow]{location}[/yellow]")
+    except Exception as e:
+        logger.error(f"Error displaying job details: {str(e)}")
+        console.print("[red]Error displaying job details. Please check the logs for details.[/red]")
+        return
+
+    try:
+        # Job type and remote status
+        job_type_str = str(job_type or "Not specified").replace("_", " ").title()
+        remote_status = "✅ Remote" if remote else "❌ On-site"
+        console.print(f"{job_type_str} • {remote_status}")
+
+        # Display match score if analysis is available
+        if (
+            analysis
+            and 'suitability_score' in analysis
+            and analysis['suitability_score'] is not None
+        ):
+            score = analysis['suitability_score']
+            # Color code the score
+            if score >= 75:
+                score_display = f"[green]{score}% Match[/green]"
+            elif score >= 50:
+                score_display = f"[yellow]{score}% Match[/yellow]"
+            else:
+                score_display = f"[red]{score}% Match[/red]"
+            console.print(f"\n[bold]Match Score:[/bold] {score_display}")
+
+            # Display strengths if available
+            if 'pros' in analysis and analysis['pros']:
+                console.print("\n[bold green]Strengths:[/bold green]")
+                for strength in analysis['pros'][:3]:  # Limit to top 3 strengths
+                    console.print(f"  • {strength}")
+
+            # Display areas for improvement if available
+            if 'cons' in analysis and analysis['cons']:
+                console.print("\n[bold yellow]Areas for Improvement:[/bold yellow]")
+                for con in analysis['cons'][:3]:  # Limit to top 3 areas
+                    console.print(f"  • {con}")
+
+        # Posted date
+        if posted_date:
+            if hasattr(posted_date, 'strftime'):
+                posted_date = posted_date.strftime('%Y-%m-%d')
+            console.print(f"\n[dim]Posted: {posted_date}[/dim]")
+
+        # Job description
+        if description:
+            console.print("\n[bold]Description:[/bold]")
+            console.print(description[:1000] + ("..." if len(description) > 1000 else ""))
+
+        # Salary information if available
+        salary = (
+            job.get('salary')
+            if is_dict
+            else (getattr(job, 'salary', None) if hasattr(job, 'salary') else None)
+        )
+        if salary:
+            salary_str = []
+
+            # Handle both dict and object salary formats
+            min_amount = (
+                salary.get('min_amount')
+                if isinstance(salary, dict)
+                else getattr(salary, 'min_amount', None)
+            )
+            max_amount = (
+                salary.get('max_amount')
+                if isinstance(salary, dict)
+                else getattr(salary, 'max_amount', None)
+            )
+            currency = (
+                salary.get('currency')
+                if isinstance(salary, dict)
+                else getattr(salary, 'currency', None)
+            )
+            period = (
+                salary.get('period')
+                if isinstance(salary, dict)
+                else getattr(salary, 'period', None)
+            )
+
+            if min_amount is not None:
+                salary_str.append(f"${min_amount:,.0f}")
+            if max_amount is not None:
+                if salary_str:
+                    salary_str.append("-")
+                salary_str.append(f"${max_amount:,.0f}")
+            if currency:
+                salary_str.append(currency)
+            if period:
+                salary_str.append(f"per {period}")
+
             if salary_str:
-                salary_str.append("-")
-            salary_str.append(f"${max_amount:,.0f}")
-        if currency:
-            salary_str.append(currency)
-        if period:
-            salary_str.append(f"per {period}")
+                console.print("\n[bold]Salary:[/bold]", " ".join(salary_str))
 
-        if salary_str:
-            console.print("\n[bold]Salary:[/bold]", " ".join(salary_str))
+        # Application URL if available
+        if url:
+            console.print(f"\n[bold]Apply:[/bold] {url}")
 
-    # Application URL if available
-    if url:
-        console.print(f"\n[bold]Apply:[/bold] {url}")
-
-    console.print(f"[bold blue]{'=' * 80}[/bold blue]\n")
+        console.print(f"[bold blue]{'=' * 80}[/bold blue]\n")
+    except Exception as e:
+        logger.error(f"Error displaying job details (part 2): {str(e)}")
+        console.print("[red]Error displaying job details. Please check the logs for details.[/red]")
+        return
 
 
 async def analyze_jobs_with_resume(
@@ -1034,152 +1135,100 @@ async def analyze_jobs_with_resume(
 
 
 async def search_jobs(args) -> int:
-    """Search for jobs using the specified scraper."""
-    resume_data = None
-    analyzed_jobs = []  # Initialize to empty list
+    """Perform job search and analysis.
 
-    # Load and analyze resume if provided
-    if hasattr(args, 'resume') and args.resume:
-        try:
-            console.print(f"[blue]Loading and analyzing resume: {args.resume}[/blue]")
-            resume_data = await load_and_extract_resume_async(args.resume)
-            if not resume_data:
-                console.print(
-                    "[yellow]Warning: Could not parse resume. Analysis will be limited.[/yellow]"
-                )
-        except Exception as e:
-            logger.error(f"Error loading resume: {e}", exc_info=True)
-            console.print(
-                f"[yellow]Warning: Error loading resume: {e}. Analysis will be limited.[/yellow]"
-            )
+    Args:
+        args: Command line arguments
 
+    Returns:
+        int: Exit code (0 for success, 1 for error)
+    """
     try:
-        # Get search query from args
-        search_query = getattr(args, 'search', '')
-        if not search_query:
-            console.print("[red]Error: Search query is required[/red]")
+        # Load and analyze resume if provided
+        resume_data = None
+        analyzed_jobs = []  # Initialize to empty list
+        if hasattr(args, 'resume') and args.resume:
+            try:
+                console.print(f"[blue]Loading and analyzing resume: {args.resume}[/blue]")
+                resume_data = await load_and_extract_resume_async(args.resume)
+                if not resume_data:
+                    console.print(
+                        "[yellow]Warning: Could not parse resume. Analysis will be limited.[/yellow]"
+                    )
+            except Exception as e:
+                logger.error(f"Error loading resume: {e}", exc_info=True)
+                console.print(
+                    f"[yellow]Warning: Error loading resume: {e}. Analysis will be limited.[/yellow]"
+                )
+
+        # Create scraper based on arguments
+        scraper_type = getattr(args, 'scraper', 'jobspy')
+        scraper = create_scraper(scraper_type)
+        if not scraper:
+            console.print(f"[red]Error: Invalid scraper type: {scraper_type}[/red]")
             return 1
 
-        # Use JobSpy by default
-        scraper_type = getattr(args, 'scraper', 'jobspy')
+        # Get scraper-specific configuration
+        scraper_config = getattr(app_config, scraper_type, {})
 
-        # Check if JobSpy is available if that's the selected scraper
-        if scraper_type == 'jobspy' and not JOBSPY_AVAILABLE:
-            console.print(
-                "[yellow]Warning: JobSpy is not installed. Falling back to default scraper.[/yellow]"
+        # Get jobspy-specific parameters
+        jobspy_params = {
+            'job_title': getattr(args, 'job_title', None),
+            'location': getattr(args, 'location', None),
+            'radius': getattr(args, 'radius', None),
+            'date_posted': getattr(args, 'date_posted', None),
+            'experience_level': getattr(args, 'experience_level', None),
+            'job_type': getattr(args, 'job_type', None),
+            'remote': getattr(args, 'remote', None),
+            'full_time': getattr(args, 'full_time', None),
+            'part_time': getattr(args, 'part_time', None),
+            'internship': getattr(args, 'internship', None),
+            'contract': getattr(args, 'contract', None),
+            'min_salary': getattr(args, 'min_salary', None),
+            'max_salary': getattr(args, 'max_salary', None),
+            'salary_period': getattr(args, 'salary_period', None),
+            'company': getattr(args, 'company', None),
+            'linkedin_fetch_description': getattr(
+                args,
+                'linkedin_fetch_description',
+                scraper_config.get('linkedin_fetch_description', False)
+            ),
+            'linkedin_company_ids': getattr(
+                args,
+                'linkedin_company_ids',
+                scraper_config.get('linkedin_company_ids')
             )
-            console.print("  Install with: pip install python-jobspy")
-            scraper_type = 'linkedin'  # Fall back to LinkedIn scraper
+        }
 
-        # Get scraper config from app_config
-        scraper_config = {}
-        if hasattr(app_config, 'scrapers') and scraper_type in app_config.scrapers:
-            scraper_config = app_config.scrapers[scraper_type]
-            logger.debug(f"Using scraper config from app_config: {scraper_config}")
-
-        # Create scraper instance with config
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            transient=True,
-        ) as progress:
-            progress.add_task(
-                description=f"Initializing {scraper_type} scraper...", total=None
-            )
-            try:
-                scraper = create_scraper(scraper_type, scraper_config)
-            except Exception as e:
-                logger.error(
-                    f"Failed to create {scraper_type} scraper: {e}", exc_info=True
-                )
-                console.print(
-                    f"[red]Error: Failed to initialize {scraper_type} scraper: {str(e)}[/red]"
-                )
-                if scraper_type == 'jobspy' and 'No module named' in str(e):
-                    console.print(
-                        "\n[bold]JobSpy is not installed. Please install it with:[/bold]"
-                    )
-                    console.print("pip install python-jobspy")
-                return 1
-
-        # Prepare search parameters, starting with config values
+        # Initialize search parameters
         search_params = {}
+        if hasattr(app_config, 'search'):
+            search_params.update(app_config.search)
 
-        # Add query, location, and max_results from args, falling back to config
-        search_params['query'] = getattr(args, 'search', search_query)
-        search_params['location'] = getattr(
-            args, 'location', scraper_config.get('location', '')
-        )
-        search_params['max_results'] = getattr(
-            args, 'results_wanted', scraper_config.get('max_results', 15)
-        )
+        # Add search query from args
+        search_query = getattr(args, 'search', '')
+        if search_query:
+            search_params['query'] = search_query
 
-        # Add JobSpy specific parameters if using JobSpy
-        if scraper_type == 'jobspy':
-            # Define JobSpy parameters with defaults from config, overridden by command-line args
-            jobspy_params = {
-                'site_name': getattr(
-                    args, 'site_name', scraper_config.get('site_name')
-                ),
-                'distance': getattr(
-                    args, 'distance', scraper_config.get('distance', 50)
-                ),
-                'job_type': getattr(args, 'job_type', scraper_config.get('job_type')),
-                'is_remote': getattr(
-                    args, 'is_remote', scraper_config.get('is_remote', False)
-                ),
-                'easy_apply': getattr(
-                    args, 'easy_apply', scraper_config.get('easy_apply', False)
-                ),
-                'offset': getattr(args, 'offset', scraper_config.get('offset', 0)),
-                'hours_old': getattr(
-                    args, 'hours_old', scraper_config.get('hours_old')
-                ),
-                'country_indeed': getattr(
-                    args, 'country_indeed', scraper_config.get('country_indeed')
-                ),
-                'description_format': getattr(
-                    args,
-                    'description_format',
-                    scraper_config.get('description_format', 'markdown'),
-                ),
-                'linkedin_fetch_description': getattr(
-                    args,
-                    'linkedin_fetch_description',
-                    scraper_config.get('linkedin_fetch_description', False),
-                ),
-                'linkedin_company_ids': getattr(
-                    args,
-                    'linkedin_company_ids',
-                    scraper_config.get('linkedin_company_ids'),
-                ),
-                'proxies': getattr(args, 'proxies', scraper_config.get('proxies')),
-                'ca_cert': getattr(args, 'ca_cert', scraper_config.get('ca_cert')),
-                'enforce_annual_salary': getattr(
-                    args,
-                    'enforce_annual_salary',
-                    scraper_config.get('enforce_annual_salary', False),
-                ),
-                'verbose': getattr(args, 'verbose', scraper_config.get('verbose', 2)),
-            }
-            # Remove None values
-            search_params.update(
-                {k: v for k, v in jobspy_params.items() if v is not None and v != ''}
-            )
+        # Override with command line arguments
+        search_params.update(jobspy_params)
 
-        # Filter out None values
-        search_params = {k: v for k, v in search_params.items() if v is not None}
+        # Remove None values and empty strings
+        search_params = {k: v for k, v in search_params.items() if v is not None and v != ''}
 
         # Execute search with progress
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            transient=True,
-        ) as progress:
-            task = progress.add_task(description="Searching for jobs...", total=None)
-            try:
+        try:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                transient=True,
+            ) as progress:
+                task = progress.add_task(description="Searching for jobs...", total=None)
                 # Execute the job search
                 jobs = await scraper.search_jobs(**search_params)
+                if not jobs:
+                    console.print("[yellow]No jobs found.[/yellow]")
+                    return 0
 
                 # Convert jobs to dicts for easier handling
                 jobs_list = []
@@ -1197,9 +1246,7 @@ async def search_jobs(args) -> int:
                         # For other objects, convert to dict safely
                         job_dict = {}
                         for attr in dir(job):
-                            if not attr.startswith('_') and not callable(
-                                getattr(job, attr)
-                            ):
+                            if not attr.startswith('_') and not callable(getattr(job, attr)):
                                 try:
                                     value = getattr(job, attr)
                                     # Handle nested Pydantic models
@@ -1209,82 +1256,54 @@ async def search_jobs(args) -> int:
                                         value = value.dict()
                                     job_dict[attr] = value
                                 except Exception as e:
-                                    logger.warning(
-                                        f"Could not get attribute {attr} from job object: {e}"
-                                    )
+                                    logger.warning(f"Could not get attribute {attr} from job object: {e}")
+
                     jobs_list.append(job_dict)
 
-                # Apply min-salary filter if specified
-                min_salary = getattr(args, 'min_salary', None)
-                if min_salary is not None:
-                    original_count = len(jobs_list)
-                    filtered_jobs = []
-                    for job in jobs_list:
-                        # Keep jobs where we can't determine the salary (None or missing)
-                        if not job.get('salary') or not job['salary'].get('min_amount'):
-                            filtered_jobs.append(job)
-                        # Keep jobs where salary meets or exceeds minimum
-                        elif job['salary']['min_amount'] >= min_salary:
-                            filtered_jobs.append(job)
+        except Exception as e:
+            logger.error(f"Error during job search: {str(e)}", exc_info=True)
+            console.print(f"[red]Error: {str(e)}[/red]")
+            return 1
 
-                    filtered_count = original_count - len(filtered_jobs)
-                    jobs_list = filtered_jobs
-                    if filtered_count > 0:
-                        logger.info(
-                            f"Filtered out {filtered_count} jobs with confirmed salaries below ${min_salary:,.0f}"
-                        )
-                        logger.info(
-                            f"Kept {len(jobs_list)} jobs (including {len([j for j in jobs_list if not j.get('salary') or not j['salary'].get('min_amount')])} with unknown salaries)"
-                        )
+        # Apply min-salary filter if specified
+        min_salary = getattr(args, 'min_salary', None)
+        if min_salary is not None:
+            try:
+                original_count = len(jobs_list)
+                filtered_jobs = []
+                for job in jobs_list:
+                    if not job.get('salary') or not job['salary'].get('min_amount'):
+                        filtered_jobs.append(job)
+                    elif job['salary']['min_amount'] >= min_salary:
+                        filtered_jobs.append(job)
 
-                # Analyze jobs against resume if resume is provided
-                if resume_data:
-                    progress.update(task, description="Analyzing job matches...")
-                    jobs_list = await analyze_jobs_with_resume(jobs_list, resume_data)
-
-                    # Sort by analysis score if available
-                    if (
-                        jobs_list
-                        and '_analysis' in jobs_list[0]
-                        and 'suitability_score' in jobs_list[0]['_analysis']
-                    ):
-                        jobs_list.sort(
-                            key=lambda x: x['_analysis'].get('suitability_score', 0),
-                            reverse=True,
-                        )
-
-                progress.update(task, description=f"Found {len(jobs_list)} jobs")
-
-                # Store the analyzed jobs for display
-                analyzed_jobs = jobs_list
-
+                filtered_count = original_count - len(filtered_jobs)
+                jobs_list = filtered_jobs
+                if filtered_count > 0:
+                    logger.info(f"Filtered out {filtered_count} jobs with confirmed salaries below ${min_salary:,.0f}")
+                    logger.info(f"Kept {len(jobs_list)} jobs (including {len([j for j in jobs_list if not j.get('salary') or not j['salary'].get('min_amount')])} with unknown salaries)")
             except Exception as e:
-                logger.error(f"Job search failed: {e}", exc_info=True)
-                console.print(f"[red]Error: Job search failed - {str(e)}[/red]")
-                return 1
+                logger.error(f"Error applying min-salary filter: {str(e)}", exc_info=True)
+                console.print(f"[yellow]Warning: Failed to apply min-salary filter: {str(e)}[/yellow]")
 
-        if not analyzed_jobs:
-            console.print("[yellow]No jobs found matching your criteria.[/yellow]")
-            return 0
+        # Handle job display and analysis
+        if not getattr(args, 'analyze', False):
+            # Display jobs without analysis
+            display_title = f"{scraper_type.upper()} Job Search Results"
+            display_jobs_table(jobs_list, console, show_details=getattr(args, 'details', False))
 
-        # Display results with analysis if available
-        display_title = f"{scraper_type.upper()} Job Search Results"
-        if resume_data:
-            display_title += " (with Resume Analysis)"
-        display_jobs_table(analyzed_jobs, display_title)
+        # Display analyzed jobs
+        if analyzed_jobs:
+            display_title = f"{scraper_type.upper()} Job Search Results (with Analysis)"
+            display_jobs_table(analyzed_jobs, console, show_details=True)
 
-        # Initialize save_results flag
-        save_results = False
-
-        # Interactive mode
+        # Interactive mode if explicitly enabled
         if getattr(args, 'interactive', False):
+            save_results = False  # Initialize save_results flag
             while True:
                 try:
-                    console.print(
-                        "\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]"
-                    )
+                    console.print("\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]")
                     choice = input("> ").strip().lower()
-
                     if choice == 'q':
                         break
                     elif choice == 's':
@@ -1296,227 +1315,65 @@ async def search_jobs(args) -> int:
                         if 0 <= job_index < len(analyzed_jobs):
                             display_job_details(analyzed_jobs[job_index])
                         else:
-                            console.print(
-                                "[yellow]Invalid job number. Please try again.[/yellow]"
-                            )
+                            console.print("[yellow]Invalid job number. Please try again.[/yellow]")
                     else:
-                        console.print(
-                            "[yellow]Invalid input. Please enter a job number, 's' to save, or 'q' to quit.[/yellow]"
-                        )
-                except (KeyboardInterrupt, EOFError):
-                    console.print("\n[yellow]Exiting interactive mode...[/yellow]")
-                    return 0
-        else:
-            save_results = True
+                        console.print("[yellow]Invalid input. Please enter a number, 's', or 'q'.[/yellow]")
+                except Exception as e:
+                    logger.error(f"Error in interactive mode: {str(e)}")
+                    console.print("[red]An error occurred. Please try again.[/red]")
 
-        # Save results if not disabled and not in interactive mode or user chose to save
-        if not getattr(args, 'no_save', False) and save_results:
-            output_dir = getattr(args, 'output_dir', 'output')
-            os.makedirs(output_dir, exist_ok=True)
-
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_format = getattr(args, 'output_format', 'json')
-            output_file = os.path.join(
-                output_dir, f'job_search_results_{timestamp}.{output_format}'
-            )
-
-            try:
-                # Convert jobs to DataFrame for saving
-                jobs_data = []
-                for job in analyzed_jobs:
-                    if hasattr(job, 'model_dump'):
-                        job_dict = job.model_dump()
-                    else:
-                        job_dict = dict(job)  # Already a dict from our processing
-
-                    # Flatten analysis if it exists
-                    if '_analysis' in job_dict and job_dict['_analysis']:
-                        analysis = job_dict.pop('_analysis', {})
-                        if 'suitability_score' in analysis:
-                            job_dict['match_score'] = analysis['suitability_score']
-                        if 'pros' in analysis:
-                            job_dict['strengths'] = (
-                                "; ".join(analysis['pros'][:3])
-                                if analysis['pros']
-                                else ""
-                            )
-                        if 'cons' in analysis:
-                            job_dict['areas_for_improvement'] = (
-                                "; ".join(analysis['cons'][:3])
-                                if analysis['cons']
-                                else ""
-                            )
-
-                    jobs_data.append(job_dict)
-
-                df = pd.DataFrame(jobs_data)
-
-                if output_format == 'csv':
-                    df.to_csv(output_file, index=False)
-                elif output_format == 'xlsx':
-                    df.to_excel(output_file, index=False)
-                elif output_format == 'markdown':
-                    with open(output_file, 'w', encoding='utf-8') as f:
-                        f.write(df.to_markdown(index=False))
-                else:  # default to json
-                    df.to_json(
-                        output_file, orient='records', indent=2, force_ascii=False
-                    )
-
-                console.print(f"\n[green]Results saved to: {output_file}[/green]")
-            except Exception as e:
-                logger.error(f"Failed to save results: {e}")
-                console.print(
-                    f"[yellow]Warning: Failed to save results: {str(e)}[/yellow]"
-                )
-
-        # If interactive mode, allow viewing details
-        if getattr(args, 'interactive', False) and analyzed_jobs:
-            while True:
+            # Save results if requested
+            if save_results:
+                output_file = getattr(args, 'output', 'jobs_results.json')
+                output_format = getattr(args, 'format', 'json')
                 try:
-                    choice = console.input(
-                        "\n[bold]Enter job number to view details, or 'q' to quit: [/bold]"
-                    )
-                    if choice.lower() == 'q':
-                        break
+                    # Convert jobs to DataFrame for saving
+                    jobs_data = []
+                    for job in analyzed_jobs:
+                        if hasattr(job, 'model_dump'):
+                            job_dict = job.model_dump()
+                        else:
+                            job_dict = dict(job)
 
-                    job_idx = int(choice) - 1
-                    if 0 <= job_idx < len(analyzed_jobs):
-                        display_job_details(analyzed_jobs[job_idx])
-                    else:
-                        console.print(
-                            "[red]Invalid job number. Please try again.[/red]"
-                        )
-                except ValueError:
-                    console.print(
-                        "[red]Please enter a valid number or 'q' to quit.[/red]"
-                    )
+                            # Flatten analysis if it exists
+                            if '_analysis' in job_dict and job_dict['_analysis']:
+                                analysis = job_dict.pop('_analysis', {})
+                                if 'suitability_score' in analysis:
+                                    job_dict['match_score'] = analysis['suitability_score']
+                                if 'pros' in analysis:
+                                    job_dict['strengths'] = "; ".join(analysis['pros'][:3]) if analysis['pros'] else ""
+                                if 'cons' in analysis:
+                                    job_dict['areas_for_improvement'] = "; ".join(analysis['cons'][:3]) if analysis['cons'] else ""
+
+                        jobs_data.append(job_dict)
+
+                    df = pd.DataFrame(jobs_data)
+
+                    if output_format == 'csv':
+                        df.to_csv(output_file, index=False)
+                    elif output_format == 'xlsx':
+                        df.to_excel(output_file, index=False)
+                    elif output_format == 'markdown':
+                        with open(output_file, 'w', encoding='utf-8') as f:
+                            f.write(df.to_markdown(index=False))
+                    else:  # default to json
+                        df.to_json(output_file, orient='records', indent=2, force_ascii=False)
+
+                    console.print(f"\n[green]Results saved to: {output_file}[/green]")
+                    return 0
+                except Exception as e:
+                    logger.error(f"Failed to save results: {str(e)}")
+                    console.print(f"[yellow]Warning: Failed to save results: {str(e)}[/yellow]")
+                    return 1
+
+            return 0
 
         return 0
 
     except Exception as e:
-        logger.error(f"Job search failed: {e}", exc_info=True)
+        logger.error(f"Error during job analysis and display: {str(e)}", exc_info=True)
         console.print(f"[red]Error: {str(e)}[/red]")
         return 1
-        return 0
-
-        # Display results with analysis if available
-        display_title = f"{scraper_type.upper()} Job Search Results"
-        if resume_data:
-            display_title += " (with Resume Analysis)"
-        display_jobs_table(analyzed_jobs, display_title)
-
-        # Initialize save_results flag
-        save_results = False
-
-        # Interactive mode
-        if getattr(args, 'interactive', False):
-            while True:
-                try:
-                    console.print(
-                        "\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]"
-                    )
-                    choice = input("> ").strip().lower()
-
-                    if choice == 'q':
-                        break
-                    elif choice == 's':
-                        # Save results
-                        save_results = True
-                        break
-                    elif choice.isdigit():
-                        job_index = int(choice) - 1
-                        if 0 <= job_index < len(analyzed_jobs):
-                            display_job_details(analyzed_jobs[job_index])
-                        else:
-                            console.print(
-                                "[yellow]Invalid job number. Please try again.[/yellow]"
-                            )
-                    else:
-                        console.print(
-                            "[yellow]Invalid input. Please enter a job number, 's' to save, or 'q' to quit.[/yellow]"
-                        )
-                except (KeyboardInterrupt, EOFError):
-                    console.print("\n[yellow]Exiting interactive mode...[/yellow]")
-                    return 0
-        else:
-            save_results = True
-    else:
-        save_results = True
-
-    # Save results if not disabled and not in interactive mode or user chose to save
-    if not getattr(args, 'no_save', False) and save_results:
-        output_dir = getattr(args, 'output_dir', 'output')
-        os.makedirs(output_dir, exist_ok=True)
-
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_format = getattr(args, 'output_format', 'json')
-        output_file = os.path.join(
-            output_dir, f'job_search_results_{timestamp}.{output_format}'
-        )
-
-        try:
-            # Convert jobs to DataFrame for saving
-            jobs_data = []
-            for job in analyzed_jobs:
-                if hasattr(job, 'model_dump'):
-                    job_dict = job.model_dump()
-                else:
-                    job_dict = dict(job)  # Already a dict from our processing
-
-                # Flatten analysis if it exists
-                if '_analysis' in job_dict and job_dict['_analysis']:
-                    analysis = job_dict.pop('_analysis', {})
-                    if 'suitability_score' in analysis:
-                        job_dict['match_score'] = analysis['suitability_score']
-                    if 'pros' in analysis:
-                        job_dict['strengths'] = (
-                            "; ".join(analysis['pros'][:3]) if analysis['pros'] else ""
-                        )
-                    if 'cons' in analysis:
-                        job_dict['areas_for_improvement'] = (
-                            "; ".join(analysis['cons'][:3]) if analysis['cons'] else ""
-                        )
-
-                jobs_data.append(job_dict)
-
-            df = pd.DataFrame(jobs_data)
-
-            if output_format == 'csv':
-                df.to_csv(output_file, index=False)
-            elif output_format == 'xlsx':
-                df.to_excel(output_file, index=False)
-            elif output_format == 'markdown':
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    f.write(df.to_markdown(index=False))
-            else:  # default to json
-                df.to_json(output_file, orient='records', indent=2, force_ascii=False)
-
-            console.print(f"\n[green]Results saved to: {output_file}[/green]")
-        except Exception as e:
-            logger.error(f"Failed to save results: {e}")
-            console.print(f"[yellow]Warning: Failed to save results: {str(e)}[/yellow]")
-
-    # If interactive mode, allow viewing details
-    if getattr(args, 'interactive', False) and jobs:
-        while True:
-            try:
-                choice = console.input(
-                    "\n[bold]Enter job number to view details, or 'q' to quit: [/bold]"
-                )
-                if choice.lower() == 'q':
-                    break
-
-                job_idx = int(choice) - 1
-                if 0 <= job_idx < len(jobs):
-                    display_job_details(jobs[job_idx])
-                else:
-                    console.print("[red]Invalid job number. Please try again.[/red]")
-            except ValueError:
-                console.print("[red]Please enter a valid number or 'q' to quit.[/red]")
-
-    return 0
-
 
 async def main_async() -> int:
     """Async main entry point for the application."""
@@ -1525,8 +1382,8 @@ async def main_async() -> int:
         args = parse_args(sys.argv[1:])
 
         # Handle version flag
-        if getattr(args, 'version', False):
-            console.print(f"MyJobSpy AI v{version('myjobspyai')}")
+        if getattr(args, 'show_version', False):
+            console.print(f"MyJobSpy AI v{app_config.version}")
             return 0
 
         # Set log level based on verbosity
@@ -1553,7 +1410,8 @@ async def main_async() -> int:
         return await search_jobs(args)
 
     except Exception as e:
-        logger.error(f"An error occurred: {e}", exc_info=True)
+        logger.error(f"An error occurred: {str(e)}", exc_info=True)
+        console.print(f"[red]Error: {str(e)}[/red]")
         return 1
 
 
@@ -1593,43 +1451,13 @@ def main() -> int:
         logger.info(f"Starting MyJobSpy AI (Debug: {debug_mode})")
         logger.info("-" * 50)
 
-        # Log configuration paths
-        config_paths = [
-            Path('~/.config/myjobspyai/config.yaml').expanduser(),
-            Path('config.yaml').absolute(),
-            Path('/etc/myjobspyai/config.yaml'),
-        ]
+    except Exception as e:
+        logger.error(f"Failed to initialize application: {str(e)}", exc_info=True)
+        return 1
 
-        config_loaded = False
-        for config_path in config_paths:
-            if config_path.exists():
-                logger.info(f"Using configuration from: {config_path}")
-                config_loaded = True
-                break
-
-        if not config_loaded:
-            logger.warning("No configuration file found. Using default settings.")
-
-        # Set log level based on verbosity
-        verbose_level = getattr(args, 'verbose', 0)
-        if debug_mode or verbose_level > 1:
-            logging.getLogger().setLevel(logging.DEBUG)
-            logger.debug("Debug logging enabled")
-        elif verbose_level == 1:
-            logging.getLogger().setLevel(logging.INFO)
-            logger.info("Verbose logging enabled")
-        else:
-            logging.getLogger().setLevel(logging.WARNING)
-
-        # Log environment information
-        logger.debug(f"Python version: {sys.version}")
-        logger.debug(f"Platform: {sys.platform}")
-        logger.debug(f"Working directory: {os.getcwd()}")
-        logger.debug(f"Command line arguments: {sys.argv}")
-
-        # Run the async main function
+    # Initialize the application
+    try:
         return asyncio.run(main_async())
-
     except KeyboardInterrupt:
         logger.info("\nApplication interrupted by user")
         return 0
@@ -1638,8 +1466,6 @@ def main() -> int:
         print(f"Fatal error: {e}", file=sys.stderr)
         return 1
 
-
 if __name__ == "__main__":
     import sys
-
     sys.exit(main())

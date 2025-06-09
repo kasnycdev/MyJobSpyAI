@@ -1,0 +1,285 @@
+# Project exclude paths
+*/.venv/*
+.ruff
+*/.ruff_cache/
+*/.history/*
+.history
+.history/
+*/.vscode/*
+
+# Environments & Dependencies
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+*.pyenv
+__pypackages__/
+
+# MkDocs build directories and assets
+site/
+docs/backup_rst/
+*.html
+*.pdf
+*.css
+*.js
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.eot
+*.otf
+*.map
+*.json
+*.xml
+*.yaml
+*.yml
+*.md
+*.rst
+*.ipynb
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.obj
+
+# Documentation source (do not ignore)
+!docs/mkdocs.yml
+!docs/**/*.md
+!docs/**/*.yaml
+!docs/**/*.yml
+!docs/**/*.png
+!docs/**/*.jpg
+!docs/**/*.jpeg
+!docs/**/*.gif
+!docs/**/*.svg
+!docs/**/*.ico
+!docs/**/*.woff
+!docs/**/*.woff2
+!docs/**/*.ttf
+!docs/**/*.eot
+!docs/**/*.otf
+!docs/**/*.map
+!docs/**/*.json
+!docs/**/*.xml
+
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.rar
+*.tar
+*.gz
+*.bz2
+*.xz
+*.7z
+*.dmg
+*.iso
+*.img
+*.bin
+*.dat
+*.bak
+*.tmp
+*.swp
+*.swo
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.exe
+*.obj
+*.o
+*.a
+*.lib
+*.pdb
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.rar
+*.tar
+*.gz
+*.bz2
+*.xz
+*.7z
+*.dmg
+*.iso
+*.img
+*.bin
+*.dat
+*.bak
+*.tmp
+*.swp
+*.swo
+node_modules/
+
+# Python cache & compiled files
+*/__pycache__/*
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Project-specific generated directories
+logs/
+cache/
+output/
+data/
+.windsurf/
+.vscode/
+server-logs/ # If it can appear at the root
+# More general patterns that might cover the above but good to be explicit
+*/server-logs/*
+# *.json # This is too broad, many projects use JSON for non-generated data
+*.output # Specific output extension
+*/output/*
+*/cache/*
+*/data/*
+*/.windsurf/*
+*/.vscode/*
+
+# config.yaml # Generally, config files are versioned. If it has secrets, use .env or a gitignored local override.
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs & temp files
+pip-log.txt
+pip-delete-this-directory.txt
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+.#*
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Type checker cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Translations
+*.mo
+*.pot
+
+# Database files
+*.sqlite3
+*.sqlite3-journal
+
+# IDE files & settings
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+nbproject/
+*.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+
+# Project Output / Logs / Configs with Secrets
+# output/ # Already covered by top-level specific and */output/*
+# *.log # This is covered by the generic *.log under "Installer logs & temp files"
+config.toml # For potential JobSpy cookies/credentials
+.env # For environment variables (like API keys, GEOPY_USER_AGENT)
+
+# Operating system & miscellaneous files
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Specific tools
+.ropeproject
+.spyderproject
+.spyproject
+celerybeat-schedule
+celerybeat.pid
+*.sage.py
+profile_default/
+ipython_config.py
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Test Resume
+*.Resume.pdf
+qodana.yaml
+myjobspy.commandline.txt
+
+# Version number folders / build artifacts
+[0-9]*.[0-9]*.[0-9]*/
+[0-9]*.[0-9]*/
+[0-9]*/
+20221105/
+profile.html
+profile.json
+.gitignore
+config.yaml
+scraped_*.json
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+package.json
+
+# Windsurf rules and configuration
+.windsurf/
+.windsurf/*
+!.windsurf/.gitkeep
+
+# Project specific directories to ignore
+src/myjobspyai/logs/
+src/myjobspyai/output/
+src/myjobspyai/parsers/
+*.egg-info/
+
+# Local .env file
+.env

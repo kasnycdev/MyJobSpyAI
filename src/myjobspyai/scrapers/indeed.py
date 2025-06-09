@@ -3,8 +3,10 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from . import BaseJobScraper, JobListing
+from .base import BaseJobScraper
+from ..models.job_listing import JobListing
 
+logger = logging.getLogger(__name__)
 
 class IndeedScraper(BaseJobScraper):
     """Scraper for Indeed job listings."""
@@ -17,15 +19,13 @@ class IndeedScraper(BaseJobScraper):
         """
         super().__init__("indeed", config)
         self.base_url = "https://www.indeed.com"
-        self.session = None
 
     async def _init_session(self):
         """Initialize the HTTP session if not already done."""
         if self.session is None:
-            # Lazy import to avoid circular imports
-            from myjobspyai.utils.http_client import HTTPClient
+            from myjobspyai.utils.http_factory import get_http_client
 
-            self.session = HTTPClient(
+            self.session = await get_http_client(
                 base_url=self.base_url,
                 headers={
                     "User-Agent": (

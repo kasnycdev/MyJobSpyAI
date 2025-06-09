@@ -9,8 +9,9 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 from jobspy import scrape_jobs
 
-from ..models.job import Job, JobSource, JobType
+from ..models.job import Job, JobSource, JobType, JobEnums
 from .base import BaseJobScraper
+from ..models.job_listing import JobListing
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +26,24 @@ class JobSpyScraper(BaseJobScraper):
             config: Configuration dictionary for the scraper
         """
         super().__init__("jobspy", config or {})
-
-        # Initialize browser if needed (JobSpy will handle this)
         self._browser_initialized = False
+
+    def _map_job_type(self, job_type_str: str) -> JobType:
+        """Map raw job type string to JobType enum.
+
+        Args:
+            job_type_str: Raw job type string from job listing
+
+        Returns:
+            JobType enum value
+        """
+        return BaseJobScraper.map_job_type(job_type_str)
 
     async def _init_browser(self):
         """Initialize browser if needed."""
         if not self._browser_initialized:
             try:
                 from jobspy import init_browser
-
                 init_browser()
                 self._browser_initialized = True
             except Exception as e:
@@ -68,7 +77,7 @@ class JobSpyScraper(BaseJobScraper):
         """
         # Get site-specific timeouts from config
         site_timeouts = self.config.get('timeouts', {})
-        default_timeout = site_timeouts.get('default', 30)  # Default to 30 seconds
+        default_timeout = site_timeouts.get('default', 30)
 
         last_error = None
         for attempt in range(max_retries + 1):
@@ -145,7 +154,6 @@ class JobSpyScraper(BaseJobScraper):
                         f"Found {remote_count} remote jobs out of {len(processed_jobs)} total jobs"
                     )
 
-                # Return Job objects directly - let the caller handle serialization if needed
                 return processed_jobs
 
             except Exception as e:
@@ -155,8 +163,7 @@ class JobSpyScraper(BaseJobScraper):
 
                 logger.warning(
                     f"Attempt {attempt + 1} failed: {str(e)}",
-                    exc_info=attempt
-                    == max_retries,  # Only log full traceback on last attempt
+                    exc_info=attempt == max_retries,
                 )
                 await asyncio.sleep(retry_delay)
                 continue
@@ -199,257 +206,94 @@ class JobSpyScraper(BaseJobScraper):
                 job_type_str = str(row.get('job_type', 'full_time')).lower().strip()
                 job_type = self._map_job_type(job_type_str)
 
-                # Get source from URL if not provided
-                source = row.get('source', '')
-                if not source and 'job_url' in row:
-                    source = self._get_job_source(row['job_url'])
+                # Generate a unique ID based on job details
+                job_id = f"{row.get('site', 'jobspy')}_{row.get('job_title', '')}_{row.get('company_name', '')}_{row.get('posted_date', datetime.now()).strftime('%Y%m%d_%H%M%S')}"
+                job_id = job_id.lower().replace(' ', '_').replace(',', '').replace('.', '')[:100]  # Clean and truncate
 
-                # Parse posted date
-                posted_date = None
-                if pd.notna(row.get('posted_date')):
-                    try:
-                        # Try to parse the timestamp if it's in epoch format
-                        if isinstance(row['posted_date'], (int, float)):
-                            posted_date = datetime.fromtimestamp(
-                                row['posted_date']
-                            ).isoformat()
-                        else:
-                            # Try to parse string date
-                            posted_date = datetime.strptime(
-                                str(row['posted_date']), '%Y-%m-%d'
-                            ).isoformat()
-                    except (ValueError, TypeError) as e:
-                        logger.warning(
-                            f"Could not parse date: {row.get('posted_date')}"
-                        )
-                        posted_date = None
+                # Clean job data
+                title = str(row.get('job_title', ''))
+                company = str(row.get('company_name', ''))
+                location = str(row.get('location', ''))
+                description = str(row.get('description', ''))
+                if not description.strip():
+                    description = f"Job posting for {title} at {company} in {location}"
 
-                # Handle salary information
-                salary = None
-                if pd.notna(row.get('salary')) and isinstance(row['salary'], str):
-                    try:
-                        salary = float(row['salary'].replace('$', '').replace(',', ''))
-                    except (ValueError, AttributeError):
-                        pass
-
-                # Enhanced remote job detection
-                is_remote = False
-
-                # Check explicit remote flag first
-                if row.get('is_remote') in (True, 'True', 'true', '1', 1):
-                    is_remote = True
-
-                # Check location-based indicators
-                location = str(row.get('location', '')).lower()
-                if any(
-                    term in location
-                    for term in [
-                        'remote',
-                        'work from home',
-                        'wfh',
-                        'virtual',
-                        'telecommute',
-                        'anywhere',
-                    ]
-                ):
-                    is_remote = True
-
-                # Check title and description if still not marked as remote
-                if not is_remote:
-                    title = str(row.get('title', '')).lower()
-                    description = str(row.get('description', '')).lower()
-
-                    remote_indicators = [
-                        'remote',
-                        'work from home',
-                        'work-from-home',
-                        'work at home',
-                        'wfh',
-                        'virtual',
-                        'telecommute',
-                        'telework',
-                        'telecommuting',
-                        'distributed team',
-                        'work anywhere',
-                        'location independent',
-                        'location-independent',
-                        'work from anywhere',
-                        'digital nomad',
-                    ]
-
-                    # Check if any remote indicators are in title or description
-                    title_remote = any(term in title for term in remote_indicators)
-                    desc_remote = any(term in description for term in remote_indicators)
-
-                    # If we're specifically searching for remote jobs, be more aggressive
-                    if is_remote_search and (title_remote or desc_remote):
-                        is_remote = True
-                    # If not specifically searching remote, require stronger signals
-                    elif title_remote and desc_remote:
-                        is_remote = True
-
-                # Extract company name with fallbacks
-                company_name = (
-                    str(
-                        row.get('company_name')
-                        or row.get('company', '')
-                        or row.get('company_name_original', '')
-                        or ''
-                    ).strip()
-                    or 'Company Not Specified'
+                # Create Job object
+                job = Job(
+                    id=job_id,
+                    title=title,
+                    company=company,
+                    location=location,
+                    description=description,
+                    url=row.get('job_url', ''),
+                    posted_date=row.get('posted_date', datetime.now()),
+                    source=JobSource(row.get('site', 'jobspy')),
+                    remote=row.get('is_remote', False),
+                    job_type=job_type,
+                    salary=row.get('salary', None),
+                    experience_level=row.get('experience_level', None),
+                    skills=row.get('skills', []),
+                    requirements=row.get('requirements', []),
+                    benefits=row.get('benefits', []),
+                    additional_info=row.get('additional_info', {}),
                 )
 
-                # Ensure we have a valid job ID
-                job_id = str(
-                    row.get('job_id')
-                    or f"job_{int(datetime.now().timestamp())}_{hash(str(row))}"
-                )
+                # Apply filters
+                if is_remote_search and not job.remote:
+                    continue
 
-                # Ensure we have a valid description
-                description = str(
-                    row.get('description') or 'No description available'
-                ).strip()
-                if not description:
-                    description = 'No description available'
+                if job_type and job_type != job.job_type:
+                    continue
 
-                # Ensure we have a valid title
-                title = str(row.get('title') or 'No Title').strip()
-                if not title:
-                    title = 'No Title'
+                if min_salary and job.salary and job.salary < min_salary:
+                    continue
 
-                # Helper function to safely get list fields
-                def get_safe_list(value, default=None):
-                    if value is None:
-                        return default or []
-                    if isinstance(value, (list, tuple, set)):
-                        return list(value)
-                    return [value] if value is not None else []
-
-                # Prepare metadata with safe list handling
-                metadata = {
-                    'job_id': job_id,
-                    'company_id': str(row.get('company_id', '')),
-                    'job_url': str(row.get('job_url', '')),
-                    'company_url': str(row.get('company_url', '')),
-                    'location': str(row.get('location', '')),
-                    'source': source,
-                    'company': company_name,
-                    'benefits': get_safe_list(row.get('benefits')),
-                    'emails': get_safe_list(row.get('emails')),
-                    'logo_photo_url': str(row.get('logo_photo_url', '')),
-                    'banner_photo_url': str(row.get('banner_photo_url', '')),
-                    'is_remote': bool(is_remote),
-                }
-
-                # Only include original_data if it's not too large
-                try:
-                    row_dict = row.to_dict()
-                    if len(str(row_dict)) < 10000:  # Only include if not too large
-                        metadata['original_data'] = row_dict
-                except Exception as e:
-                    logger.debug(f"Could not include original_data in metadata: {e}")
-
-                # Create job data dictionary with all required fields
-                job_data = {
-                    'id': job_id,
-                    'title': title,
-                    'company': company_name,
-                    'location': str(
-                        row.get('location', 'Remote' if is_remote else 'Not specified')
-                    ).strip(),
-                    'description': description,
-                    'url': str(row.get('job_url', '')),
-                    'job_type': job_type,
-                    'remote': bool(is_remote),
-                    'salary': str(salary) if salary is not None else None,
-                    'metadata': metadata,
-                    'source': JobSource.JOBSPY,
-                    'posted_date': posted_date or datetime.now(),
-                }
-
-                # Create job object
-                job = Job(**job_data)
                 jobs.append(job)
 
             except Exception as e:
-                job_id = row.get('job_id', 'unknown')
-                logger.error(f"Error processing job {job_id}: {e}", exc_info=True)
+                logger.error(f"Error processing job row: {str(e)}", exc_info=True)
+                continue
 
+        logger.info(f"Processed {len(jobs)} jobs after filtering")
         return jobs
 
     def _map_job_type(self, job_type_str: str) -> JobType:
-        """Map JobSpy job type to our JobType enum."""
-        if not job_type_str or not isinstance(job_type_str, str):
-            return JobType.FULL_TIME
+        """Map raw job type string to JobType enum.
 
-        # Convert to string and clean up
-        job_type_str = str(job_type_str).lower().strip()
+        Args:
+            job_type_str: Raw job type string from job listing
 
-        # Map common variations to standard types
-        type_mapping = {
-            'full_time': JobType.FULL_TIME,
+        Returns:
+            JobType enum value
+        """
+        # Convert to lowercase and remove spaces
+        job_type_str = job_type_str.lower().strip()
+
+        # Map common job type strings to JobType enum
+        job_type_map = {
             'full-time': JobType.FULL_TIME,
             'full time': JobType.FULL_TIME,
-            'ft': JobType.FULL_TIME,
-            'part_time': JobType.PART_TIME,
             'part-time': JobType.PART_TIME,
             'part time': JobType.PART_TIME,
-            'pt': JobType.PART_TIME,
             'contract': JobType.CONTRACT,
             'contractor': JobType.CONTRACT,
-            'contract to hire': JobType.CONTRACT,
-            'contract-to-hire': JobType.CONTRACT,
-            'c2h': JobType.CONTRACT,
-            'temporary': JobType.TEMPORARY,
-            'temp': JobType.TEMPORARY,
-            'temp to perm': JobType.TEMPORARY,
-            'temporary to permanent': JobType.TEMPORARY,
+            'consultant': JobType.CONTRACT,
             'internship': JobType.INTERNSHIP,
             'intern': JobType.INTERNSHIP,
-            'co-op': JobType.INTERNSHIP,
-            'coop': JobType.INTERNSHIP,
-            'volunteer': JobType.VOLUNTEER,
-            'voluntary': JobType.VOLUNTEER,
-            'volunteer position': JobType.VOLUNTEER,
-            'permanent': JobType.FULL_TIME,
-            'employee': JobType.FULL_TIME,
-            'staff': JobType.FULL_TIME,
+            'temporary': JobType.TEMPORARY,
+            'temp': JobType.TEMPORARY,
+            'remote': JobType.REMOTE,
+            'telecommute': JobType.REMOTE,
+            'work from home': JobType.REMOTE,
+            'hybrid': JobType.HYBRID,
+            'flexible': JobType.HYBRID,
         }
 
-        # Try exact match first
-        if job_type_str in type_mapping:
-            return type_mapping[job_type_str]
-
-        # Try partial matching
-        for key, job_type in type_mapping.items():
+        # Try to find a match in the mapping
+        for key in job_type_map:
             if key in job_type_str:
-                return job_type
+                return job_type_map[key]
 
-        # Default to FULL_TIME for professional jobs, OTHER otherwise
-        return (
-            JobType.FULL_TIME
-            if any(
-                term in job_type_str
-                for term in ['full', 'part', 'contract', 'temp', 'intern', 'volunt']
-            )
-            else JobType.OTHER
-        )
-
-    def _get_job_source(self, url: str) -> JobSource:
-        """Determine job source from URL."""
-        if 'linkedin.com' in url:
-            return JobSource.LINKEDIN
-        elif 'indeed.com' in url:
-            return JobSource.INDEED
-        elif 'glassdoor.com' in url:
-            return JobSource.GLASSDOOR
-        elif 'ziprecruiter.com' in url:
-            return JobSource.ZIPRECRUITER
-        else:
-            return JobSource.OTHER
-
-    async def close(self):
-        """Clean up resources."""
-        # JobSpy handles its own cleanup
-        self._browser_initialized = False
-        logger.info("JobSpy scraper closed")
+        # If no match found, default to FULL_TIME
+        logger.warning(f"Unknown job type: {job_type_str}, defaulting to FULL_TIME")
+        return JobType.FULL_TIME

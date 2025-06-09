@@ -202,12 +202,12 @@ async def async_enumerate(
         start: The starting index.
 
     Yields:
-        Tuples of (index, item) for each item in the async iterable.
+        Tuples of (index, item) pairs.
     """
-    i = start
+    index = start
     async for item in async_iterable:
-        yield (i, item)
-        i += 1
+        yield index, item
+        index += 1
 
 
 async def async_sleep(
@@ -215,7 +215,7 @@ async def async_sleep(
     result: Optional[T] = None,
     *,
     loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> Optional[T]:
+) -> T:
     """Asynchronous sleep with optional result.
 
     Args:
@@ -228,8 +228,7 @@ async def async_sleep(
     """
     if loop is None:
         loop = asyncio.get_running_loop()
-
-    await asyncio.sleep(delay, loop=loop)
+    await asyncio.sleep(delay)
     return result
 
 
@@ -239,10 +238,11 @@ class AsyncLock:
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
 
-    async def __aenter__(self) -> None:
+    async def __aenter__(self):
         await self._lock.acquire()
+        return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: Any):
         self._lock.release()
 
 
@@ -252,15 +252,15 @@ class AsyncEvent:
     def __init__(self) -> None:
         self._event = asyncio.Event()
 
-    def set(self) -> None:
+    async def set(self) -> None:
         """Set the event, waking up all waiters."""
         self._event.set()
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear the event."""
         self._event.clear()
 
-    def is_set(self) -> bool:
+    async def is_set(self) -> bool:
         """Return True if the event is set."""
         return self._event.is_set()
 
@@ -275,13 +275,9 @@ async def cancel_task(task: asyncio.Task[Any]) -> None:
     Args:
         task: The task to cancel.
     """
-    if task.done():
-        return
-
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
-    except Exception as e:
-        logger.exception(f"Error in cancelled task: {e}")
+    if not task.done():
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass

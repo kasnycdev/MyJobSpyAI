@@ -3,7 +3,10 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from . import BaseJobScraper, JobListing
+from .base import BaseJobScraper
+from ..models.job_listing import JobListing
+
+logger = logging.getLogger(__name__)
 
 
 class LinkedInScraper(BaseJobScraper):
@@ -17,28 +20,26 @@ class LinkedInScraper(BaseJobScraper):
         """
         super().__init__("linkedin", config)
         self.base_url = "https://www.linkedin.com/jobs"
-        self.api_url = (
-            "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
-        )
-        self.session = None
+        self.api_url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 
     async def _init_session(self):
         """Initialize the HTTP session if not already done."""
-        if self.session is None:
-            # Lazy import to avoid circular imports
-            from myjobspyai.utils.http_client import HTTPClient
+        if self._initialized:
+            return
 
-            self.session = HTTPClient(
-                base_url=self.base_url,
-                headers={
-                    "User-Agent": (
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 "
-                        "Safari/537.36"
-                    )
-                },
-                follow_redirects=True,
-            )
+        from myjobspyai.utils.http_factory import get_http_client
+
+        self._session = await get_http_client(
+            base_url=self.base_url,
+            timeout=self.config.get("timeout", 30),
+            max_retries=self.config.get("max_retries", 3),
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json",
+                **self.config.get("headers", {})
+            }
+        )
+        self._initialized = True
 
     async def search_jobs(
         self, query: str, location: str, max_results: int = 10, **kwargs: Any
@@ -81,7 +82,7 @@ class LinkedInScraper(BaseJobScraper):
                 )
 
                 if response.status_code != 200:
-                    self.logger.error(f"Failed to fetch jobs: {response.status_code}")
+                    logger.error(f"Failed to fetch jobs: {response.status_code}")
                     break
 
                 # Parse response
@@ -119,7 +120,7 @@ class LinkedInScraper(BaseJobScraper):
                 start += results_per_page
 
         except Exception as e:
-            self.logger.error(f"Error searching for jobs: {str(e)}", exc_info=True)
+            logger.error(f"Error searching for jobs: {str(e)}", exc_info=True)
 
         return job_listings
 
@@ -136,7 +137,7 @@ class LinkedInScraper(BaseJobScraper):
 
         # TODO: Implement actual job details fetching
         # This is a placeholder implementation
-        self.logger.warning("LinkedIn get_job_details not implemented, returning None")
+        logger.warning("LinkedIn get_job_details not implemented, returning None")
         return None
 
     async def close(self):

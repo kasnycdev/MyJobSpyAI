@@ -2,10 +2,9 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../../AppData/Local/Ollama"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"python.terminal.activateEnvironment": false
+	}
 }

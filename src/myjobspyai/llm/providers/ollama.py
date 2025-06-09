@@ -60,7 +60,9 @@ class OllamaProvider(BaseLLMProvider):
         self.config = OllamaConfig(**(config or {}))
 
         # Initialize HTTP client
-        self._http_client = HTTPClient(
+        from myjobspyai.utils.http_factory import get_http_client
+
+        self._http_client = await get_http_client(
             base_url=self.config.base_url,
             timeout=self.config.timeout,
             max_retries=self.config.max_retries,

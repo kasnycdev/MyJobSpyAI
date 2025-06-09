@@ -14,12 +14,12 @@ from typing import Any, Dict, Optional
 
 # Import provider factory and base provider
 from myjobspyai.analysis.providers.factory import ProviderFactory
+from myjobspyai.analysis.providers.langchain_provider import LangChainProvider
 
 # Import config
 from myjobspyai.config import config as settings
 
 # Import LLM providers
-
 
 # Import Jinja2 components
 try:

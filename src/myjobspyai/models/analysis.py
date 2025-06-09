@@ -1,14 +1,19 @@
 """Enhanced job analysis models for MyJobSpy AI."""
+from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class MatchStrength(str, Enum):
     """Enumeration of match strength levels."""
+    NONE = "none"
+    WEAK = "weak"
+    MODERATE = "moderate"
+    STRONG = "strong"
+    EXCELLENT = "excellent"
 
 
 class SectionScore(BaseModel):
@@ -21,13 +26,16 @@ class SectionScore(BaseModel):
     strength: MatchStrength = Field(
         MatchStrength.NONE, description="Qualitative assessment of the match"
     )
-    matched: List[str] = Field(
+    metadata: dict[str, str] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
+    matched: list[str] = Field(
         default_factory=list, description="List of matched items in this section"
     )
-    missing: List[str] = Field(
+    missing: list[str] = Field(
         default_factory=list, description="List of missing items in this section"
     )
-    suggestions: List[str] = Field(
+    suggestions: list[str] = Field(
         default_factory=list, description="Suggested improvements for this section"
     )
 
@@ -59,17 +67,27 @@ class SectionScores(BaseModel):
     @property
     def overall_score(self) -> float:
         """Calculate the weighted overall score."""
-        total_weight = sum(getattr(self, field).weight for field in self.model_fields)
+        fields = [
+            f for f in dir(self)
+            if not f.startswith('_') and not callable(getattr(self, f))
+        ]
+        total_weight = sum(
+            getattr(self, field).weight
+            for field in fields
+            if hasattr(getattr(self, field), 'weight')
+        )
 
         if total_weight == 0:
             return 0.0
 
         weighted_sum = sum(
             getattr(self, field).score * getattr(self, field).weight
-            for field in self.model_fields
+            for field in fields
+            if hasattr(getattr(self, field, None), 'score') and \
+               hasattr(getattr(self, field, None), 'weight')
         )
 
-        return min(100.0, weighted_sum / total_weight)
+        return min(100.0, weighted_sum / total_weight if total_weight > 0 else 0.0)
 
 
 class ImprovementRecommendation(BaseModel):
@@ -81,10 +99,10 @@ class ImprovementRecommendation(BaseModel):
     priority: int = Field(
         2, ge=1, le=3, description="Priority level (1=high, 2=medium, 3=low)"
     )
-    action_items: List[str] = Field(
+    action_items: list[str] = Field(
         default_factory=list, description="Specific actions to take"
     )
-    resources: List[Dict[str, str]] = Field(
+    resources: list[dict[str, str]] = Field(
         default_factory=list, description="List of resources with name and URL"
     )
 
@@ -109,15 +127,15 @@ class TrainingResource(BaseModel):
     type: str = Field(
         ..., description="Type of resource (course, book, tutorial, etc.)"
     )
-    duration: Optional[str] = Field(None, description="Estimated time to complete")
-    level: Optional[str] = Field(None, description="Difficulty level")
+    duration: str | None = Field(None, description="Estimated time to complete")
+    level: str | None = Field(None, description="Difficulty level")
     cost: float = Field(0.0, description="Cost in USD")
-    skills: List[str] = Field(
+    skills: list[str] = Field(
         default_factory=list, description="List of skills this resource helps with"
     )
-    rating: Optional[float] = Field(
+    rating: float | None = Field(
         None, ge=0.0, le=5.0, description="Average rating (0-5)"
     )
-    last_updated: Optional[datetime] = Field(
+    last_updated: datetime | None = Field(
         None, description="When the resource was last updated"
     )

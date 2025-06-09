@@ -128,7 +128,6 @@ select = [
 ]
 ignore = [
     "E501",  # Line too long - handled by black
-    "W503",  # Line break occurred before a binary operator
     "E203"  # Whitespace before ':' - conflicts with black
 ]
 

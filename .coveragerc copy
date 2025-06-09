@@ -1,0 +1,43 @@
+[run]
+source = myjobspyai
+omit =
+    */tests/*
+    */__pycache__/*
+    */version.py
+    *__init__.py
+    */cli/*
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain if tests don't hit defensive assertion code:
+    raise NotImplementedError
+    raise ImportError
+    if __name__ == .__main__.:
+    pass
+    raise AssertionError
+    raise NotImplemented
+    raise ValueError
+
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+
+    # Don't complain about abstract methods
+    @abstractmethod
+    @abc.abstractmethod
+
+    # Don't complain about debug code
+    import pdb; pdb.set_trace()
+    import ipdb; ipdb.set_trace()
+    import pudb; pu.db
+
+[html]
+directory = htmlcov
+title = MyJobSpyAI Test Coverage
+
+[xml]
+output = coverage.xml

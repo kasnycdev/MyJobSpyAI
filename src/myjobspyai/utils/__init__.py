@@ -1,5 +1,6 @@
 """Utility functions and classes for MyJobSpy AI."""
 
+from .display import display_jobs_table, display_resume_analysis  # noqa: F401
 from .async_utils import (  # noqa: F401
     AsyncEvent,
     AsyncLock,
@@ -13,13 +14,7 @@ from .async_utils import (  # noqa: F401
     run_async,
     sync_to_async,
 )
-from .env import (  # noqa: F401
-    EnvConfig,
-    get_env_config,
-    get_env_var,
-    load_dotenv,
-    set_env_var,
-)
+from .env import load_env  # noqa: F401
 from .files import (  # noqa: F401
     clear_directory,
     copy_file,
@@ -27,19 +22,23 @@ from .files import (  # noqa: F401
     ensure_dir,
     file_hash,
     find_files,
+    get_config_dir,
+    get_data_dir,
+    get_log_dir,
     move_file,
     read_json,
     read_yaml,
     write_json,
     write_yaml,
 )
+from .http_client import HTTPClient  # noqa: F401
 
 __all__ = [
-    # Logging
-    "setup_logging",
-    "validate_config",
     # Files
     "ensure_dir",
+    "get_config_dir",
+    "get_data_dir",
+    "get_log_dir",
     "read_json",
     "write_json",
     "read_yaml",
@@ -50,12 +49,12 @@ __all__ = [
     "move_file",
     "delete_file",
     "clear_directory",
+    # Display
+    "display",
+    "display_jobs_table",
+    "display_resume_analysis",
     # Environment
-    "EnvConfig",
-    "get_env_config",
-    "get_env_var",
-    "load_dotenv",
-    "set_env_var",
+    "load_env",
     # Async
     "AsyncEvent",
     "AsyncLock",
@@ -71,5 +70,5 @@ __all__ = [
     # HTTP
     "HTTPClient",
     "HTTPClientError",
-    "HTTPRequestError",
+    "HTTPRequestError"
 ]
