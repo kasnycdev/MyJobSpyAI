@@ -5,7 +5,7 @@ import logging
 from enum import Enum
 from typing import Any, Dict, Optional, Type, TypeVar, Union, cast
 
-from myjobspyai.config import config
+from myjobspyai import config
 
 from .base import BaseProvider
 

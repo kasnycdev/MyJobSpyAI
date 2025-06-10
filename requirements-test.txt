@@ -31,3 +31,13 @@ typing-extensions>=4.0.0
 sphinx>=4.0.0
 sphinx-rtd-theme>=1.0.0
 sphinx-autodoc-typehints>=1.15.0
+
+# Add these to requirements-test.txt
+pytest-cov>=4.0.0
+codecov>=2.1.0
+pytest-xdist[psutil]>=3.0.0
+pytest-randomly>=3.0.0
+pytest-env>=1.0.0
+pytest-sugar>=0.9.0
+pytest-html>=4.0.0
+pytest-benchmark>=4.0.0

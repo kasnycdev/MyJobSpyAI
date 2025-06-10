@@ -2,6 +2,10 @@
 langchain-core>=0.1.0
 langchain-community>=0.0.10
 
+# Vector Store
+pymilvus>=2.3.0
+langchain-community[all]>=0.0.10  # Includes Milvus integration
+
 # Provider integrations
 langchain-openai>=0.0.5
 langchain-anthropic>=0.0.4

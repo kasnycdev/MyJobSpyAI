@@ -131,6 +131,7 @@ __pycache__/
 *.so
 
 # Project-specific generated directories
+.cd4py/
 logs/
 cache/
 output/

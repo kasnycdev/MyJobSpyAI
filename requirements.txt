@@ -13,6 +13,9 @@ langchain>=0.3.25        # LangChain core
 langchain-community>=0.0.10  # LangChain community integrations
 langchain-openai>=0.0.5     # OpenAI integration for LangChain
 langchain-anthropic>=0.0.4  # Anthropic integration for LangChain
+openai>=1.0.0
+anthropic>=0.3.0
+google-generativeai>=0.3.0.4  # Google Generative AI integration
 langchain-google-genai>=0.0.5  # Google AI integration for LangChain
 langchain-community[all]>=0.0.10  # All community integrations
 

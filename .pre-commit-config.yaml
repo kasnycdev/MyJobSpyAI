@@ -1,131 +1,22 @@
-# Global settings
-exclude: '^$|settings|scripts|vendor|\.(min\.js|svg)$|static/.*\.js$'
-fail_fast: false
-
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
+  rev: v4.5.0
   hooks:
-    - id: check-added-large-files
-      exclude: ''  # Respect .gitignore
-    - id: check-ast
-      exclude: ''  # Respect .gitignore
-    - id: check-case-conflict
-      exclude: ''  # Respect .gitignore
-    - id: check-executables-have-shebangs
-      exclude: ''  # Respect .gitignore
-    - id: check-json
-      exclude: ''  # Respect .gitignore
-    - id: check-shebang-scripts-are-executable
-      exclude: ''  # Respect .gitignore
-    - id: check-toml
-      exclude: ''  # Respect .gitignore
-    - id: check-vcs-permalinks
-      exclude: ''  # Respect .gitignore
-    - id: debug-statements
-      exclude: ''  # Respect .gitignore
-    - id: fix-byte-order-marker
-      exclude: ''  # Respect .gitignore
-    - id: end-of-file-fixer
-      exclude: ''  # Respect .gitignore
-    - id: fix-encoding-pragma
-      exclude: |
-        (?x)^(
-            readthedocs/rtd_tests/files/conf.py|
-        )$
-      args: ['--remove']
-    - id: check-merge-conflict
-      exclude: ''  # Respect .gitignore
-    - id: check-symlinks
-      exclude: ''  # Respect .gitignore
     - id: trailing-whitespace
-      exclude: |
-        (?x)^(
-            docs/.+/locale/.*\.po|
-            .+\.svg|
-            .+\.js|
-            .+\.css|
-            .*/migrations/.*|
-        )$
-    - id: mixed-line-ending
-      args: ['--fix=lf']
-      exclude: ''  # Respect .gitignore
+    - id: end-of-file-fixer
+    - id: check-yaml
+    - id: check-json
+    - id: check-toml
 
-- repo: https://github.com/adamchainz/django-upgrade
-  rev: "1.24.0"
+- repo: https://github.com/psf/black
+  rev: 24.4.2
   hooks:
-    - id: django-upgrade
-      args: [--target-version, "5.2"]
-      exclude: ''  # Respect .gitignore
+    - id: black
+      language_version: python3.11
 
-- repo: https://github.com/asottile/blacken-docs
-  rev: 1.19.1
+- repo: https://github.com/pycqa/isort
+  rev: 5.13.2
   hooks:
-    - id: blacken-docs
-      additional_dependencies: [black==23.7.0]
-      exclude: ''  # Respect .gitignore
-
-- repo: https://github.com/aspiredu/django-safemigrate
-  rev: "5.3"
-  hooks:
-    - id: check
-      exclude: ''  # Respect .gitignore
-
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.11.5
-  hooks:
-    # Run the linter.
-    - id: ruff
-      args: [--fix]
-      exclude: ''  # Respect .gitignore
-    # Run the formatter.
-    - id: ruff-format
-      exclude: ''  # Respect .gitignore
-
-- repo: https://github.com/pre-commit/pygrep-hooks
-  rev: v1.10.0
-  hooks:
-    - id: python-check-blanket-noqa
-      exclude: ''  # Respect .gitignore
-    - id: python-check-mock-methods
-      exclude: ''  # Respect .gitignore
-    - id: python-no-log-warn
-      exclude: ''  # Respect .gitignore
-    - id: python-use-type-annotations
-      exclude: ''  # Respect .gitignore
-
-- repo: https://github.com/pre-commit/mirrors-prettier
-  rev: v3.0.0
-  hooks:
-    - id: prettier
-      types: [yaml, json, markdown, html, css, javascript]
-
-- repo: local
-  hooks:
-    - id: mkdocs-validate
-      name: MkDocs Build Validation
-      description: Validates MkDocs documentation build
-      entry: python -m mkdocs build --clean --site-dir /tmp/mkdocs-build --config-file docs/mkdocs.yml --strict
-      language: system
-      pass_filenames: false
-      always_run: true
-      exclude: ''  # Respect .gitignore
-      files: ^docs/
-
-- repo: local
-  hooks:
-    - id: mkdocs-lint
-      name: MkDocs Build
-      entry: mkdocs
-      language: python
-      types: [markdown, yaml]
-      files: ^docs/
-      pass_filenames: false
-      args: [build, --strict]
-      additional_dependencies: [mkdocs>=1.5.0, mkdocs-material>=9.0.0, pymdown-extensions>=9.0]
-
-ci:
-  autofix_commit_msg: "style: auto-fix by pre-commit hooks"
-  autoupdate_commit_msg: "chore: update pre-commit hooks"
-  autofix_prs: true
-  autoupdate_schedule: monthly
+    - id: isort
+      name: isort (python)
+      args: [--profile=black]
