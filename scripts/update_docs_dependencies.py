@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+
 def update_dependencies():
     # Create/update requirements-docs.txt
     requirements = [
@@ -19,7 +20,7 @@ def update_dependencies():
         "mkdocs-awesome-pages-plugin>=2.7.0",
         "mkdocs-autolinks-plugin>=0.0.1",
         "mkdocs-jupyter>=0.1.0",
-        "mkdocs-autolinks-plugin>=0.0.1"
+        "mkdocs-autolinks-plugin>=0.0.1",
     ]
 
     with open('requirements-docs.txt', 'w') as f:
@@ -28,9 +29,11 @@ def update_dependencies():
     # Install dependencies
     subprocess.run(['pip', 'install', '-r', 'requirements-docs.txt'])
 
+
 def main():
     update_dependencies()
     print("Documentation dependencies updated successfully!")
+
 
 if __name__ == "__main__":
     main()

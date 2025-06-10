@@ -1,5 +1,6 @@
 with open('docs/README.rst', 'w', newline='\n', encoding='utf-8') as f:
-    f.write('''.. _readme:
+    f.write(
+        '''.. _readme:
 
 Documentation
 ============
@@ -76,4 +77,5 @@ Troubleshooting
 - Ensure that all referenced files and modules exist
 
 For more information, see the `Sphinx documentation <https://www.sphinx-doc.org/>`_.
-''')
+'''
+    )

@@ -1,16 +1,20 @@
 """API configuration for MyJobSpyAI."""
-from fastapi import FastAPI, Request, HTTPException
+
+import json
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from typing import List, Optional, Dict, Any
-import logging
-import json
-from datetime import datetime
+
 from . import settings
 
 logger = logging.getLogger('api')
+
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
@@ -20,7 +24,7 @@ def create_app() -> FastAPI:
         version=settings.settings.get('version', '1.0.0'),
         debug=settings.settings.debug,
         docs_url="/docs" if settings.settings.debug else None,
-        redoc_url="/redoc" if settings.settings.debug else None
+        redoc_url="/redoc" if settings.settings.debug else None,
     )
 
     # Configure CORS
@@ -55,10 +59,14 @@ def create_app() -> FastAPI:
                     "headers": request_headers,
                     "query_params": dict(request.query_params),
                     "path_params": request.path_params,
-                    "client": f"{request.client.host}:{request.client.port}" if request.client else None,
-                    "body": request_body.decode() if request_body else None
+                    "client": (
+                        f"{request.client.host}:{request.client.port}"
+                        if request.client
+                        else None
+                    ),
+                    "body": request_body.decode() if request_body else None,
                 }
-            }
+            },
         )
 
         # Process request
@@ -72,8 +80,8 @@ def create_app() -> FastAPI:
                 extra={
                     "status_code": response.status_code,
                     "process_time_ms": process_time,
-                    "response_headers": dict(response.headers)
-                }
+                    "response_headers": dict(response.headers),
+                },
             )
 
             return response
@@ -90,8 +98,8 @@ def create_app() -> FastAPI:
             extra={
                 "status_code": exc.status_code,
                 "detail": str(exc.detail),
-                "path": request.url.path
-            }
+                "path": request.url.path,
+            },
         )
         return JSONResponse(
             status_code=exc.status_code,
@@ -99,14 +107,12 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
         logger.warning(
             "Validation error",
-            extra={
-                "errors": exc.errors(),
-                "body": exc.body,
-                "path": request.url.path
-            }
+            extra={"errors": exc.errors(), "body": exc.body, "path": request.url.path},
         )
         return JSONResponse(
             status_code=422,
@@ -116,9 +122,7 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         logger.error(
-            "Unhandled exception",
-            exc_info=True,
-            extra={"path": request.url.path}
+            "Unhandled exception", exc_info=True, extra={"path": request.url.path}
         )
         return JSONResponse(
             status_code=500,
@@ -132,7 +136,7 @@ def create_app() -> FastAPI:
             "status": "ok",
             "environment": settings.settings.environment,
             "debug": settings.settings.debug,
-            "version": "1.0.0"
+            "version": "1.0.0",
         }
 
     return app

@@ -3,13 +3,13 @@ Factory for creating HTTP clients with consistent configuration.
 """
 
 import asyncio
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from aiohttp import ClientSession
 from aiohttp.client import ClientTimeout
 
-from .http_client import HTTPClient
 from ..config import config as app_config
+from .http_client import HTTPClient
 
 
 class HTTPClientFactory:
@@ -68,8 +68,10 @@ class HTTPClientFactory:
                 await self._session.close()
                 self._session = None
 
+
 # Singleton instance
 http_client_factory = HTTPClientFactory()
+
 
 async def get_http_client(
     base_url: Optional[str] = None,

@@ -1,15 +1,18 @@
 """Utility functions for configuration management."""
-import os
+
+import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Type, TypeVar, Union
+
 import yaml
-import json
 from pydantic import BaseModel
 
 logger = logging.getLogger('config')
 
 T = TypeVar('T', bound=BaseModel)
+
 
 def load_yaml_config(file_path: Union[str, Path], model: Type[T]) -> T:
     """Load configuration from a YAML file into a Pydantic model.
@@ -39,6 +42,7 @@ def load_yaml_config(file_path: Union[str, Path], model: Type[T]) -> T:
 
     return model.model_validate(config_data)
 
+
 def save_yaml_config(file_path: Union[str, Path], config: BaseModel) -> None:
     """Save a Pydantic model to a YAML file.
 
@@ -54,8 +58,9 @@ def save_yaml_config(file_path: Union[str, Path], config: BaseModel) -> None:
             config.model_dump(exclude_none=True, exclude_unset=True),
             f,
             default_flow_style=False,
-            sort_keys=False
+            sort_keys=False,
         )
+
 
 def load_env_file(env_file: Union[str, Path]) -> Dict[str, str]:
     """Load environment variables from a .env file.
@@ -84,13 +89,15 @@ def load_env_file(env_file: Union[str, Path]) -> Dict[str, str]:
             value = value.strip()
 
             # Remove quotes if present
-            if (value.startswith('"') and value.endswith('"')) or \
-               (value.startswith("'") and value.endswith("'")):
+            if (value.startswith('"') and value.endswith('"')) or (
+                value.startswith("'") and value.endswith("'")
+            ):
                 value = value[1:-1]
 
             env_vars[key] = value
 
     return env_vars
+
 
 def update_environment(env_vars: Dict[str, str]) -> None:
     """Update os.environ with the given environment variables.
@@ -100,6 +107,7 @@ def update_environment(env_vars: Dict[str, str]) -> None:
     """
     for key, value in env_vars.items():
         os.environ[key] = value
+
 
 def get_environment_config(prefix: str = '') -> Dict[str, str]:
     """Get environment variables with the given prefix.
@@ -117,10 +125,11 @@ def get_environment_config(prefix: str = '') -> Dict[str, str]:
     config = {}
     for key, value in os.environ.items():
         if key.startswith(prefix):
-            config_key = key[len(prefix):].lower()
+            config_key = key[len(prefix) :].lower()
             config[config_key] = value
 
     return config
+
 
 def deep_update(target: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any]:
     """Recursively update a dictionary with another dictionary.
@@ -139,11 +148,12 @@ def deep_update(target: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any
             target[key] = value
     return target
 
+
 def load_settings(
+    model: Type[T],
     config_file: Optional[Union[str, Path]] = None,
     env_file: Optional[Union[str, Path]] = None,
-    model: Type[T],
-    env_prefix: str = ''
+    env_prefix: str = '',
 ) -> T:
     """Load settings from multiple sources with precedence:
     1. Environment variables (with prefix)
@@ -195,6 +205,8 @@ def load_settings(
             current[keys[-1]] = value
 
         # Update settings with environment variables
-        settings = model.model_validate(deep_update(settings.model_dump(), nested_config))
+        settings = model.model_validate(
+            deep_update(settings.model_dump(), nested_config)
+        )
 
     return settings

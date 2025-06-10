@@ -1,11 +1,13 @@
 """Cache configuration for MyJobSpyAI."""
-import logging
-from typing import Any, Optional, Callable, TypeVar, Type
-from functools import wraps
-import json
-import pickle
+
 import hashlib
+import json
+import logging
+import pickle
 from datetime import datetime, timedelta
+from functools import wraps
+from typing import Any, Callable, Optional, Type, TypeVar
+
 import redis
 from redis.exceptions import RedisError
 
@@ -13,6 +15,7 @@ from redis.exceptions import RedisError
 T = TypeVar('T')
 
 logger = logging.getLogger('cache')
+
 
 class CacheConfig:
     """Configuration for caching."""
@@ -24,7 +27,7 @@ class CacheConfig:
         ttl: int = 3600,
         redis_url: str = 'redis://localhost:6379/0',
         namespace: str = 'myjobspyai',
-        **kwargs
+        **kwargs,
     ):
         """Initialize cache configuration."""
         self.enabled = enabled
@@ -39,7 +42,7 @@ class CacheConfig:
                 self.redis_client = redis.Redis.from_url(
                     self.redis_url,
                     decode_responses=False,  # We'll handle encoding/decoding
-                    **kwargs
+                    **kwargs,
                 )
                 # Test connection
                 self.redis_client.ping()
@@ -61,9 +64,7 @@ class CacheConfig:
             ttl = ttl if ttl is not None else self.ttl
             serialized = self._serialize(value)
             return self.redis_client.setex(
-                name=self.get_key(key),
-                time=ttl,
-                value=serialized
+                name=self.get_key(key), time=ttl, value=serialized
             )
         except Exception as e:
             logger.error(f"Error setting cache key {key}: {e}")
@@ -113,7 +114,7 @@ class CacheConfig:
         key: str,
         default: Any = None,
         ttl: Optional[int] = None,
-        callback: Optional[Callable[[], T]] = None
+        callback: Optional[Callable[[], T]] = None,
     ) -> T:
         """Get a value from the cache, or set it if it doesn't exist."""
         if not self.enabled or not self.redis_client:
@@ -139,9 +140,10 @@ class CacheConfig:
         self,
         key: Optional[str] = None,
         ttl: Optional[int] = None,
-        key_func: Optional[Callable[..., str]] = None
+        key_func: Optional[Callable[..., str]] = None,
     ) -> Callable:
         """Decorator to cache function results."""
+
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
             @wraps(func)
             def wrapper(*args, **kwargs) -> T:
@@ -177,15 +179,14 @@ class CacheConfig:
                 return result
 
             return wrapper
+
         return decorator
 
     def _serialize(self, value: Any) -> bytes:
         """Serialize a value for storage in the cache."""
-        return pickle.dumps({
-            'value': value,
-            'version': 1,
-            'timestamp': datetime.utcnow().isoformat()
-        })
+        return pickle.dumps(
+            {'value': value, 'version': 1, 'timestamp': datetime.utcnow().isoformat()}
+        )
 
     def _deserialize(self, data: bytes) -> Any:
         """Deserialize a value from the cache."""
@@ -194,16 +195,25 @@ class CacheConfig:
             if isinstance(result, dict) and 'value' in result:
                 return result['value']
             return result
-        except (pickle.PickleError, AttributeError, EOFError, ImportError, IndexError) as e:
+        except (
+            pickle.PickleError,
+            AttributeError,
+            EOFError,
+            ImportError,
+            IndexError,
+        ) as e:
             logger.error(f"Error deserializing cached data: {e}")
             return None
+
 
 # Global cache instance
 cache = CacheConfig()
 
+
 def get_cache() -> CacheConfig:
     """Get the global cache instance."""
     return cache
+
 
 def init_cache(config: Optional[dict] = None) -> CacheConfig:
     """Initialize the global cache with the given configuration."""

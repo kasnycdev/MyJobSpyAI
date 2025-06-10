@@ -19,7 +19,9 @@ def generate_api_docs() -> None:
     api_dir.mkdir(exist_ok=True)
 
     # Run sphinx-apidoc
-    cmd: str = f"sphinx-apidoc -f -o {api_dir} {src_dir} --separate --module-first --tocfile index"
+    cmd: str = (
+        f"sphinx-apidoc -f -o {api_dir} {src_dir} --separate --module-first --tocfile index"
+    )
 
     print(f"Running: {cmd}")
     os.system(cmd)

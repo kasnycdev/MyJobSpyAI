@@ -1,6 +1,5 @@
 """Utility functions and classes for MyJobSpy AI."""
 
-from .display import display_jobs_table, display_resume_analysis  # noqa: F401
 from .async_utils import (  # noqa: F401
     AsyncEvent,
     AsyncLock,
@@ -14,6 +13,7 @@ from .async_utils import (  # noqa: F401
     run_async,
     sync_to_async,
 )
+from .display import display_jobs_table, display_resume_analysis  # noqa: F401
 from .env import load_env  # noqa: F401
 from .files import (  # noqa: F401
     clear_directory,
@@ -70,5 +70,5 @@ __all__ = [
     # HTTP
     "HTTPClient",
     "HTTPClientError",
-    "HTTPRequestError"
+    "HTTPRequestError",
 ]

@@ -3,8 +3,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from .base import BaseJobScraper
 from ..models.job_listing import JobListing
+from .base import BaseJobScraper
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,9 @@ class LinkedInScraper(BaseJobScraper):
         """
         super().__init__("linkedin", config)
         self.base_url = "https://www.linkedin.com/jobs"
-        self.api_url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
+        self.api_url = (
+            "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
+        )
 
     async def _init_session(self):
         """Initialize the HTTP session if not already done."""
@@ -36,8 +38,8 @@ class LinkedInScraper(BaseJobScraper):
             headers={
                 "User-Agent": "Mozilla/5.0",
                 "Accept": "application/json",
-                **self.config.get("headers", {})
-            }
+                **self.config.get("headers", {}),
+            },
         )
         self._initialized = True
 

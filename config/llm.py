@@ -1,12 +1,16 @@
 """LLM configuration and client for MyJobSpyAI."""
-from typing import Dict, Any, Optional, Union
+
 import logging
 from functools import lru_cache
+from typing import Any, Dict, Optional, Union
+
 import openai
 from openai import OpenAI
+
 from . import settings
 
 logger = logging.getLogger('llm')
+
 
 class LLMClient:
     """Client for interacting with LLM providers."""
@@ -22,7 +26,9 @@ class LLMClient:
         try:
             if self.config['provider'] == 'openai':
                 self.client = OpenAI(api_key=self.config['api_key'])
-                logger.info(f"Initialized OpenAI client with model: {self.config['model']}")
+                logger.info(
+                    f"Initialized OpenAI client with model: {self.config['model']}"
+                )
             else:
                 raise ValueError(f"Unsupported LLM provider: {self.config['provider']}")
         except Exception as e:
@@ -37,9 +43,17 @@ class LLMClient:
                 response = self.client.chat.completions.create(
                     model=self.config['model'],
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=kwargs.get('temperature', self.config.get('temperature', 0.7)),
-                    max_tokens=kwargs.get('max_tokens', self.config.get('max_tokens', 2000)),
-                    **{k: v for k, v in kwargs.items() if k not in ['temperature', 'max_tokens']}
+                    temperature=kwargs.get(
+                        'temperature', self.config.get('temperature', 0.7)
+                    ),
+                    max_tokens=kwargs.get(
+                        'max_tokens', self.config.get('max_tokens', 2000)
+                    ),
+                    **{
+                        k: v
+                        for k, v in kwargs.items()
+                        if k not in ['temperature', 'max_tokens']
+                    },
                 )
                 return response.choices[0].message.content.strip()
             else:
@@ -55,9 +69,17 @@ class LLMClient:
                 response = await self.client.chat.completions.create(
                     model=self.config['model'],
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=kwargs.get('temperature', self.config.get('temperature', 0.7)),
-                    max_tokens=kwargs.get('max_tokens', self.config.get('max_tokens', 2000)),
-                    **{k: v for k, v in kwargs.items() if k not in ['temperature', 'max_tokens']}
+                    temperature=kwargs.get(
+                        'temperature', self.config.get('temperature', 0.7)
+                    ),
+                    max_tokens=kwargs.get(
+                        'max_tokens', self.config.get('max_tokens', 2000)
+                    ),
+                    **{
+                        k: v
+                        for k, v in kwargs.items()
+                        if k not in ['temperature', 'max_tokens']
+                    },
                 )
                 return response.choices[0].message.content.strip()
             else:
@@ -66,8 +88,10 @@ class LLMClient:
             logger.error(f"Error getting async completion: {str(e)}")
             raise
 
+
 # Singleton instance
 _llm_client = None
+
 
 def get_llm_client() -> LLMClient:
     """Get or create the LLM client singleton."""

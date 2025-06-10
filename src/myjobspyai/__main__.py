@@ -3,6 +3,7 @@
 This module allows the package to be run as a script using `python -m myjobspyai`.
 """
 
+
 def main() -> None:
     """Run the main application.
 
@@ -11,6 +12,7 @@ def main() -> None:
     """
     # Import here to avoid circular imports
     from myjobspyai.main import main as app_main
+
     app_main()
 
 

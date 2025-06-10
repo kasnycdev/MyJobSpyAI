@@ -190,8 +190,6 @@ nav:
     - Code Style: development/code_style.md
     - Testing: development/testing.md
     - Deployment: development/deployment.md
-extra:
-  social:
     - icon: fontawesome/brands/github
       link: https://github.com/kasnycdev/MyJobSpyAI
 

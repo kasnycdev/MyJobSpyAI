@@ -1,5 +1,7 @@
-import yaml
 from pathlib import Path
+
+import yaml
+
 
 def update_mkdocs_config():
     # Read existing config
@@ -31,21 +33,15 @@ def update_mkdocs_config():
             'content.code.line-numbers',
             'content.code.wrap',
             'content.code.highlight',
-            'content.code.scroll'
+            'content.code.scroll',
         ],
         'palette': {
             'primary': 'blue',
             'accent': 'blue',
             'scheme': 'auto',
-            'toggle': {
-                'icon': 'material/toggle-switch',
-                'name': 'Switch color scheme'
-            }
+            'toggle': {'icon': 'material/toggle-switch', 'name': 'Switch color scheme'},
         },
-        'font': {
-            'text': 'Roboto',
-            'code': 'Roboto Mono'
-        },
+        'font': {'text': 'Roboto', 'code': 'Roboto Mono'},
         'logo': 'assets/logo.png',
         'favicon': 'assets/favicon.ico',
         'icon': {
@@ -57,8 +53,8 @@ def update_mkdocs_config():
             'search': 'material/magnify',
             'prev': 'material/chevron-left',
             'next': 'material/chevron-right',
-            'tools': 'material/tools'
-        }
+            'tools': 'material/tools',
+        },
     }
 
     # Update markdown extensions
@@ -84,7 +80,7 @@ def update_mkdocs_config():
         'pymdownx.smartsymbols',
         'pymdownx.extrarawhtml',
         'pymdownx.tasklist',
-        'pymdownx.superfences'
+        'pymdownx.superfences',
     ]
 
     # Add plugins
@@ -98,7 +94,7 @@ def update_mkdocs_config():
         'autolinks',
         'literate-nav',
         'gen-files',
-        'section-index'
+        'section-index',
     ]
 
     # Update navigation
@@ -109,7 +105,7 @@ def update_mkdocs_config():
                 'getting_started/installation.md',
                 'getting_started/configuration.md',
                 'getting_started/usage.md',
-                'getting_started/examples.md'
+                'getting_started/examples.md',
             ]
         },
         {
@@ -118,7 +114,7 @@ def update_mkdocs_config():
                 'features/resume_matching.md',
                 'features/job_scraping.md',
                 'features/filtering.md',
-                'features/llm_integration.md'
+                'features/llm_integration.md',
             ]
         },
         {
@@ -129,7 +125,7 @@ def update_mkdocs_config():
                 'api/myjobspyai.llm.md',
                 'api/myjobspyai.scrapers.md',
                 'api/myjobspyai.models.md',
-                'api/myjobspyai.utils.md'
+                'api/myjobspyai.utils.md',
             ]
         },
         {
@@ -137,17 +133,17 @@ def update_mkdocs_config():
                 'development/contributing.md',
                 'development/code_style.md',
                 'development/testing.md',
-                'development/deployment.md'
+                'development/deployment.md',
             ]
         },
         {
             'Enhancement Plans': [
                 'enhancement_plans/roadmap.md',
-                'enhancement_plans/future_features.md'
+                'enhancement_plans/future_features.md',
             ]
         },
         'Support',
-        'License'
+        'License',
     ]
 
     # Update site information
@@ -161,15 +157,9 @@ def update_mkdocs_config():
     # Update extra features
     config['extra'] = {
         'social': [
-            {
-                'type': 'github',
-                'link': 'https://github.com/yourusername/myjobspyai'
-            }
+            {'type': 'github', 'link': 'https://github.com/yourusername/myjobspyai'}
         ],
-        'analytics': {
-            'provider': 'google',
-            'property': 'G-XXXXXX'
-        }
+        'analytics': {'provider': 'google', 'property': 'G-XXXXXX'},
     }
 
     # Write updated config
@@ -177,6 +167,7 @@ def update_mkdocs_config():
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     print("mkdocs.yml configuration updated successfully!")
+
 
 if __name__ == "__main__":
     update_mkdocs_config()

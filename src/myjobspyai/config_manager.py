@@ -9,7 +9,13 @@ from typing import Any, Dict, Optional, Union
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
-from .config import AppConfig, LLMProviderConfig, DatabaseConfig, APIConfig, AnalysisConfig
+from .config import (
+    AnalysisConfig,
+    APIConfig,
+    AppConfig,
+    DatabaseConfig,
+    LLMProviderConfig,
+)
 from .utils.env import get_env_config
 
 logger = logging.getLogger(__name__)
@@ -138,8 +144,10 @@ class ConfigManager:
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(config_dict, f, default_flow_style=False, sort_keys=False)
 
+
 # Global instance
 config_manager = ConfigManager()
+
 
 async def load_config(
     config_path: Optional[Union[str, Path]] = None,
@@ -147,6 +155,7 @@ async def load_config(
 ) -> None:
     """Load configuration using the global config manager."""
     await config_manager.load(config_path, env_override)
+
 
 async def get_config() -> AppConfig:
     """Get the current configuration."""

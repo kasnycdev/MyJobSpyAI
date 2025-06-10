@@ -1,23 +1,28 @@
 """Scraping configuration for MyJobSpyAI."""
+
 import logging
 import time
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, List, Optional
+
 import httpx
 from tenacity import (
+    RetryCallState,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
-    RetryCallState
 )
+
 from . import settings
 
 logger = logging.getLogger('scraping')
 
+
 @dataclass
 class ScraperConfig:
     """Configuration for a web scraper."""
+
     name: str
     base_url: str
     timeout: int
@@ -39,6 +44,7 @@ class ScraperConfig:
                 "Cache-Control": "max-age=0",
             }
 
+
 class Scraper:
     """Base class for web scrapers with retry logic."""
 
@@ -53,7 +59,7 @@ class Scraper:
             wait=wait_exponential(multiplier=1, min=config.retry_delay, max=60),
             retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError)),
             before_sleep=self._log_retry_attempt,
-            reraise=True
+            reraise=True,
         )
 
     def _log_retry_attempt(self, retry_state: RetryCallState) -> None:
@@ -70,8 +76,8 @@ class Scraper:
                 "max_attempts": max_attempts,
                 "delay_seconds": delay,
                 "exception": str(exception) if exception else None,
-                "exception_type": exception.__class__.__name__ if exception else None
-            }
+                "exception_type": exception.__class__.__name__ if exception else None,
+            },
         )
 
     async def fetch(self, url: str, **kwargs) -> str:
@@ -98,10 +104,7 @@ class Scraper:
         async with httpx.AsyncClient(timeout=timeout) as client:
             try:
                 response = await client.get(
-                    url,
-                    headers=headers,
-                    follow_redirects=True,
-                    **kwargs
+                    url, headers=headers, follow_redirects=True, **kwargs
                 )
                 response.raise_for_status()
                 return response.text
@@ -109,22 +112,22 @@ class Scraper:
             except httpx.HTTPStatusError as e:
                 self.logger.error(
                     f"HTTP error {e.response.status_code} for {url}",
-                    extra={"status_code": e.response.status_code, "url": url}
+                    extra={"status_code": e.response.status_code, "url": url},
                 )
                 raise
             except httpx.RequestError as e:
-                self.logger.error(
-                    f"Request error for {url}: {str(e)}",
-                    exc_info=True
-                )
+                self.logger.error(f"Request error for {url}: {str(e)}", exc_info=True)
                 raise
+
 
 # Factory function to create scrapers
 def create_scraper(name: str, **kwargs) -> Scraper:
     """Create a new scraper instance with the given configuration."""
     # Get default config from settings
     default_config = {
-        "timeout": settings.settings.scraping.timeouts.get(name, settings.settings.scraping.timeouts["default"]),
+        "timeout": settings.settings.scraping.timeouts.get(
+            name, settings.settings.scraping.timeouts["default"]
+        ),
         "retry_attempts": settings.settings.scraping.retry_attempts,
         "retry_delay": settings.settings.scraping.retry_delay,
     }
@@ -133,6 +136,7 @@ def create_scraper(name: str, **kwargs) -> Scraper:
     config = {**default_config, **kwargs, "name": name}
 
     return Scraper(ScraperConfig(**config))
+
 
 # Pre-configured scrapers for common job sites
 def create_naukri_scraper() -> Scraper:
@@ -143,8 +147,9 @@ def create_naukri_scraper() -> Scraper:
         headers={
             "Referer": "https://www.naukri.com/",
             "DNT": "1",
-        }
+        },
     )
+
 
 def create_indeed_scraper() -> Scraper:
     """Create a scraper for Indeed.com."""
@@ -154,8 +159,9 @@ def create_indeed_scraper() -> Scraper:
         headers={
             "Referer": "https://www.indeed.com/",
             "DNT": "1",
-        }
+        },
     )
+
 
 def create_linkedin_scraper() -> Scraper:
     """Create a scraper for LinkedIn."""
@@ -168,5 +174,5 @@ def create_linkedin_scraper() -> Scraper:
             "X-Restli-Protocol-Version": "2.0.0",
             "X-Li-Lang": "en_US",
         },
-        request_delay=2.0  # Be more gentle with LinkedIn
+        request_delay=2.0,  # Be more gentle with LinkedIn
     )

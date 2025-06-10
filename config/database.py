@@ -1,10 +1,13 @@
 """Database configuration for MyJobSpyAI."""
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+
+import logging
 from contextlib import contextmanager
 from typing import Generator, Optional
-import logging
+
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, sessionmaker
+
 from . import settings
 
 logger = logging.getLogger('database')
@@ -16,7 +19,7 @@ engine = create_engine(
     f"{settings.settings.database.name}",
     pool_size=settings.settings.database.pool_size,
     max_overflow=settings.settings.database.max_overflow,
-    echo=settings.settings.database.echo
+    echo=settings.settings.database.echo,
 )
 
 # Create session factory
@@ -24,6 +27,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for models
 Base = declarative_base()
+
 
 @contextmanager
 def get_db() -> Generator[Session, None, None]:
@@ -38,6 +42,7 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
+
 def init_db() -> None:
     """Initialize database tables."""
     logger.info("Initializing database...")
@@ -47,6 +52,7 @@ def init_db() -> None:
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         raise
+
 
 def get_db_url() -> str:
     """Get the database URL from settings."""

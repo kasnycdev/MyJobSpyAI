@@ -171,9 +171,11 @@ def mock_provider(mock_config):
 @pytest.fixture
 def mock_otel():
     """Mock OpenTelemetry components."""
-    with patch("opentelemetry.trace") as mock_trace, patch(
-        "opentelemetry.metrics"
-    ) as mock_metrics, patch("opentelemetry.trace.status") as mock_status:
+    with (
+        patch("opentelemetry.trace") as mock_trace,
+        patch("opentelemetry.metrics") as mock_metrics,
+        patch("opentelemetry.trace.status") as mock_status,
+    ):
 
         # Mock tracer
         mock_tracer = MagicMock()

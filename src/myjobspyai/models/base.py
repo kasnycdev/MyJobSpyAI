@@ -1,4 +1,5 @@
 """Base models and interfaces for the application."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -9,6 +10,7 @@ from pydantic import BaseModel as PydanticBaseModel
 
 class BaseModel(PydanticBaseModel):
     """Base model class that all other models should inherit from."""
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BaseModel:
         """Create an instance from a dictionary."""
@@ -21,6 +23,7 @@ class BaseModel(PydanticBaseModel):
 
 class TimestampMixin:
     """Mixin for models that include created/updated timestamps."""
+
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -48,6 +51,7 @@ class BaseJob(BaseModel, TimestampMixin):
 
 class BaseResume(BaseModel, TimestampMixin):
     """Base resume model."""
+
     id: str | None = None
     file_path: str | None = None
     file_name: str | None = None

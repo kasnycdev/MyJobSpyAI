@@ -1,8 +1,7 @@
 import logging
 import time
-from typing import Optional, Callable, Any
-from rich.console import Console
-from rich.logging import RichHandler
+from typing import Any, Callable, Optional
+
 from opentelemetry import metrics, trace
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -10,6 +9,8 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ALWAYS_ON
+from rich.console import Console
+from rich.logging import RichHandler
 
 from myjobspyai.config import config
 
@@ -59,17 +60,26 @@ def _create_span_exporter(
 ) -> Any:
     """Creates a span exporter based on the OTLP protocol."""
     if otlp_protocol == "grpc":
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+
         return OTLPSpanExporter(endpoint=otlp_endpoint, headers=otlp_headers)
     elif otlp_protocol == "http/protobuf":
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as OTLPHttpSpanExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter as OTLPHttpSpanExporter,
+        )
+
         return OTLPHttpSpanExporter(endpoint=otlp_endpoint, headers=otlp_headers)
     else:
         logger = logging.getLogger(__name__)
         logger.error(
             f"Invalid OTLP protocol '{otlp_protocol}' for traces. Using gRPC default."
         )
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+
         return OTLPSpanExporter(endpoint=otlp_endpoint, headers=otlp_headers)
 
 
@@ -81,9 +91,13 @@ def _create_log_exporter(
     """Creates a log exporter based on the OTLP protocol."""
     if otlp_protocol == "grpc":
         from opentelemetry.exporter.otlp.proto.grpc.log_exporter import OTLPLogExporter
+
         return OTLPLogExporter(endpoint=otlp_endpoint, headers=otlp_headers)
     elif otlp_protocol == "http/protobuf":
-        from opentelemetry.exporter.otlp.proto.http.log_exporter import OTLPLogExporter as OTLPHttpLogExporter
+        from opentelemetry.exporter.otlp.proto.http.log_exporter import (
+            OTLPLogExporter as OTLPHttpLogExporter,
+        )
+
         return OTLPHttpLogExporter(endpoint=otlp_endpoint, headers=otlp_headers)
     else:
         logger = logging.getLogger(__name__)
@@ -91,6 +105,7 @@ def _create_log_exporter(
             f"Invalid OTLP protocol '{otlp_protocol}' for logs. Using gRPC default."
         )
         from opentelemetry.exporter.otlp.proto.grpc.log_exporter import OTLPLogExporter
+
         return OTLPLogExporter(endpoint=otlp_endpoint, headers=otlp_headers)
 
 
@@ -99,7 +114,10 @@ def _create_metric_exporter(
     otlp_headers: Optional[str] = None,
 ) -> Any:
     """Creates a metric exporter."""
-    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+        OTLPMetricExporter,
+    )
+
     return OTLPMetricExporter(endpoint=otlp_endpoint, headers=otlp_headers)
 
 
@@ -110,16 +128,20 @@ def configure_opentelemetry():
 
     if not getattr(otel_cfg, 'OTEL_ENABLED', True):
         logger = logging.getLogger(__name__)
-        logger.info("OpenTelemetry is DISABLED by configuration. "
-                   "Initializing NoOp providers.")
+        logger.info(
+            "OpenTelemetry is DISABLED by configuration. "
+            "Initializing NoOp providers."
+        )
         tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
         meter = metrics.get_meter(__name__, meter_provider=metrics.NoOpMeterProvider())
         _otel_enabled_runtime = False
         return
 
     logger = logging.getLogger(__name__)
-    logger.info("OpenTelemetry is ENABLED by configuration. "
-               "Proceeding with exporter setup...")
+    logger.info(
+        "OpenTelemetry is ENABLED by configuration. "
+        "Proceeding with exporter setup..."
+    )
 
     service_name = otel_cfg.get("OTEL_SERVICE_NAME")
     otlp_endpoint = otel_cfg.get("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -130,8 +152,10 @@ def configure_opentelemetry():
 
     sampler = otel_cfg.get("OTEL_TRACES_SAMPLER_INSTANCE")
     if sampler is None:
-        logger.warning("OTEL_TRACES_SAMPLER_INSTANCE not found in otel_cfg, "
-                      "defaulting to ALWAYS_ON.")
+        logger.warning(
+            "OTEL_TRACES_SAMPLER_INSTANCE not found in otel_cfg, "
+            "defaulting to ALWAYS_ON."
+        )
         sampler = ALWAYS_ON
 
     resource_attributes = otel_cfg.get("OTEL_RESOURCE_ATTRIBUTES", {})
@@ -140,8 +164,10 @@ def configure_opentelemetry():
     otel_components_initialized = 0
 
     span_exporter = _initialize_exporter_with_retry(
-        "Trace", lambda: _create_span_exporter(otlp_protocol, otlp_endpoint, otlp_headers),
-        max_retries, retry_delay
+        "Trace",
+        lambda: _create_span_exporter(otlp_protocol, otlp_endpoint, otlp_headers),
+        max_retries,
+        retry_delay,
     )
     if span_exporter:
         tracer_provider = TracerProvider(resource=resource, sampler=sampler)
@@ -155,8 +181,9 @@ def configure_opentelemetry():
         otel_components_initialized += 1
     else:
         tracer = trace.get_tracer(__name__, tracer_provider=trace.NoOpTracerProvider())
-        logger.error("Failed to initialize Trace Exporter. "
-                    "Tracing will use NoOpTracer.")
+        logger.error(
+            "Failed to initialize Trace Exporter. " "Tracing will use NoOpTracer."
+        )
 
     try:
         from opentelemetry.instrumentation.logging import LoggingInstrumentor
@@ -164,12 +191,16 @@ def configure_opentelemetry():
         from opentelemetry.sdk.logs.export import BatchLogRecordProcessor
 
         log_exporter = _initialize_exporter_with_retry(
-            "Log", lambda: _create_log_exporter(otlp_protocol, otlp_endpoint, otlp_headers),
-            max_retries, retry_delay
+            "Log",
+            lambda: _create_log_exporter(otlp_protocol, otlp_endpoint, otlp_headers),
+            max_retries,
+            retry_delay,
         )
         if log_exporter:
             logger_provider = LoggerProvider(resource=resource)
-            logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+            logger_provider.add_log_record_processor(
+                BatchLogRecordProcessor(log_exporter)
+            )
             set_logger_provider(logger_provider)
             LoggingInstrumentor().instrument(
                 logger_provider=logger_provider, set_logging_format=True
@@ -180,22 +211,27 @@ def configure_opentelemetry():
             )
             otel_components_initialized += 1
         else:
-            logger.error("Failed to initialize Log Exporter. "
-                        "OTel logging will be disabled.")
+            logger.error(
+                "Failed to initialize Log Exporter. " "OTel logging will be disabled."
+            )
 
     except ModuleNotFoundError:
-        logger.warning("OpenTelemetry logging instrumentation not available. "
-                      "Standard logging will be used.")
+        logger.warning(
+            "OpenTelemetry logging instrumentation not available. "
+            "Standard logging will be used."
+        )
 
     try:
         metric_exporter = _initialize_exporter_with_retry(
-            "Metric", lambda: _create_metric_exporter(otlp_endpoint, otlp_headers),
-            max_retries, retry_delay
+            "Metric",
+            lambda: _create_metric_exporter(otlp_endpoint, otlp_headers),
+            max_retries,
+            retry_delay,
         )
         if metric_exporter:
             meter_provider = MeterProvider(
                 resource=resource,
-                metric_readers=[PeriodicExportingMetricReader(metric_exporter)]
+                metric_readers=[PeriodicExportingMetricReader(metric_exporter)],
             )
             metrics.set_meter_provider(meter_provider)
             meter = metrics.get_meter(__name__)
@@ -205,13 +241,18 @@ def configure_opentelemetry():
             )
             otel_components_initialized += 1
         else:
-            meter = metrics.get_meter(__name__, meter_provider=metrics.NoOpMeterProvider())
-            logger.error("Failed to initialize Metric Exporter. "
-                        "Metrics will use NoOpMeter.")
+            meter = metrics.get_meter(
+                __name__, meter_provider=metrics.NoOpMeterProvider()
+            )
+            logger.error(
+                "Failed to initialize Metric Exporter. " "Metrics will use NoOpMeter."
+            )
 
     except ModuleNotFoundError:
-        logger.warning("OpenTelemetry metrics instrumentation not available. "
-                      "Metrics will be disabled.")
+        logger.warning(
+            "OpenTelemetry metrics instrumentation not available. "
+            "Metrics will be disabled."
+        )
 
     logger.info(
         f"OpenTelemetry configuration complete. {otel_components_initialized} components initialized."
@@ -239,7 +280,7 @@ def setup_logging():
         console=console,
         rich_tracebacks=True,
         show_path=False,
-        keywords=["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]
+        keywords=["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"],
     )
 
     # Configure root logger
@@ -259,7 +300,9 @@ def setup_logging():
     error_handler.setLevel(logging.WARNING)
 
     # Configure model output logger
-    model_output_handler = logging.FileHandler(os.path.join(log_dir, 'model_output.log'))
+    model_output_handler = logging.FileHandler(
+        os.path.join(log_dir, 'model_output.log')
+    )
     model_output_handler.setLevel(logging.INFO)
 
     # Add handlers to root logger

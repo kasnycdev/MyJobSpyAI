@@ -1,11 +1,14 @@
 """Logging configuration for MyJobSpyAI."""
+
 import logging
 import logging.handlers
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from pythonjsonlogger import jsonlogger
+
 from . import settings
+
 
 def setup_logging() -> None:
     """Configure logging based on settings."""
@@ -21,7 +24,7 @@ def setup_logging() -> None:
         '%(asctime)s %(levelname)s %(name)s %(message)s',
         datefmt='%Y-%m-%dT%H:%M:%SZ',
         json_ensure_ascii=False,
-        json_indent=2 if settings.settings.debug else None
+        json_indent=2 if settings.settings.debug else None,
     )
 
     # Configure each logger
@@ -39,14 +42,14 @@ def setup_logging() -> None:
                 file_path,
                 maxBytes=log_config.max_size,
                 backupCount=log_config.backup_count,
-                mode=log_file_mode
+                mode=log_file_mode,
             )
         else:  # time-based rotation
             handler = logging.handlers.TimedRotatingFileHandler(
                 file_path,
                 when='midnight',
                 interval=1,
-                backupCount=log_config.backup_count
+                backupCount=log_config.backup_count,
             )
 
         handler.setFormatter(formatter)

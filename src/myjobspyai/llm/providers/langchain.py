@@ -11,6 +11,7 @@ from myjobspyai.analysis.providers.langchain_provider import (
 
 logger = logging.getLogger(__name__)
 
+
 class LangChainProvider(BaseProvider):
     """LangChain provider implementation for LLM integration."""
 
@@ -32,18 +33,22 @@ class LangChainProvider(BaseProvider):
         self.max_tokens = int(config.get("max_tokens", 1000))
 
         # Set API key from config or environment variable
-        self.api_key = config.get("api_key") or os.getenv(f"{self.provider.upper()}_API_KEY")
+        self.api_key = config.get("api_key") or os.getenv(
+            f"{self.provider.upper()}_API_KEY"
+        )
         if not self.api_key and self.provider == "openai":
             self.api_key = os.getenv("OPENAI_API_KEY")
 
         # Initialize the analysis LangChain provider
-        self._provider = AnalysisLangChainProvider({
-            "provider": self.provider,
-            "model": self.model,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-            "api_key": self.api_key,
-        })
+        self._provider = AnalysisLangChainProvider(
+            {
+                "provider": self.provider,
+                "model": self.model,
+                "temperature": self.temperature,
+                "max_tokens": self.max_tokens,
+                "api_key": self.api_key,
+            }
+        )
 
     async def generate(self, prompt: str, **kwargs) -> str:
         """Generate text from a prompt.
@@ -65,7 +70,11 @@ class LangChainProvider(BaseProvider):
                 model=kwargs.get("model", self.model),
                 temperature=kwargs.get("temperature", self.temperature),
                 max_tokens=kwargs.get("max_tokens", self.max_tokens),
-                **{k: v for k, v in kwargs.items() if k not in ["model", "temperature", "max_tokens"]}
+                **{
+                    k: v
+                    for k, v in kwargs.items()
+                    if k not in ["model", "temperature", "max_tokens"]
+                },
             )
             return response.text if hasattr(response, 'text') else str(response)
         except Exception as e:

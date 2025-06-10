@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 from jobspy import scrape_jobs
 
-from ..models.job import Job, JobSource, JobType, JobEnums
-from .base import BaseJobScraper
+from ..models.job import Job, JobEnums, JobSource, JobType
 from ..models.job_listing import JobListing
+from .base import BaseJobScraper
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ class JobSpyScraper(BaseJobScraper):
         if not self._browser_initialized:
             try:
                 from jobspy import init_browser
+
                 init_browser()
                 self._browser_initialized = True
             except Exception as e:
@@ -208,7 +209,12 @@ class JobSpyScraper(BaseJobScraper):
 
                 # Generate a unique ID based on job details
                 job_id = f"{row.get('site', 'jobspy')}_{row.get('job_title', '')}_{row.get('company_name', '')}_{row.get('posted_date', datetime.now()).strftime('%Y%m%d_%H%M%S')}"
-                job_id = job_id.lower().replace(' ', '_').replace(',', '').replace('.', '')[:100]  # Clean and truncate
+                job_id = (
+                    job_id.lower()
+                    .replace(' ', '_')
+                    .replace(',', '')
+                    .replace('.', '')[:100]
+                )  # Clean and truncate
 
                 # Clean job data
                 title = str(row.get('job_title', ''))

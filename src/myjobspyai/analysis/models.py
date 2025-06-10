@@ -328,9 +328,9 @@ class TrainingResource(BaseModel):
     provider: str = Field(
         ..., description="Organization or platform providing the resource."
     )
-    resource_type: Literal[
-        "course", "book", "tutorial", "certification", "other"
-    ] = Field(..., description="Type of resource.")
+    resource_type: Literal["course", "book", "tutorial", "certification", "other"] = (
+        Field(..., description="Type of resource.")
+    )
     estimated_hours: Optional[float] = Field(
         None,
         description="Estimated time commitment in hours.",

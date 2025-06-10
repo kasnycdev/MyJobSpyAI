@@ -7,7 +7,7 @@ find . -type f -name "*.py" -o -name "*.md" -o -name "*.txt" -o -name "*.rst" -o
     if [[ "$file" == *"/scripts/"* ]] && [[ "$file" != *".sh" ]]; then
         continue
     fi
-    
+
     # Check if file has a shebang
     if ! head -n 1 "$file" | grep -q '^#!'; then
         # Check if file is executable

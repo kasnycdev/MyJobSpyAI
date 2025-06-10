@@ -122,8 +122,10 @@ def test_create_langchain_provider():
     """Test creating a LangChain provider."""
     factory = ProviderFactory()
     # Mock the import and class creation
-    with patch("importlib.import_module") as mock_import_module, \
-         patch.object(factory, '_providers', {"langchain": LangChainProvider}):
+    with (
+        patch("importlib.import_module") as mock_import_module,
+        patch.object(factory, '_providers', {"langchain": LangChainProvider}),
+    ):
         # Create a mock module with the ChatOpenAI class
         mock_module = MagicMock()
         mock_chat_openai = MagicMock()

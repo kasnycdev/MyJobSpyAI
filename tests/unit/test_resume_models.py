@@ -1,17 +1,18 @@
 """Unit tests for resume data models."""
 
-import pytest
 from datetime import date
+
+import pytest
 from pydantic import ValidationError
 
 from myjobspyai.models.resume import (
     Education,
-    Experience,
-    Skill,
-    ResumeData,
     EducationLevel,
+    Experience,
     ExperienceLevel,
-    SkillCategory
+    ResumeData,
+    Skill,
+    SkillCategory,
 )
 
 
@@ -26,7 +27,7 @@ def test_education_model():
         start_date=date(2018, 9, 1),
         end_date=date(2022, 5, 15),
         gpa=3.7,
-        description="Studied computer science fundamentals"
+        description="Studied computer science fundamentals",
     )
 
     assert education.institution == "Test University"
@@ -44,7 +45,7 @@ def test_education_model():
             field_of_study="Computer Science",
             level=EducationLevel.BACHELORS,
             start_date=date(2022, 9, 1),
-            end_date=date(2020, 5, 15)
+            end_date=date(2020, 5, 15),
         )
 
     # Test GPA validation
@@ -54,7 +55,7 @@ def test_education_model():
             degree="Bachelor of Science",
             field_of_study="Computer Science",
             level=EducationLevel.BACHELORS,
-            gpa=5.0  # Invalid GPA
+            gpa=5.0,  # Invalid GPA
         )
 
 
@@ -69,7 +70,7 @@ def test_experience_model():
         description="Developed web applications using Python and React",
         skills_used=["Python", "React", "Django"],
         achievements=["Improved performance by 30%"],
-        experience_level=ExperienceLevel.MID
+        experience_level=ExperienceLevel.MID,
     )
 
     assert experience.company == "Tech Corp"
@@ -85,7 +86,7 @@ def test_experience_model():
             position="Software Engineer",
             start_date=date(2023, 1, 1),
             end_date=date(2022, 1, 1),
-            description="Test"
+            description="Test",
         )
 
 
@@ -97,7 +98,7 @@ def test_skill_model():
         category=SkillCategory.PROGRAMMING,
         proficiency=0.9,
         years_experience=5,
-        last_used=2023
+        last_used=2023,
     )
 
     assert skill.name == "Python"
@@ -111,7 +112,7 @@ def test_skill_model():
         Skill(
             name="Python",
             category=SkillCategory.PROGRAMMING,
-            proficiency=1.1  # Invalid proficiency
+            proficiency=1.1,  # Invalid proficiency
         )
 
 
@@ -122,19 +123,16 @@ def test_resume_data_model():
         institution="Test University",
         degree="Bachelor of Science",
         field_of_study="Computer Science",
-        level=EducationLevel.BACHELORS
+        level=EducationLevel.BACHELORS,
     )
 
     experience = Experience(
         company="Tech Corp",
         position="Software Engineer",
-        description="Developed applications"
+        description="Developed applications",
     )
 
-    skill = Skill(
-        name="Python",
-        category=SkillCategory.PROGRAMMING
-    )
+    skill = Skill(name="Python", category=SkillCategory.PROGRAMMING)
 
     # Test valid resume
     resume = ResumeData(
@@ -145,7 +143,7 @@ def test_resume_data_model():
         skills=[skill],
         certifications=[{"name": "AWS Certified", "issuer": "Amazon"}],
         languages=[{"name": "English", "proficiency": "native"}],
-        projects=[{"name": "Project X", "description": "A test project"}]
+        projects=[{"name": "Project X", "description": "A test project"}],
     )
 
     assert resume.full_name == "John Doe"
@@ -159,7 +157,7 @@ def test_resume_data_model():
             email="invalid-email",
             education=[education],
             experience=[experience],
-            skills=[skill]
+            skills=[skill],
         )
 
     # Test skills validation (at least one skill required)
@@ -168,32 +166,28 @@ def test_resume_data_model():
             email="test@example.com",
             education=[education],
             experience=[experience],
-            skills=[]
+            skills=[],
         )
 
 
 def test_serialization_deserialization():
     """Test serialization and deserialization of models."""
     # Create test data
-    skill = Skill(
-        name="Python",
-        category=SkillCategory.PROGRAMMING,
-        proficiency=0.9
-    )
+    skill = Skill(name="Python", category=SkillCategory.PROGRAMMING, proficiency=0.9)
 
     education = Education(
         institution="Test University",
         degree="Bachelor of Science",
         field_of_study="Computer Science",
         level=EducationLevel.BACHELORS,
-        start_date=date(2018, 9, 1)
+        start_date=date(2018, 9, 1),
     )
 
     experience = Experience(
         company="Tech Corp",
         position="Software Engineer",
         start_date=date(2020, 1, 1),
-        description="Developer"
+        description="Developer",
     )
 
     # Create and serialize resume
@@ -202,7 +196,7 @@ def test_serialization_deserialization():
         email="john@example.com",
         education=[education],
         experience=[experience],
-        skills=[skill]
+        skills=[skill],
     )
 
     # Convert to dict and back
@@ -223,16 +217,10 @@ def test_resume_data_helper_methods():
     """Test the helper methods in ResumeData."""
     # Create test data
     python_skill = Skill(
-        name="Python",
-        category=SkillCategory.PROGRAMMING,
-        proficiency=0.9
+        name="Python", category=SkillCategory.PROGRAMMING, proficiency=0.9
     )
 
-    aws_skill = Skill(
-        name="AWS",
-        category=SkillCategory.CLOUD,
-        proficiency=0.8
-    )
+    aws_skill = Skill(name="AWS", category=SkillCategory.CLOUD, proficiency=0.8)
 
     education = Education(
         institution="Test University",
@@ -240,7 +228,7 @@ def test_resume_data_helper_methods():
         field_of_study="Computer Science",
         level=EducationLevel.BACHELORS,
         start_date=date(2018, 9, 1),
-        end_date=date(2022, 5, 15)
+        end_date=date(2022, 5, 15),
     )
 
     experience = Experience(
@@ -248,7 +236,7 @@ def test_resume_data_helper_methods():
         position="Software Engineer",
         start_date=date(2022, 1, 1),
         end_date=date(2023, 1, 1),
-        description="Developer"
+        description="Developer",
     )
 
     # Create resume
@@ -257,7 +245,7 @@ def test_resume_data_helper_methods():
         email="john@example.com",
         education=[education],
         experience=[experience],
-        skills=[python_skill, aws_skill]
+        skills=[python_skill, aws_skill],
     )
 
     # Test get_skills_by_category

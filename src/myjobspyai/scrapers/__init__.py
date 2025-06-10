@@ -11,9 +11,9 @@ from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 # Import scrapers
 from .base import BaseJobScraper
+from .indeed import IndeedScraper
 from .jobspy_scraper import JobSpyScraper
 from .linkedin import LinkedInScraper
-from .indeed import IndeedScraper
 
 # Import base classes and types
 

@@ -26,6 +26,7 @@ from myjobspyai.utils.logging_config import setup_logging_custom
 console = Console()
 logger = logging.getLogger(__name__)
 
+
 # Create a reusable table creation function
 def _create_table(show_details: bool = False) -> Table:
     """Create a table for displaying job listings.
@@ -52,6 +53,7 @@ def _create_table(show_details: bool = False) -> Table:
 
     return table
 
+
 def parse_args(args: List[str]) -> argparse.Namespace:
     """Parse command line arguments.
 
@@ -61,7 +63,9 @@ def parse_args(args: List[str]) -> argparse.Namespace:
     Returns:
         Parsed arguments
     """
-    parser = argparse.ArgumentParser(description="MyJobSpy AI - Job Search and Analysis Tool")
+    parser = argparse.ArgumentParser(
+        description="MyJobSpy AI - Job Search and Analysis Tool"
+    )
 
     # Search parameters
     search_group = parser.add_argument_group("Search Parameters")
@@ -69,80 +73,61 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         "--search",
         type=str,
         default="",
-        help="Search query (job title, keywords, etc.)"
+        help="Search query (job title, keywords, etc.)",
     )
     search_group.add_argument(
-        "--location",
-        type=str,
-        default="",
-        help="Location for job search"
+        "--location", type=str, default="", help="Location for job search"
     )
     search_group.add_argument(
         "--scraper",
         type=str,
         default="jobspy",
         choices=["jobspy", "linkedin", "indeed"],
-        help="Job scraper to use"
+        help="Job scraper to use",
     )
     search_group.add_argument(
-        "--min-salary",
-        type=float,
-        help="Minimum salary threshold"
+        "--min-salary", type=float, help="Minimum salary threshold"
     )
 
     # Resume and analysis
     analysis_group = parser.add_argument_group("Resume and Analysis")
     analysis_group.add_argument(
-        "--resume",
-        type=str,
-        help="Path to resume file for analysis"
+        "--resume", type=str, help="Path to resume file for analysis"
     )
     analysis_group.add_argument(
-        "--analyze",
-        action="store_true",
-        help="Enable job analysis against resume"
+        "--analyze", action="store_true", help="Enable job analysis against resume"
     )
 
     # Output options
     output_group = parser.add_argument_group("Output Options")
-    output_group.add_argument(
-        "--output",
-        type=str,
-        help="Output file to save results"
-    )
+    output_group.add_argument("--output", type=str, help="Output file to save results")
     output_group.add_argument(
         "--format",
         type=str,
         choices=["json", "csv", "xlsx", "markdown"],
         default="json",
-        help="Output format"
+        help="Output format",
     )
     output_group.add_argument(
-        "--details",
-        action="store_true",
-        help="Show detailed job information"
+        "--details", action="store_true", help="Show detailed job information"
     )
 
     # General options
     general_group = parser.add_argument_group("General Options")
+    general_group.add_argument("--debug", action="store_true", help="Enable debug mode")
     general_group.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug mode"
-    )
-    general_group.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="count",
         default=0,
-        help="Increase verbosity (can be used multiple times)"
+        help="Increase verbosity (can be used multiple times)",
     )
     general_group.add_argument(
-        "--version",
-        action="store_true",
-        help="Show version and exit"
+        "--version", action="store_true", help="Show version and exit"
     )
 
     return parser.parse_args(args)
+
 
 async def main_async() -> int:
     """Async main entry point for the application."""
@@ -174,16 +159,13 @@ async def main_async() -> int:
 
         # Search for jobs
         jobs = await job_service.search_jobs(
-            query=args.search,
-            location=args.location,
-            max_results=15
+            query=args.search, location=args.location, max_results=15
         )
 
         # Apply salary filter if specified
         if getattr(args, 'min_salary', None) is not None:
             jobs = await job_service.filter_jobs_by_salary(
-                jobs,
-                min_salary=args.min_salary
+                jobs, min_salary=args.min_salary
             )
 
         # Analyze jobs if resume is provided and analysis is enabled
@@ -193,14 +175,14 @@ async def main_async() -> int:
         # Display results
         if getattr(args, 'output', None):
             await job_service.save_jobs_to_file(
-                jobs,
-                args.output,
-                getattr(args, 'format', 'json')
+                jobs, args.output, getattr(args, 'format', 'json')
             )
             console.print(f"[green]Results saved to {args.output}[/green]")
         else:
             # Display in console
-            display_jobs_table(jobs, console, show_details=getattr(args, 'details', False))
+            display_jobs_table(
+                jobs, console, show_details=getattr(args, 'details', False)
+            )
 
         return 0
 
@@ -208,6 +190,7 @@ async def main_async() -> int:
         logger.error(f"An error occurred: {e}", exc_info=True)
         console.print(f"[red]Error: {e}[/red]")
         return 1
+
 
 def main() -> int:
     """Main entry point for the application."""
@@ -220,6 +203,7 @@ def main() -> int:
         logger.exception("Fatal error in main function")
         print(f"Fatal error: {e}", file=sys.stderr)
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

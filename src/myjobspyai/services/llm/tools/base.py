@@ -21,13 +21,18 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar('T', bound='BaseTool')
 
+
 class ToolError(Exception):
     """Base exception for tool-related errors."""
+
     pass
+
 
 class ToolValidationError(ToolError):
     """Raised when a tool fails validation."""
+
     pass
+
 
 @dataclass
 class ToolCall:
@@ -38,9 +43,11 @@ class ToolCall:
         args: The arguments to pass to the tool
         id: An optional ID for the tool call
     """
+
     name: str
     args: Dict[str, Any]
     id: Optional[str] = None
+
 
 class BaseTool(ABC, BaseModel):
     """Base class for tools that can be used with LLM providers.
@@ -127,7 +134,11 @@ class BaseTool(ABC, BaseModel):
             # Validate input against schema if provided
             if self.args_schema and self.args_schema is not BaseModel:
                 try:
-                    validated = self.args_schema(**kwargs) if kwargs else self.args_schema(*args)
+                    validated = (
+                        self.args_schema(**kwargs)
+                        if kwargs
+                        else self.args_schema(*args)
+                    )
                     kwargs = validated.dict(exclude_unset=True)
                 except Exception as e:
                     raise ToolValidationError(
@@ -159,7 +170,11 @@ class BaseTool(ABC, BaseModel):
             # Validate input against schema if provided
             if self.args_schema and self.args_schema is not BaseModel:
                 try:
-                    validated = self.args_schema(**kwargs) if kwargs else self.args_schema(*args)
+                    validated = (
+                        self.args_schema(**kwargs)
+                        if kwargs
+                        else self.args_schema(*args)
+                    )
                     kwargs = validated.dict(exclude_unset=True)
                 except Exception as e:
                     raise ToolValidationError(
@@ -180,7 +195,9 @@ class BaseTool(ABC, BaseModel):
         return {
             "name": self.name,
             "description": self.description,
-            "parameters": self.args_schema.schema() if self.args_schema is not BaseModel else {},
+            "parameters": (
+                self.args_schema.schema() if self.args_schema is not BaseModel else {}
+            ),
             "return_direct": self.return_direct,
         }
 
@@ -229,7 +246,9 @@ class BaseTool(ABC, BaseModel):
                     param_type = Any
 
                 # Get default value if any
-                default = ... if param.default == inspect.Parameter.empty else param.default
+                default = (
+                    ... if param.default == inspect.Parameter.empty else param.default
+                )
 
                 fields[param.name] = (param_type, Field(default=default))
 
@@ -264,6 +283,7 @@ class BaseTool(ABC, BaseModel):
             **kwargs,
         )
 
+
 def tool(
     name: Optional[str] = None,
     description: Optional[str] = None,
@@ -273,10 +293,10 @@ def tool(
 ) -> Callable[[Callable], BaseTool]:
     """Decorator to convert a function into a tool.
 
-    Example:
+    Example::
+
         @tool(description="Adds two numbers")
         def add(a: int, b: int) -> int:
-        """Add two numbers."""
             return a + b
 
     Args:
@@ -289,6 +309,7 @@ def tool(
     Returns:
         A decorator that converts a function into a tool
     """
+
     def decorator(func: Callable) -> BaseTool:
         tool_name = name or func.__name__
         tool_description = description or (inspect.getdoc(func) or "")

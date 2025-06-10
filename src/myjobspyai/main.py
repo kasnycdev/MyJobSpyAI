@@ -16,6 +16,7 @@ from rich.table import Table
 # Initialize console for Rich output
 console = Console()
 
+
 # Create a reusable table creation function
 def _create_table(show_details: bool = False) -> Table:
     """Create a table for displaying job listings.
@@ -42,6 +43,7 @@ def _create_table(show_details: bool = False) -> Table:
 
     return table
 
+
 # Helper functions for formatting job data
 def _format_job_type(job_type: str) -> str:
     """Format job type string for display.
@@ -55,6 +57,7 @@ def _format_job_type(job_type: str) -> str:
     if not job_type:
         return "N/A"
     return job_type.title()
+
 
 def _format_posted_date(posted_date: Any) -> str:
     """Format posted date for display.
@@ -70,6 +73,7 @@ def _format_posted_date(posted_date: Any) -> str:
     if isinstance(posted_date, str):
         return posted_date
     return posted_date.strftime("%Y-%m-%d")
+
 
 def _format_description(description: str, show_details: bool = False) -> str:
     """Format job description for display.
@@ -87,9 +91,10 @@ def _format_description(description: str, show_details: bool = False) -> str:
         return description[:100] + "..." if len(description) > 100 else description
     return description
 
-from myjobspyai.analysis.analyzer import JobAnalyzer, ResumeAnalyzer, LangChainProvider
+
+from myjobspyai.analysis.analyzer import JobAnalyzer, LangChainProvider, ResumeAnalyzer
 from myjobspyai.analysis.models import ResumeData
-from myjobspyai.config_manager import load_config, get_config
+from myjobspyai.config_manager import get_config, load_config
 from myjobspyai.main_matcher import load_and_extract_resume_async
 from myjobspyai.scrapers.factory import create_scraper
 from myjobspyai.utils.logging_config import LoggingConfig
@@ -158,6 +163,7 @@ def create_file_handler_config(name, level, log_path, mode='a'):
     }
     return handler_config
 
+
 def setup_logging_custom(debug: bool = False) -> None:
     """Configure logging for the application.
 
@@ -181,7 +187,9 @@ def setup_logging_custom(debug: bool = False) -> None:
         log_config = app_config.logging
 
         # Set up log directory
-        log_dir = Path(str(getattr(log_config, 'log_dir', 'logs'))).expanduser().absolute()
+        log_dir = (
+            Path(str(getattr(log_config, 'log_dir', 'logs'))).expanduser().absolute()
+        )
         _setup_log_directory(log_dir, logger)
         logger.info(f"Log directory: {log_dir}")
 
@@ -208,11 +216,22 @@ def setup_logging_custom(debug: bool = False) -> None:
 
         # Create handlers
         try:
-            handlers = _create_handlers(log_level, log_files, log_file_mode, rolling_strategy,
-                                      max_size, when, interval, utc, at_time)
+            handlers = _create_handlers(
+                log_level,
+                log_files,
+                log_file_mode,
+                rolling_strategy,
+                max_size,
+                when,
+                interval,
+                utc,
+                at_time,
+            )
         except Exception as e:
             logger.error(f"Failed to create log handlers: {str(e)}", exc_info=True)
-            handlers = {'console': create_file_handler_config('console', 'INFO', 'stderr')}
+            handlers = {
+                'console': create_file_handler_config('console', 'INFO', 'stderr')
+            }
             logger.warning("Using default console handler due to configuration error")
 
         # Configure loggers
@@ -247,6 +266,7 @@ def setup_logging_custom(debug: bool = False) -> None:
         logger.error(f"Failed to configure logging: {e}", exc_info=True)
         logger.info("Falling back to basic logging configuration")
 
+
 def _setup_log_directory(log_dir: Path, logger) -> None:
     """Set up the log directory with appropriate permissions."""
     try:
@@ -264,26 +284,34 @@ def _setup_log_directory(log_dir: Path, logger) -> None:
         log_dir = Path.cwd() / 'logs'
         log_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
+
 def _get_log_level(debug: bool, log_config) -> int:
     """Get the log level from configuration or default."""
-    return logging.DEBUG if debug else getattr(
-        logging,
-        str(getattr(log_config, 'log_level', 'INFO')).upper(),
-        logging.INFO,
+    return (
+        logging.DEBUG
+        if debug
+        else getattr(
+            logging,
+            str(getattr(log_config, 'log_level', 'INFO')).upper(),
+            logging.INFO,
+        )
     )
+
 
 def _get_log_format(log_config) -> str:
     """Get the log format from configuration or default."""
     log_format = getattr(
         log_config,
         'format',
-        '%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s'
+        '%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s',
     )
     return log_format
+
 
 def _get_date_format(log_config) -> str:
     """Get the date format from configuration or default."""
     return str(getattr(log_config, 'date_format', "%Y-%m-%d %H:%M:%S"))
+
 
 def _get_log_files(log_config, log_dir: Path, default_log_level: int) -> dict:
     """Get log files configuration."""
@@ -306,42 +334,52 @@ def _get_log_files(log_config, log_dir: Path, default_log_level: int) -> dict:
                 'level': default_log_level,
             },
             'debug': {
-                'path': log_dir / str(getattr(log_config, 'debug_log_file', 'debug.log')),
+                'path': log_dir
+                / str(getattr(log_config, 'debug_log_file', 'debug.log')),
                 'level': logging.DEBUG,
             },
             'error': {
-                'path': log_dir / str(getattr(log_config, 'error_log_file', 'error.log')),
+                'path': log_dir
+                / str(getattr(log_config, 'error_log_file', 'error.log')),
                 'level': logging.WARNING,
             },
             'llm': {
-                'path': log_dir / str(getattr(log_config, 'model_output_log_file', 'llm.log')),
+                'path': log_dir
+                / str(getattr(log_config, 'model_output_log_file', 'llm.log')),
                 'level': logging.INFO,
             },
         }
+
 
 def _get_log_file_mode(log_config) -> str:
     """Get the log file mode from configuration or default."""
     return str(getattr(log_config, 'log_file_mode', 'a'))
 
+
 def _get_log_file_size(log_config) -> int:
     """Get the log file size from configuration or default."""
     return int(getattr(log_config, 'max_size', 10 * 1024 * 1024))
+
 
 def _get_rolling_strategy(log_config) -> str:
     """Get the rolling strategy from configuration or default."""
     return str(getattr(log_config, 'rolling_strategy', 'size')).lower()
 
+
 def _get_rotation_when(log_config) -> str:
     """Get the rotation when from configuration or default."""
     return str(getattr(log_config, 'when', 'midnight'))
+
 
 def _get_rotation_interval(log_config) -> int:
     """Get the rotation interval from configuration or default."""
     return int(getattr(log_config, 'interval', 1))
 
+
 def _get_rotation_utc(log_config) -> bool:
     """Get the rotation UTC from configuration or default."""
     return bool(getattr(log_config, 'utc', False))
+
 
 def _get_rotation_at_time(log_config):
     """Get the rotation at time from configuration."""
@@ -352,15 +390,27 @@ def _get_rotation_at_time(log_config):
             try:
                 datetime.strptime(at_time, '%H:%M')
             except ValueError:
-                logger.warning(f"Invalid time format for rotation at_time: {at_time}. Using default.")
+                logger.warning(
+                    f"Invalid time format for rotation at_time: {at_time}. Using default."
+                )
                 return None
         return at_time
     except Exception as e:
         logger.error(f"Error processing rotation at_time: {str(e)}")
         return None
 
-def _create_handlers(log_level: int, log_files: dict, log_file_mode: str, rolling_strategy: str,
-                    max_size: int, when: str, interval: int, utc: bool, at_time) -> dict:
+
+def _create_handlers(
+    log_level: int,
+    log_files: dict,
+    log_file_mode: str,
+    rolling_strategy: str,
+    max_size: int,
+    when: str,
+    interval: int,
+    utc: bool,
+    at_time,
+) -> dict:
     """Create handlers configuration."""
     handlers = {
         'console': {
@@ -375,7 +425,9 @@ def _create_handlers(log_level: int, log_files: dict, log_file_mode: str, rollin
         }
     }
 
-    if hasattr(log_config, 'info_log_file') and getattr(log_config, 'info_log_file', None):
+    if hasattr(log_config, 'info_log_file') and getattr(
+        log_config, 'info_log_file', None
+    ):
         handlers['info_file'] = create_file_handler_config(
             'info_file', 'INFO', 'standard', log_files['info']
         )
@@ -386,6 +438,7 @@ def _create_handlers(log_level: int, log_files: dict, log_file_mode: str, rollin
         )
 
     return handlers
+
 
 def _configure_loggers(debug: bool, log_files: dict) -> dict:
     """Configure loggers."""
@@ -413,11 +466,16 @@ def _configure_loggers(debug: bool, log_files: dict) -> dict:
         },
     }
 
+
 def _create_formatters(date_format: str) -> dict:
     """Create formatters configuration."""
     try:
         return {
-            'standard': {'format': _get_log_format(log_config), 'datefmt': date_format, 'style': '%'},
+            'standard': {
+                'format': _get_log_format(log_config),
+                'datefmt': date_format,
+                'style': '%',
+            },
             'detailed': {
                 'format': '%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s',
                 'datefmt': date_format,
@@ -444,20 +502,28 @@ def _create_formatters(date_format: str) -> dict:
     except Exception as e:
         logger.error(f"Failed to create formatters: {str(e)}")
         return {
-            'standard': {'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                        'datefmt': date_format,
-                        'style': '%'},
+            'standard': {
+                'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                'datefmt': date_format,
+                'style': '%',
+            },
             'simple': {'format': '%(levelname)s %(message)s'},
         }
 
+
 def _setup_exception_handler(logger) -> None:
     """Set up exception handler."""
+
     def handle_exception(exc_type, exc_value, exc_traceback):
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
-        logger.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+        logger.critical(
+            "Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback)
+        )
+
     sys.excepthook = handle_exception
+
 
 def _log_configuration(logger, log_dir: Path, debug: bool, log_files: dict) -> None:
     """Log the configuration."""
@@ -488,23 +554,43 @@ def parse_args(args: list[str]) -> argparse.Namespace:
     Returns:
         Parsed arguments.
     """
-    parser = argparse.ArgumentParser(description="MyJobSpy AI - Job Search and Analysis Tool")
+    parser = argparse.ArgumentParser(
+        description="MyJobSpy AI - Job Search and Analysis Tool"
+    )
     # Basic arguments
     # Basic search arguments
     parser.add_argument('--search', type=str, help='Search term for job titles')
     parser.add_argument('--min-salary', type=float, help='Minimum salary requirement')
     parser.add_argument('--max-salary', type=float, help='Maximum salary requirement')
     parser.add_argument('--resume', type=str, help='Path to resume PDF file')
-    parser.add_argument('--analyze', action='store_true', help='Analyze jobs against resume')
-    parser.add_argument('--details', action='store_true', help='Show detailed job information')
+    parser.add_argument(
+        '--analyze', action='store_true', help='Analyze jobs against resume'
+    )
+    parser.add_argument(
+        '--details', action='store_true', help='Show detailed job information'
+    )
     parser.add_argument('--save', action='store_true', help='Save results to file')
     parser.add_argument('--output', type=str, help='Output file name')
-    parser.add_argument('--format', type=str, choices=['json', 'csv', 'xlsx', 'markdown'], default='json', help='Output format')
+    parser.add_argument(
+        '--format',
+        type=str,
+        choices=['json', 'csv', 'xlsx', 'markdown'],
+        default='json',
+        help='Output format',
+    )
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
-    parser.add_argument('--quiet', action='store_true', help='Suppress all output except errors')
-    parser.add_argument('--version', action='store_true', help='Show version information')
-    parser.add_argument('--interactive', action='store_true', help='Enable interactive mode')
-    parser.add_argument('--no-interactive', action='store_true', help='Disable interactive mode')
+    parser.add_argument(
+        '--quiet', action='store_true', help='Suppress all output except errors'
+    )
+    parser.add_argument(
+        '--version', action='store_true', help='Show version information'
+    )
+    parser.add_argument(
+        '--interactive', action='store_true', help='Enable interactive mode'
+    )
+    parser.add_argument(
+        '--no-interactive', action='store_true', help='Disable interactive mode'
+    )
 
     # Scraper selection
     parser.add_argument(
@@ -593,7 +679,6 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         type=str,
         help='Country for Indeed/Glassdoor searches (e.g., "USA", "Canada")',
     )
-
 
     # Output options
     output_group = parser.add_argument_group('Output Options')
@@ -702,6 +787,7 @@ async def _get_openai_config(config: Dict[str, Any]) -> Dict[str, Any]:
             'request_timeout': 60,
         }
 
+
 def _get_anthropic_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """Get Anthropic configuration."""
     try:
@@ -719,6 +805,7 @@ def _get_anthropic_config(config: Dict[str, Any]) -> Dict[str, Any]:
             'max_tokens': 1000,
         }
 
+
 def _get_google_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """Get Google configuration."""
     try:
@@ -733,6 +820,7 @@ def _get_google_config(config: Dict[str, Any]) -> Dict[str, Any]:
             'model': 'gemini-pro',
             'temperature': 0.7,
         }
+
 
 def _get_ollama_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """Get Ollama configuration."""
@@ -754,6 +842,7 @@ def _get_ollama_config(config: Dict[str, Any]) -> Dict[str, Any]:
             'top_p': 1.0,
             'timeout': 60,
         }
+
 
 def _initialize_openai(config: Dict[str, Any]) -> Optional[Any]:
     """Initialize OpenAI provider."""
@@ -783,23 +872,28 @@ def _initialize_openai(config: Dict[str, Any]) -> Optional[Any]:
         logger.error(f"Failed to initialize OpenAI provider: {str(e)}")
         return None
 
+
 def _initialize_anthropic(config: Dict[str, Any]) -> Optional[Any]:
     """Initialize Anthropic provider."""
     try:
         from langchain_anthropic import ChatAnthropic
+
         return ChatAnthropic(**config)
     except Exception as e:
         logger.error(f"Failed to initialize Anthropic provider: {str(e)}")
         return None
 
+
 def _initialize_google(config: Dict[str, Any]) -> Optional[Any]:
     """Initialize Google provider."""
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
+
         return ChatGoogleGenerativeAI(**config)
     except Exception as e:
         logger.error(f"Failed to initialize Google provider: {str(e)}")
         return None
+
 
 def _initialize_ollama(config: Dict[str, Any]) -> Optional[Any]:
     """Initialize Ollama provider."""
@@ -819,11 +913,14 @@ def _initialize_ollama(config: Dict[str, Any]) -> Optional[Any]:
             num_predict=config['num_predict'],
         )
     except ImportError as e:
-        logger.error("Failed to import Ollama dependencies. Install with: pip install langchain-community")
+        logger.error(
+            "Failed to import Ollama dependencies. Install with: pip install langchain-community"
+        )
         return None
     except Exception as e:
         logger.error(f"Failed to initialize Ollama provider: {e}", exc_info=True)
         return None
+
 
 def initialize_llm_provider(provider_config: Dict[str, Any]) -> Optional[Any]:
     """Initialize an LLM provider from configuration.
@@ -867,7 +964,10 @@ def initialize_llm_provider(provider_config: Dict[str, Any]) -> Optional[Any]:
             logger.info("pip install langchain-google-genai")
         return None
 
-def display_jobs_table(jobs: List[Dict[str, Any]], console: Console, show_details: bool = False) -> None:
+
+def display_jobs_table(
+    jobs: List[Dict[str, Any]], console: Console, show_details: bool = False
+) -> None:
     """Display jobs in a formatted table.
 
     Args:
@@ -897,13 +997,7 @@ def display_jobs_table(jobs: List[Dict[str, Any]], console: Console, show_detail
 
             # Add row to table
             table.add_row(
-                str(i),
-                title,
-                company,
-                location,
-                job_type,
-                posted_date,
-                description
+                str(i), title, company, location, job_type, posted_date, description
             )
 
         # Print the table
@@ -922,7 +1016,9 @@ def display_jobs_table(jobs: List[Dict[str, Any]], console: Console, show_detail
         )
     except Exception as e:
         logger.error(f"Error displaying jobs table: {str(e)}")
-        console.print("[red]Error displaying jobs table. Please check the logs for details.[/red]")
+        console.print(
+            "[red]Error displaying jobs table. Please check the logs for details.[/red]"
+        )
 
 
 def display_job_details(job):
@@ -942,7 +1038,9 @@ def display_job_details(job):
         posted_date = (
             job.get('posted_date') if is_dict else getattr(job, 'posted_date', None)
         )
-        description = job.get('description') if is_dict else getattr(job, 'description', '')
+        description = (
+            job.get('description') if is_dict else getattr(job, 'description', '')
+        )
         url = job.get('url') if is_dict else getattr(job, 'url', '')
 
         # Get analysis if available
@@ -955,7 +1053,9 @@ def display_job_details(job):
         console.print(f"[yellow]{location}[/yellow]")
     except Exception as e:
         logger.error(f"Error displaying job details: {str(e)}")
-        console.print("[red]Error displaying job details. Please check the logs for details.[/red]")
+        console.print(
+            "[red]Error displaying job details. Please check the logs for details.[/red]"
+        )
         return
 
     try:
@@ -1001,7 +1101,9 @@ def display_job_details(job):
         # Job description
         if description:
             console.print("\n[bold]Description:[/bold]")
-            console.print(description[:1000] + ("..." if len(description) > 1000 else ""))
+            console.print(
+                description[:1000] + ("..." if len(description) > 1000 else "")
+            )
 
         # Salary information if available
         salary = (
@@ -1055,7 +1157,9 @@ def display_job_details(job):
         console.print(f"[bold blue]{'=' * 80}[/bold blue]\n")
     except Exception as e:
         logger.error(f"Error displaying job details (part 2): {str(e)}")
-        console.print("[red]Error displaying job details. Please check the logs for details.[/red]")
+        console.print(
+            "[red]Error displaying job details. Please check the logs for details.[/red]"
+        )
         return
 
 
@@ -1149,7 +1253,9 @@ async def search_jobs(args) -> int:
         analyzed_jobs = []  # Initialize to empty list
         if hasattr(args, 'resume') and args.resume:
             try:
-                console.print(f"[blue]Loading and analyzing resume: {args.resume}[/blue]")
+                console.print(
+                    f"[blue]Loading and analyzing resume: {args.resume}[/blue]"
+                )
                 resume_data = await load_and_extract_resume_async(args.resume)
                 if not resume_data:
                     console.print(
@@ -1191,13 +1297,11 @@ async def search_jobs(args) -> int:
             'linkedin_fetch_description': getattr(
                 args,
                 'linkedin_fetch_description',
-                scraper_config.get('linkedin_fetch_description', False)
+                scraper_config.get('linkedin_fetch_description', False),
             ),
             'linkedin_company_ids': getattr(
-                args,
-                'linkedin_company_ids',
-                scraper_config.get('linkedin_company_ids')
-            )
+                args, 'linkedin_company_ids', scraper_config.get('linkedin_company_ids')
+            ),
         }
 
         # Initialize search parameters
@@ -1214,7 +1318,9 @@ async def search_jobs(args) -> int:
         search_params.update(jobspy_params)
 
         # Remove None values and empty strings
-        search_params = {k: v for k, v in search_params.items() if v is not None and v != ''}
+        search_params = {
+            k: v for k, v in search_params.items() if v is not None and v != ''
+        }
 
         # Execute search with progress
         try:
@@ -1223,7 +1329,9 @@ async def search_jobs(args) -> int:
                 TextColumn("[progress.description]{task.description}"),
                 transient=True,
             ) as progress:
-                task = progress.add_task(description="Searching for jobs...", total=None)
+                task = progress.add_task(
+                    description="Searching for jobs...", total=None
+                )
                 # Execute the job search
                 jobs = await scraper.search_jobs(**search_params)
                 if not jobs:
@@ -1246,7 +1354,9 @@ async def search_jobs(args) -> int:
                         # For other objects, convert to dict safely
                         job_dict = {}
                         for attr in dir(job):
-                            if not attr.startswith('_') and not callable(getattr(job, attr)):
+                            if not attr.startswith('_') and not callable(
+                                getattr(job, attr)
+                            ):
                                 try:
                                     value = getattr(job, attr)
                                     # Handle nested Pydantic models
@@ -1256,7 +1366,9 @@ async def search_jobs(args) -> int:
                                         value = value.dict()
                                     job_dict[attr] = value
                                 except Exception as e:
-                                    logger.warning(f"Could not get attribute {attr} from job object: {e}")
+                                    logger.warning(
+                                        f"Could not get attribute {attr} from job object: {e}"
+                                    )
 
                     jobs_list.append(job_dict)
 
@@ -1280,17 +1392,27 @@ async def search_jobs(args) -> int:
                 filtered_count = original_count - len(filtered_jobs)
                 jobs_list = filtered_jobs
                 if filtered_count > 0:
-                    logger.info(f"Filtered out {filtered_count} jobs with confirmed salaries below ${min_salary:,.0f}")
-                    logger.info(f"Kept {len(jobs_list)} jobs (including {len([j for j in jobs_list if not j.get('salary') or not j['salary'].get('min_amount')])} with unknown salaries)")
+                    logger.info(
+                        f"Filtered out {filtered_count} jobs with confirmed salaries below ${min_salary:,.0f}"
+                    )
+                    logger.info(
+                        f"Kept {len(jobs_list)} jobs (including {len([j for j in jobs_list if not j.get('salary') or not j['salary'].get('min_amount')])} with unknown salaries)"
+                    )
             except Exception as e:
-                logger.error(f"Error applying min-salary filter: {str(e)}", exc_info=True)
-                console.print(f"[yellow]Warning: Failed to apply min-salary filter: {str(e)}[/yellow]")
+                logger.error(
+                    f"Error applying min-salary filter: {str(e)}", exc_info=True
+                )
+                console.print(
+                    f"[yellow]Warning: Failed to apply min-salary filter: {str(e)}[/yellow]"
+                )
 
         # Handle job display and analysis
         if not getattr(args, 'analyze', False):
             # Display jobs without analysis
             display_title = f"{scraper_type.upper()} Job Search Results"
-            display_jobs_table(jobs_list, console, show_details=getattr(args, 'details', False))
+            display_jobs_table(
+                jobs_list, console, show_details=getattr(args, 'details', False)
+            )
 
         # Display analyzed jobs
         if analyzed_jobs:
@@ -1302,7 +1424,9 @@ async def search_jobs(args) -> int:
             save_results = False  # Initialize save_results flag
             while True:
                 try:
-                    console.print("\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]")
+                    console.print(
+                        "\n[bold]Enter job number to view details, 's' to save results, or 'q' to quit:[/bold]"
+                    )
                     choice = input("> ").strip().lower()
                     if choice == 'q':
                         break
@@ -1315,9 +1439,13 @@ async def search_jobs(args) -> int:
                         if 0 <= job_index < len(analyzed_jobs):
                             display_job_details(analyzed_jobs[job_index])
                         else:
-                            console.print("[yellow]Invalid job number. Please try again.[/yellow]")
+                            console.print(
+                                "[yellow]Invalid job number. Please try again.[/yellow]"
+                            )
                     else:
-                        console.print("[yellow]Invalid input. Please enter a number, 's', or 'q'.[/yellow]")
+                        console.print(
+                            "[yellow]Invalid input. Please enter a number, 's', or 'q'.[/yellow]"
+                        )
                 except Exception as e:
                     logger.error(f"Error in interactive mode: {str(e)}")
                     console.print("[red]An error occurred. Please try again.[/red]")
@@ -1339,11 +1467,21 @@ async def search_jobs(args) -> int:
                             if '_analysis' in job_dict and job_dict['_analysis']:
                                 analysis = job_dict.pop('_analysis', {})
                                 if 'suitability_score' in analysis:
-                                    job_dict['match_score'] = analysis['suitability_score']
+                                    job_dict['match_score'] = analysis[
+                                        'suitability_score'
+                                    ]
                                 if 'pros' in analysis:
-                                    job_dict['strengths'] = "; ".join(analysis['pros'][:3]) if analysis['pros'] else ""
+                                    job_dict['strengths'] = (
+                                        "; ".join(analysis['pros'][:3])
+                                        if analysis['pros']
+                                        else ""
+                                    )
                                 if 'cons' in analysis:
-                                    job_dict['areas_for_improvement'] = "; ".join(analysis['cons'][:3]) if analysis['cons'] else ""
+                                    job_dict['areas_for_improvement'] = (
+                                        "; ".join(analysis['cons'][:3])
+                                        if analysis['cons']
+                                        else ""
+                                    )
 
                         jobs_data.append(job_dict)
 
@@ -1357,13 +1495,17 @@ async def search_jobs(args) -> int:
                         with open(output_file, 'w', encoding='utf-8') as f:
                             f.write(df.to_markdown(index=False))
                     else:  # default to json
-                        df.to_json(output_file, orient='records', indent=2, force_ascii=False)
+                        df.to_json(
+                            output_file, orient='records', indent=2, force_ascii=False
+                        )
 
                     console.print(f"\n[green]Results saved to: {output_file}[/green]")
                     return 0
                 except Exception as e:
                     logger.error(f"Failed to save results: {str(e)}")
-                    console.print(f"[yellow]Warning: Failed to save results: {str(e)}[/yellow]")
+                    console.print(
+                        f"[yellow]Warning: Failed to save results: {str(e)}[/yellow]"
+                    )
                     return 1
 
             return 0
@@ -1374,6 +1516,7 @@ async def search_jobs(args) -> int:
         logger.error(f"Error during job analysis and display: {str(e)}", exc_info=True)
         console.print(f"[red]Error: {str(e)}[/red]")
         return 1
+
 
 async def main_async() -> int:
     """Async main entry point for the application."""
@@ -1466,6 +1609,8 @@ def main() -> int:
         print(f"Fatal error: {e}", file=sys.stderr)
         return 1
 
+
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

@@ -16,7 +16,7 @@ def display_jobs_table(
     jobs: List[Dict[str, Any]],
     console: Console,
     show_details: bool = False,
-    title: str = "Job Listings"
+    title: str = "Job Listings",
 ) -> None:
     """Display job listings in a formatted table.
 
@@ -72,7 +72,7 @@ def display_jobs_table(
             company[:30] + ('...' if len(company) > 30 else ''),
             location[:20] + ('...' if len(location) > 20 else ''),
             str(job_type).title(),
-            posted
+            posted,
         ]
 
         # Add detailed info if requested
@@ -86,7 +86,9 @@ def display_jobs_table(
                 period = salary.get('period', '').lower()
 
                 if min_sal or max_sal:
-                    salary_str = f"{min_sal or 'N/A'}-{max_sal or 'N/A'} {currency} {period}"
+                    salary_str = (
+                        f"{min_sal or 'N/A'}-{max_sal or 'N/A'} {currency} {period}"
+                    )
                 else:
                     salary_str = "N/A"
             else:
@@ -94,17 +96,31 @@ def display_jobs_table(
 
             # Get analysis if available
             analysis = job.get('_analysis', {})
-            match_score = analysis.get('suitability_score', 0) if isinstance(analysis, dict) else 0
-            strengths = "; ".join(analysis.get('pros', [])[:2]) if isinstance(analysis, dict) else ""
-            improvements = "; ".join(analysis.get('cons', [])[:2]) if isinstance(analysis, dict) else ""
+            match_score = (
+                analysis.get('suitability_score', 0)
+                if isinstance(analysis, dict)
+                else 0
+            )
+            strengths = (
+                "; ".join(analysis.get('pros', [])[:2])
+                if isinstance(analysis, dict)
+                else ""
+            )
+            improvements = (
+                "; ".join(analysis.get('cons', [])[:2])
+                if isinstance(analysis, dict)
+                else ""
+            )
 
             # Add detailed columns
-            row.extend([
-                salary_str,
-                f"{match_score:.0%}" if match_score else "N/A",
-                strengths[:30] + ('...' if len(strengths) > 30 else ''),
-                improvements[:30] + ('...' if len(improvements) > 30 else '')
-            ])
+            row.extend(
+                [
+                    salary_str,
+                    f"{match_score:.0%}" if match_score else "N/A",
+                    strengths[:30] + ('...' if len(strengths) > 30 else ''),
+                    improvements[:30] + ('...' if len(improvements) > 30 else ''),
+                ]
+            )
 
         table.add_row(*[str(cell) for cell in row])
 
@@ -139,8 +155,10 @@ def display_resume_analysis(analysis: Dict[str, Any], console: Console) -> None:
         console.print("\n[bold]Skills:[/bold]")
         for category, skills in analysis['skills'].items():
             if skills:
-                console.print(f"  [bold]{category.title()}:[/bold] {', '.join(skills[:5])}" +
-                             ("..." if len(skills) > 5 else ""))
+                console.print(
+                    f"  [bold]{category.title()}:[/bold] {', '.join(skills[:5])}"
+                    + ("..." if len(skills) > 5 else "")
+                )
 
     # Experience
     if 'experience' in analysis and analysis['experience']:
@@ -158,6 +176,8 @@ def display_resume_analysis(analysis: Dict[str, Any], console: Console) -> None:
             degree = edu.get('degree', 'N/A')
             institution = edu.get('institution', 'N/A')
             year = edu.get('year', '')
-            console.print(f"  • {degree} from {institution}" + (f" ({year})" if year else ""))
+            console.print(
+                f"  • {degree} from {institution}" + (f" ({year})" if year else "")
+            )
 
     console.rule()

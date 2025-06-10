@@ -1,4 +1,5 @@
 """Enhanced job analysis models for MyJobSpy AI."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -9,6 +10,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 class MatchStrength(str, Enum):
     """Enumeration of match strength levels."""
+
     NONE = "none"
     WEAK = "weak"
     MODERATE = "moderate"
@@ -68,7 +70,8 @@ class SectionScores(BaseModel):
     def overall_score(self) -> float:
         """Calculate the weighted overall score."""
         fields = [
-            f for f in dir(self)
+            f
+            for f in dir(self)
             if not f.startswith('_') and not callable(getattr(self, f))
         ]
         total_weight = sum(
@@ -83,8 +86,8 @@ class SectionScores(BaseModel):
         weighted_sum = sum(
             getattr(self, field).score * getattr(self, field).weight
             for field in fields
-            if hasattr(getattr(self, field, None), 'score') and \
-               hasattr(getattr(self, field, None), 'weight')
+            if hasattr(getattr(self, field, None), 'score')
+            and hasattr(getattr(self, field, None), 'weight')
         )
 
         return min(100.0, weighted_sum / total_weight if total_weight > 0 else 0.0)

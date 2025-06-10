@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 class EducationLevel(str, Enum):
     """Enumeration of education levels."""
+
     HIGHSCHOOL = "highschool"
     ASSOCIATE = "associate"
     BACHELORS = "bachelors"
@@ -19,6 +20,7 @@ class EducationLevel(str, Enum):
 
 class ExperienceLevel(str, Enum):
     """Enumeration of experience levels."""
+
     ENTRY = "entry"
     JUNIOR = "junior"
     MID = "mid"
@@ -31,6 +33,7 @@ class ExperienceLevel(str, Enum):
 
 class SkillCategory(str, Enum):
     """Enumeration of skill categories."""
+
     PROGRAMMING = "programming"
     FRAMEWORK = "framework"
     TOOL = "tool"
@@ -105,16 +108,13 @@ class Experience(BaseModel):
         skills_used: List of skills used in this position
         achievements: Notable achievements in this role
     """
+
     company: str = Field(..., description="Company name")
     position: str = Field(..., description="Job title/position")
     location: Optional[str] = Field(None, description="Job location")
-    start_date: Optional[date] = Field(
-        None,
-        description="Start date of employment"
-    )
+    start_date: Optional[date] = Field(None, description="Start date of employment")
     end_date: Optional[date] = Field(
-        None,
-        description="End date of employment (None if current)"
+        None, description="End date of employment (None if current)"
     )
     current: bool = Field(False, description="Whether this is the current position")
     description: str = Field(..., description="Job description and responsibilities")
@@ -191,6 +191,7 @@ class Skill(BaseModel):
         years_experience: Years of experience with this skill
         last_used: Last year the skill was used (YYYY)
     """
+
     name: str = Field(..., description="Name of the skill")
     category: SkillCategory = Field(..., description="Category of the skill")
     proficiency: float = Field(
@@ -380,7 +381,7 @@ class ResumeData(BaseModel):
             EducationLevel.ASSOCIATE: 2,
             EducationLevel.HIGHSCHOOL: 1,
             EducationLevel.CERTIFICATION: 0,
-            EducationLevel.DIPLOMA: 0
+            EducationLevel.DIPLOMA: 0,
         }
 
         return max(

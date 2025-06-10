@@ -705,12 +705,14 @@ class JobAnalyzer(BaseAnalyzer):
 
                     # Format the prompt with the resume and job data
                     formatted_prompt = prompt.format(
-                        resume_skills=", ".join(resume_skills)
-                        if resume_skills
-                        else "Not specified",
-                        job_skills=", ".join(job_skills)
-                        if job_skills
-                        else "Not specified",
+                        resume_skills=(
+                            ", ".join(resume_skills)
+                            if resume_skills
+                            else "Not specified"
+                        ),
+                        job_skills=(
+                            ", ".join(job_skills) if job_skills else "Not specified"
+                        ),
                         resume_exp=resume_exp,
                         job_exp=job_exp,
                         resume_edu=get_attr(

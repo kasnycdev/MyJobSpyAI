@@ -41,18 +41,16 @@ class JobService:
             scraper_type: Type of scraper to use (default: "jobspy")
         """
         try:
-            self.scraper = create_scraper(scraper_type, self.config.get("scrapers", {}).get(scraper_type, {}))
+            self.scraper = create_scraper(
+                scraper_type, self.config.get("scrapers", {}).get(scraper_type, {})
+            )
             logger.info(f"Initialized {scraper_type} scraper")
         except Exception as e:
             logger.error(f"Failed to initialize {scraper_type} scraper: {e}")
             raise
 
     async def search_jobs(
-        self,
-        query: str = "",
-        location: str = "",
-        max_results: int = 15,
-        **kwargs
+        self, query: str = "", location: str = "", max_results: int = 15, **kwargs
     ) -> List[Dict[str, Any]]:
         """Search for jobs using the configured scraper.
 
@@ -74,12 +72,11 @@ class JobService:
                 TextColumn("[progress.description]{task.description}"),
                 transient=True,
             ) as progress:
-                task = progress.add_task(description="Searching for jobs...", total=None)
+                task = progress.add_task(
+                    description="Searching for jobs...", total=None
+                )
                 jobs = await self.scraper.search_jobs(
-                    query=query,
-                    location=location,
-                    max_results=max_results,
-                    **kwargs
+                    query=query, location=location, max_results=max_results, **kwargs
                 )
 
                 # Convert jobs to dicts for easier handling
@@ -98,7 +95,9 @@ class JobService:
                         # For other objects, convert to dict safely
                         job_dict = {}
                         for attr in dir(job):
-                            if not attr.startswith('_') and not callable(getattr(job, attr)):
+                            if not attr.startswith('_') and not callable(
+                                getattr(job, attr)
+                            ):
                                 try:
                                     value = getattr(job, attr)
                                     # Handle nested Pydantic models
@@ -108,7 +107,9 @@ class JobService:
                                         value = value.dict()
                                     job_dict[attr] = value
                                 except Exception as e:
-                                    logger.warning(f"Could not get attribute {attr} from job object: {e}")
+                                    logger.warning(
+                                        f"Could not get attribute {attr} from job object: {e}"
+                                    )
                     jobs_list.append(job_dict)
 
                 return jobs_list
@@ -176,8 +177,7 @@ class JobService:
             for job in jobs:
                 try:
                     analysis = await self.analyzer.analyze_resume_suitability(
-                        resume_data=resume_data,
-                        job_data=job
+                        resume_data=resume_data, job_data=job
                     )
                     job['_analysis'] = analysis
                     analyzed_jobs.append(job)
@@ -194,7 +194,7 @@ class JobService:
     def save_jobs_to_file(
         jobs: List[Dict[str, Any]],
         output_file: Union[str, Path],
-        output_format: str = 'json'
+        output_format: str = 'json',
     ) -> None:
         """Save jobs to a file in the specified format.
 

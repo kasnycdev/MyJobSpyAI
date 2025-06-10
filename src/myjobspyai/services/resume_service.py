@@ -75,8 +75,7 @@ class ResumeService:
 
             # Perform analysis
             analysis = await self.analyzer.analyze_resume_suitability(
-                resume_data=resume_data,
-                job_data=job_data
+                resume_data=resume_data, job_data=job_data
             )
 
             return analysis
@@ -102,27 +101,27 @@ class ResumeService:
                 "technical": [],
                 "soft": [],
                 "languages": [],
-                "certifications": []
+                "certifications": [],
             }
 
             # Categorize skills
             for skill in resume_data.skills:
                 if skill.category == "technical":
-                    skills["technical"].append({
-                        "name": skill.name,
-                        "proficiency": skill.proficiency,
-                        "years": skill.years_experience
-                    })
+                    skills["technical"].append(
+                        {
+                            "name": skill.name,
+                            "proficiency": skill.proficiency,
+                            "years": skill.years_experience,
+                        }
+                    )
                 elif skill.category == "language":
-                    skills["languages"].append({
-                        "name": skill.name,
-                        "proficiency": skill.proficiency
-                    })
+                    skills["languages"].append(
+                        {"name": skill.name, "proficiency": skill.proficiency}
+                    )
                 else:
-                    skills["soft"].append({
-                        "name": skill.name,
-                        "proficiency": skill.proficiency
-                    })
+                    skills["soft"].append(
+                        {"name": skill.name, "proficiency": skill.proficiency}
+                    )
 
             # Add certifications
             if hasattr(resume_data, 'certifications'):
